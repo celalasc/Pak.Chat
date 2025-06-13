@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, memo } from "react"
 import { cn } from "@/lib/utils"
 import { UIMessage } from 'ai'
 
@@ -10,7 +10,7 @@ interface ChatNavigationBarsProps {
   scrollToMessage: (id: string) => void
 }
 
-export default function ChatNavigationBars({ messages, scrollToMessage }: ChatNavigationBarsProps) {
+function ChatNavigationBarsComponent({ messages, scrollToMessage }: ChatNavigationBarsProps) {
   const [hoveredBar, setHoveredBar] = useState<string | null>(null)
 
   // Фильтруем только пользовательские сообщения для навигации
@@ -93,3 +93,5 @@ export default function ChatNavigationBars({ messages, scrollToMessage }: ChatNa
     </div>
   )
 }
+
+export default memo(ChatNavigationBarsComponent)

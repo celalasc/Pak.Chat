@@ -69,7 +69,8 @@ function PureChatInput({
 }: ChatInputProps) {
   const canChat = useAPIKeyStore((state) => state.hasRequiredKeys());
   const { currentQuote, clearQuote } = useQuoteStore();
-  const { keys, setKeys } = useAPIKeyStore();
+  const keys = useAPIKeyStore((s) => s.keys);
+  const setKeys = useAPIKeyStore((s) => s.setKeys);
   const [localKeys, setLocalKeys] = useState(keys);
   const saveKeys = () => { setKeys(localKeys); toast.success('API keys saved'); };
 

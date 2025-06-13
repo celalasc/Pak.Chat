@@ -48,4 +48,6 @@ export const useModelStore = create<ModelStore>()(
   )
 );
 
-withStorageDOMEvents(useModelStore);
+if (typeof window !== 'undefined') {
+  withStorageDOMEvents(useModelStore);
+}

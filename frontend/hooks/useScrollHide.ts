@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 
 interface UseScrollHideOptions {
   threshold?: number;
@@ -6,18 +6,19 @@ interface UseScrollHideOptions {
   showOnScrollUp?: boolean;
 }
 
-export function useScrollHide({
+export function useScrollHideRef({
   threshold = 10,
   hideOnScrollDown = true,
   showOnScrollUp = true,
 }: UseScrollHideOptions = {}) {
-  // true when the header should be hidden
-  const [hidden, setHidden] = useState(false);
-  const [lastScrollY, setLastScrollY] = useState(0);
+  // ref holding the hidden state
+  const hiddenRef = useRef(false);
+  // store last scroll position
+  const lastScrollYRef = useRef(0);
 
   const handleScroll = useCallback(() => {
     const currentScrollY = window.scrollY;
-    const scrollDifference = Math.abs(currentScrollY - lastScrollY);
+    const scrollDifference = Math.abs(currentScrollY - lastScrollYRef.current);
 
     // Если прокрутка слишком мала, игнорируем
     if (scrollDifference < threshold) {
@@ -26,25 +27,25 @@ export function useScrollHide({
 
     // Если мы в самом верху страницы, всегда показываем элементы
     if (currentScrollY <= 50) {
-      setHidden(false);
-      setLastScrollY(currentScrollY);
+      hiddenRef.current = false;
+      lastScrollYRef.current = currentScrollY;
       return;
     }
 
-    if (currentScrollY > lastScrollY && hideOnScrollDown) {
+    if (currentScrollY > lastScrollYRef.current && hideOnScrollDown) {
       // Прокрутка вниз - скрываем элементы
-      setHidden(true);
-    } else if (currentScrollY < lastScrollY && showOnScrollUp) {
+      hiddenRef.current = true;
+    } else if (currentScrollY < lastScrollYRef.current && showOnScrollUp) {
       // Прокрутка вверх - показываем элементы
-      setHidden(false);
+      hiddenRef.current = false;
     }
 
-    setLastScrollY(currentScrollY);
-  }, [lastScrollY, threshold, hideOnScrollDown, showOnScrollUp]);
+    lastScrollYRef.current = currentScrollY;
+  }, [threshold, hideOnScrollDown, showOnScrollUp]);
 
   useEffect(() => {
     // Инициализируем начальную позицию
-    setLastScrollY(window.scrollY);
+    lastScrollYRef.current = window.scrollY;
     
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => {
@@ -52,5 +53,5 @@ export function useScrollHide({
     };
   }, [handleScroll]);
 
-  return hidden;
-} 
+  return hiddenRef;
+}
