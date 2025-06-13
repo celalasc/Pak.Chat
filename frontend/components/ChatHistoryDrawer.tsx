@@ -13,6 +13,7 @@ import { X, Pin, PinOff, Search, MessageSquare, Plus, Edit2, Check } from 'lucid
 import { cn } from '@/lib/utils';
 import { Thread } from '@/frontend/dexie/db';
 import BranchIcon from './ui/BranchIcon';
+import { DrawerHandle } from './ui/DrawerHandle';
 import { usePinnedThreads } from '@/frontend/hooks/usePinnedThreads';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 
@@ -347,9 +348,7 @@ export default function ChatHistoryDrawer({ children, isOpen, setIsOpen }: ChatH
         <DrawerContent className="max-h-[95vh] flex flex-col w-full">
           <div className="flex h-full max-h-[90vh] flex-col">
             {/* Pull handle */}
-            <div className="flex justify-center pt-4 pb-2">
-              <div className="w-16 h-2 bg-muted-foreground/30 rounded-full" />
-            </div>
+            <DrawerHandle />
             
             {/* Header with backdrop blur and search */}
             <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-border/50">
