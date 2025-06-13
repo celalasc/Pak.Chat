@@ -142,7 +142,8 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
       {/* Logo in top left with blur background */}
       <div
         className={cn(
-          "fixed left-4 top-4 z-20 transition-transform duration-300 ease-in-out",
+          "fixed left-4 top-4 z-20 transition-[transform,opacity] ease-in-out",
+          isEditing ? "duration-200" : "duration-300",
           isMobile && (scrollHidden || isEditing) && "-translate-x-full opacity-0"
         )}
       >
@@ -163,9 +164,10 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
       {/* Top buttons */}
       <div
         className={cn(
-          "fixed right-4 top-4 z-20 flex gap-2 p-1 bg-background/60 backdrop-blur-md rounded-lg border border-border/20 transition-transform duration-300 ease-in-out",
+          "fixed right-4 top-4 z-20 flex gap-2 p-1 bg-background/60 backdrop-blur-md rounded-lg border border-border/20 transition-[transform,opacity] ease-in-out",
+          isEditing ? "duration-200" : "duration-300",
           isMobile && isEditing && "translate-x-full opacity-0",
-          isMobile && !isEditing && scrollHidden && "translate-x-[44px]"
+          isMobile && !isEditing && scrollHidden && "translate-x-[48px]"
         )}
       >
         {hasKeys && <NewChatButton className="backdrop-blur-sm" />}

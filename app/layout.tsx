@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import 'katex/dist/katex.min.css';
 import { Toaster } from '@/frontend/components/ui/sonner';
@@ -6,6 +6,13 @@ import Providers from '@/frontend/components/Providers';
 export const metadata: Metadata = {
   title: 'Pak.Chat',
   description: 'High-Performance LLM Application',
+};
+
+// Export viewport settings for consistent mobile layout
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({

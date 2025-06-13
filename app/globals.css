@@ -5,6 +5,12 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Prevent horizontal scrollbars */
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 /* Font faces */
 @font-face {
   font-family: 'Proxima Vara';
