@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { inter, jetbrainsMono } from './fonts';
+import { fontPreloads } from './fonts';
 import { cookies } from 'next/headers';
 import './globals.css';
 import 'katex/dist/katex.min.css';
@@ -29,18 +29,26 @@ export default async function RootLayout({
   const cookieStore = await cookies();
 
   // Теперь безопасно вызываем .get() у полученного объекта
-  const generalFontCookie = cookieStore.get('general-font')?.value || 'Inter';
-  const codeFontCookie = cookieStore.get('code-font')?.value || 'JetBrains Mono';
+  const generalFontCookie = cookieStore.get('general-font')?.value || 'Proxima Vara';
+  const codeFontCookie = cookieStore.get('code-font')?.value || 'Berkeley Mono';
 
   const generalFontClass = `font-sans-${generalFontCookie.replace(/\s+/g, '-').toLowerCase()}`;
   const codeFontClass = `font-mono-${codeFontCookie.replace(/\s+/g, '-').toLowerCase()}`;
 
   return (
-    <html
-      lang="en"
-      suppressHydrationWarning
-      className={`${inter.variable} ${jetbrainsMono.variable} ${generalFontClass} ${codeFontClass}`}
-    >
+    <html lang="en" suppressHydrationWarning className={`${generalFontClass} ${codeFontClass}`}> 
+      <head>
+        {fontPreloads.map((href) => (
+          <link
+            key={href}
+            rel="preload"
+            href={href}
+            as="font"
+            type="font/woff2"
+            crossOrigin="anonymous"
+          />
+        ))}
+      </head>
       <body suppressHydrationWarning={true} className="antialiased">
         <Providers>
           {children}
