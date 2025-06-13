@@ -27,7 +27,12 @@ export default function SettingsButton({
           <Button
             variant={variant}
             size={size}
-            className={cn("bg-background/80 backdrop-blur-sm border-border/50", className)}
+            className={cn(
+              'bg-background/80 backdrop-blur-sm border-border/50',
+              // pseudo-element creates a left divider
+              'relative before:absolute before:-left-px before:inset-y-1 before:w-px before:bg-border/50',
+              className
+            )}
             aria-label="Open settings"
             onClick={() => setIsOpen(true)}
           >
