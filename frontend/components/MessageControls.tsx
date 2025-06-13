@@ -2,6 +2,9 @@ import { Dispatch, SetStateAction, useState } from 'react';
 import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
 import { Check, Copy, RefreshCcw, SquarePen } from 'lucide-react';
+import BranchIcon from './ui/BranchIcon';
+import { cloneThreadFromMessage } from '@/frontend/dexie/queries';
+import { useNavigate } from 'react-router';
 import { UIMessage } from 'ai';
 import { UseChatHelpers } from '@ai-sdk/react';
 import { deleteTrailingMessages } from '@/frontend/dexie/queries';
@@ -34,6 +37,7 @@ export default function MessageControls({
   const [copied, setCopied] = useState(false);
   const hasRequiredKeys = useAPIKeyStore((state) => state.hasRequiredKeys());
   const { isMobile } = useIsMobile();
+  const navigate = useNavigate();
 
   const handleCopy = () => {
     navigator.clipboard.writeText(content);
@@ -78,6 +82,11 @@ export default function MessageControls({
     }, 0);
   };
 
+  const handleBranch = async () => {
+    const newId = await cloneThreadFromMessage(threadId, message.id);
+    navigate(`/chat/${newId}`);
+  };
+
   // На мобильных устройствах показываем кнопки только когда isVisible = true
   const shouldShowControls = isMobile ? isVisible : true;
 
@@ -99,6 +108,11 @@ export default function MessageControls({
       {setMode && hasRequiredKeys && (
         <Button variant="ghost" size="icon" onClick={() => setMode('edit')}>
           <SquarePen className="w-4 h-4" />
+        </Button>
+      )}
+      {message.role === 'assistant' && (
+        <Button variant="ghost" size="icon" onClick={handleBranch}>
+          <BranchIcon className="w-4 h-4" />
         </Button>
       )}
       {hasRequiredKeys && (
