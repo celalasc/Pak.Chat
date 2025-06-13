@@ -20,6 +20,8 @@ import { useUIStore } from '@/frontend/stores/uiStore';
 import { Link } from 'react-router';
 import { cn } from '@/lib/utils';
 import { useEffect, useCallback } from 'react';
+import { motion } from 'framer-motion';
+import { useElementSize } from '@/frontend/hooks/useElementSize';
 import { useParams } from 'react-router';
 
 interface ChatProps {
@@ -35,6 +37,7 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
   const isEditing = useUIStore((state) => !!state.editingMessageId);
   const { id } = useParams();
   const hasKeys = useAPIKeyStore(state => state.hasRequiredKeys());
+  const { ref: btnBlockRef, width: btnBlockWidth } = useElementSize();
 
   useQuoteShortcuts();
 
@@ -140,12 +143,14 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
       </main>
       
       {/* Logo in top left with blur background */}
-      <div
-        className={cn(
-          "fixed left-4 top-4 z-20 transition-[transform,opacity] ease-in-out",
-          isEditing ? "duration-200" : "duration-300",
-          isMobile && (scrollHidden || isEditing) && "-translate-x-full opacity-0"
-        )}
+      <motion.div
+        className="fixed left-4 top-4 z-20"
+        initial={{ x: 0, opacity: 1 }}
+        animate={{
+          opacity: isMobile && (scrollHidden || isEditing) ? 0 : 1,
+          x: isMobile && (scrollHidden || isEditing) ? '-100%' : 0,
+        }}
+        transition={{ duration: 0.3, ease: 'easeInOut' }}
       >
         <div className="relative">
           {/* Blur background for mobile */}
@@ -159,21 +164,29 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
             Pak.Chat
           </Link>
         </div>
-      </div>
+      </motion.div>
 
       {/* Top buttons */}
-      <div
-        className={cn(
-          "fixed right-4 top-4 z-20 flex gap-2 p-1 bg-background/60 backdrop-blur-md rounded-lg border border-border/20 transition-[transform,opacity] ease-in-out",
-          isEditing ? "duration-200" : "duration-300",
-          isMobile && isEditing && "translate-x-full opacity-0",
-          isMobile && !isEditing && scrollHidden && "translate-x-[48px]"
-        )}
+      <motion.div
+        ref={btnBlockRef}
+        className="fixed right-4 top-4 z-20 flex gap-2 p-1 bg-background/60 backdrop-blur-md rounded-lg border border-border/20"
+        initial={{ x: 0, opacity: 1 }}
+        animate={{
+          opacity: isMobile && (isEditing || scrollHidden) ? 0 : 1,
+          x: isMobile
+            ? isEditing
+              ? '100%'
+              : scrollHidden
+                ? btnBlockWidth - (btnBlockWidth - 48)
+                : 0
+            : 0,
+        }}
+        transition={{ duration: 0.3, ease: 'easeInOut' }}
       >
         {hasKeys && <NewChatButton className="backdrop-blur-sm" />}
         <ChatHistoryButton className="backdrop-blur-sm" />
         <SettingsButton className="backdrop-blur-sm" />
-      </div>
+      </motion.div>
     </div>
   );
 }
