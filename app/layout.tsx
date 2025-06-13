@@ -15,6 +15,23 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Preload custom fonts for faster rendering */}
+        <link
+          rel="preload"
+          as="font"
+          type="font/woff2"
+          href="/fonts/ProximaVara-Regular.woff2"
+          crossOrigin="anonymous"
+        />
+        <link
+          rel="preload"
+          as="font"
+          type="font/woff2"
+          href="/fonts/BerkeleyMono-Regular.woff2"
+          crossOrigin="anonymous"
+        />
+      </head>
       <body suppressHydrationWarning={true} className="antialiased font-sans">
         <Providers>
           {children}
