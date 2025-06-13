@@ -93,9 +93,11 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
-  --font-sans: Geist, sans-serif;
+  /* Use locally hosted Proxima Vara as the sans-serif font to avoid fetching from Google */
+  --font-sans: 'Proxima Vara', sans-serif;
   --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
-  --font-mono: Geist Mono, monospace;
+  /* Berkeley Mono is bundled locally and used as the monospace font */
+  --font-mono: 'Berkeley Mono', monospace;
   --radius: 0.625rem;
   --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
   --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
@@ -144,9 +146,10 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.275 0 0);
   --sidebar-ring: oklch(0.439 0 0);
-  --font-sans: Geist, sans-serif;
+  /* Dark theme font overrides using local fonts */
+  --font-sans: 'Proxima Vara', sans-serif;
   --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
-  --font-mono: Geist Mono, monospace;
+  --font-mono: 'Berkeley Mono', monospace;
   --radius: 0.625rem;
   --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
   --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
