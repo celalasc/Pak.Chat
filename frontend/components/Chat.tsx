@@ -99,50 +99,52 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
 
 
   // framer-motion animation settings
+  // Animation states for header controls
   const animationVariants = {
     visible: { opacity: 1, x: 0, y: 0 },
     hiddenLeft: { opacity: 0, x: '-110%' },
     hiddenRight: { opacity: 0, x: '110%' },
-    partialRight: { x: '48px' },
+    fade: { opacity: 0, x: 0 }, // fades out without horizontal shift
   } as const;
   const transition = { duration: 0.3, ease: 'easeInOut' };
 
   return (
     <div className="w-full h-screen flex flex-col overflow-hidden">
       <header className="relative z-20 shrink-0">
-        <motion.div
-          className="fixed left-4 top-4"
-          initial="visible"
-          animate={isMobile && shouldHideHeader ? 'hiddenLeft' : 'visible'}
-          variants={animationVariants}
-          transition={transition}
-        >
-          <Link to="/chat" className="text-xl font-bold">
-            Pak.Chat
-          </Link>
-        </motion.div>
-
-        <div className="fixed right-4 top-4 flex items-center gap-2">
-          <motion.div initial="visible" animate="visible" transition={transition}>
-            {hasKeys && <NewChatButton />}
-          </motion.div>
-          <motion.div initial="visible" animate="visible" transition={transition}>
-            <ChatHistoryButton />
-          </motion.div>
+        <div className="fixed left-4 right-4 top-4 flex items-center gap-x-1">
           <motion.div
             initial="visible"
-            animate={
-              isMobile && isEditing
-                ? 'hiddenRight'
-                : isMobile && scrollHidden
-                  ? 'partialRight'
-                  : 'visible'
-            }
+            animate={isMobile && shouldHideHeader ? 'hiddenLeft' : 'visible'}
             variants={animationVariants}
             transition={transition}
           >
-            <SettingsButton />
+            <Link to="/chat" className="text-xl font-bold">
+              Pak.Chat
+            </Link>
           </motion.div>
+
+          <div className="ml-auto flex items-center gap-x-1">
+            <motion.div initial="visible" animate="visible" transition={transition}>
+              {hasKeys && <NewChatButton />}
+            </motion.div>
+            <motion.div initial="visible" animate="visible" transition={transition}>
+              <ChatHistoryButton />
+            </motion.div>
+            <motion.div
+              initial="visible"
+              animate={
+                isMobile && isEditing
+                  ? 'hiddenRight'
+                  : isMobile && scrollHidden
+                    ? 'fade'
+                    : 'visible'
+              }
+              variants={animationVariants}
+              transition={transition}
+            >
+              <SettingsButton />
+            </motion.div>
+          </div>
         </div>
       </header>
 
