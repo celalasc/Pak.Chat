@@ -64,12 +64,12 @@ html, body {
 }
 
 /* Override fonts when user selects custom options */
-html[data-general-font='proxima-vara'] {
-  --font-sans: var(--font-proxima-vara);
+html[data-general-font='inter'] {
+  --font-sans: var(--font-inter);
 }
 
-html[data-code-font='berkeley-mono'] {
-  --font-mono: var(--font-berkeley-mono);
+html[data-code-font='jetbrains-mono'] {
+  --font-mono: var(--font-jetbrains-mono);
 }
 
 .dark {
