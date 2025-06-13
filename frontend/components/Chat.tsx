@@ -37,7 +37,7 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
   const isEditing = useUIStore((state) => !!state.editingMessageId);
   const { id } = useParams();
   const hasKeys = useAPIKeyStore(state => state.hasRequiredKeys());
-  const { ref: btnBlockRef, width: btnBlockWidth } = useElementSize();
+  const { ref: settingsRef, width: settingsWidth } = useElementSize();
 
   useQuoteShortcuts();
 
@@ -167,26 +167,38 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
       </motion.div>
 
       {/* Top buttons */}
-      <motion.div
-        ref={btnBlockRef}
-        className="fixed right-4 top-4 z-20 flex gap-2 p-1 bg-background/60 backdrop-blur-md rounded-lg border border-border/20"
-        initial={{ x: 0, opacity: 1 }}
-        animate={{
-          opacity: isMobile && (isEditing || scrollHidden) ? 0 : 1,
-          x: isMobile
-            ? isEditing
-              ? '100%'
-              : scrollHidden
-                ? btnBlockWidth - (btnBlockWidth - 48)
-                : 0
-            : 0,
-        }}
-        transition={{ duration: 0.3, ease: 'easeInOut' }}
-      >
-        {hasKeys && <NewChatButton className="backdrop-blur-sm" />}
-        <ChatHistoryButton className="backdrop-blur-sm" />
-        <SettingsButton className="backdrop-blur-sm" />
-      </motion.div>
+      <div className="fixed right-4 top-4 z-20 flex gap-2">
+        <motion.div
+          className="flex gap-2 p-1 bg-background/60 backdrop-blur-md rounded-lg border border-border/20"
+          initial={{ x: 0, opacity: 1 }}
+          animate={{
+            opacity: isMobile && isEditing ? 0 : 1,
+            x: isMobile && isEditing ? '100%' : 0,
+          }}
+          transition={{ duration: 0.3, ease: 'easeInOut' }}
+        >
+          {hasKeys && <NewChatButton className="backdrop-blur-sm" />}
+          <ChatHistoryButton className="backdrop-blur-sm" />
+        </motion.div>
+        <motion.div
+          ref={settingsRef}
+          className="p-1 bg-background/60 backdrop-blur-md rounded-lg border border-border/20"
+          initial={{ x: 0, opacity: 1 }}
+          animate={{
+            opacity: isMobile && (isEditing || scrollHidden) ? 0 : 1,
+            x: isMobile
+              ? isEditing
+                ? '100%'
+                : scrollHidden
+                  ? settingsWidth + 8
+                  : 0
+              : 0,
+          }}
+          transition={{ duration: 0.3, ease: 'easeInOut' }}
+        >
+          <SettingsButton className="backdrop-blur-sm" />
+        </motion.div>
+      </div>
     </div>
   );
 }
