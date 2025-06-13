@@ -139,7 +139,7 @@ function ChatComponent({ threadId, initialMessages }: ChatProps) {
               animate={
                 isMobile && isEditing
                   ? 'hiddenRight'
-                  : isMobile && scrollHidden
+                  : isMobile && scrollHiddenRef.current
                     ? 'fade'
                     : 'visible'
               }
