@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { inter, jetbrainsMono } from './fonts';
+import { cookies } from 'next/headers';
 import './globals.css';
 import 'katex/dist/katex.min.css';
 import { Toaster } from '@/frontend/components/ui/sonner';
@@ -24,11 +25,17 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const generalFontCookie = cookies().get('general-font')?.value || 'Inter';
+  const codeFontCookie = cookies().get('code-font')?.value || 'JetBrains Mono';
+
+  const generalFontClass = `font-sans-${generalFontCookie.replace(/\s+/g, '-').toLowerCase()}`;
+  const codeFontClass = `font-mono-${codeFontCookie.replace(/\s+/g, '-').toLowerCase()}`;
+
   return (
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${inter.variable} ${jetbrainsMono.variable}`}
+      className={`${inter.variable} ${jetbrainsMono.variable} ${generalFontClass} ${codeFontClass}`}
     >
       <body suppressHydrationWarning={true} className="antialiased">
         <Providers>

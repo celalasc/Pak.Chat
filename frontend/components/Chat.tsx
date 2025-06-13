@@ -5,23 +5,21 @@ import Messages from './Messages';
 import ChatInput from './ChatInput';
 import ChatHistoryButton from './ChatHistoryButton';
 import NewChatButton from './NewChatButton';
+import SettingsButton from './SettingsButton';
+import { Link } from 'react-router';
+import { useIsMobile } from '@/frontend/hooks/useIsMobile';
+import { useUIStore } from '@/frontend/stores/uiStore';
+import { useScrollHide } from '@/frontend/hooks/useScrollHide';
+import { motion } from 'framer-motion';
+// additional imports from previous version
 import { UIMessage } from 'ai';
 import { v4 as uuidv4 } from 'uuid';
 import { createMessage, createThread } from '@/frontend/dexie/queries';
 import { db } from '@/frontend/dexie/db';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 import { useModelStore } from '@/frontend/stores/ModelStore';
-import SettingsButton from './SettingsButton';
-import ChatNavigationBars from './ChatNavigationBars';
 import { useQuoteShortcuts } from '@/frontend/hooks/useQuoteShortcuts';
-import { useScrollHide } from '@/frontend/hooks/useScrollHide';
-import { useIsMobile } from '@/frontend/hooks/useIsMobile';
-import { useUIStore } from '@/frontend/stores/uiStore';
-import { Link } from 'react-router';
-import { cn } from '@/lib/utils';
-import { useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { useElementSize } from '@/frontend/hooks/useElementSize';
+import { useEffect } from 'react';
 import { useParams } from 'react-router';
 
 interface ChatProps {
@@ -30,14 +28,15 @@ interface ChatProps {
 }
 
 export default function Chat({ threadId, initialMessages }: ChatProps) {
+  // existing hooks
   const { keys } = useAPIKeyStore();
   const { selectedModel } = useModelStore();
   const { isMobile } = useIsMobile();
-  const scrollHidden = useScrollHide({ threshold: 15 });
+  const scrollHidden = useScrollHide();
   const isEditing = useUIStore((state) => !!state.editingMessageId);
+  const shouldHideHeader = scrollHidden || isEditing;
   const { id } = useParams();
-  const hasKeys = useAPIKeyStore(state => state.hasRequiredKeys());
-  const { ref: settingsRef, width: settingsWidth } = useElementSize();
+  const hasKeys = useAPIKeyStore((state) => state.hasRequiredKeys());
 
   useQuoteShortcuts();
 
@@ -68,14 +67,14 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
           {
             type: 'text',
             text: message.content,
-          }
+          },
         ],
       };
-      
+
       try {
         await createMessage(threadId, aiMessage);
-      } catch (error) {
-        console.error(error);
+      } catch (err) {
+        console.error(err);
       }
     },
   });
@@ -84,7 +83,6 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
     if (!id && initialMessages.length) {
       (async () => {
         await createThread(threadId);
-        // Backdate and rename the thread for a proper welcome title
         const ts = initialMessages[0].createdAt;
         await db.threads.update(threadId, {
           title: 'Welcome',
@@ -99,28 +97,56 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
     }
   }, [id, initialMessages, threadId]);
 
-  const scrollToMessage = useCallback(
-    (messageId: string) => {
-      const index = messages.findIndex((m) => m.id === messageId);
-      if (index === -1) return;
-      const nodes = document.querySelectorAll<HTMLDivElement>('div[role="article"]');
-      const target = nodes[index];
-      if (target) {
-        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    },
-    [messages]
-  );
+
+  // framer-motion animation settings
+  const animationVariants = {
+    visible: { opacity: 1, x: 0, y: 0 },
+    hiddenLeft: { opacity: 0, x: '-110%' },
+    hiddenRight: { opacity: 0, x: '110%' },
+    partialRight: { x: '48px' },
+  } as const;
+  const transition = { duration: 0.3, ease: 'easeInOut' };
 
   return (
-    <div className="relative w-full">
-      <ChatNavigationBars
-        messages={messages}
-        scrollToMessage={scrollToMessage}
-      />
-      <main
-        className={`flex flex-col w-full max-w-3xl pt-10 pb-44 mx-auto transition-all duration-300 ease-in-out relative`}
-      >
+    <div className="w-full h-screen flex flex-col overflow-hidden">
+      <header className="relative z-20 shrink-0">
+        <motion.div
+          className="fixed left-4 top-4"
+          initial="visible"
+          animate={isMobile && shouldHideHeader ? 'hiddenLeft' : 'visible'}
+          variants={animationVariants}
+          transition={transition}
+        >
+          <Link to="/chat" className="text-xl font-bold">
+            Pak.Chat
+          </Link>
+        </motion.div>
+
+        <div className="fixed right-4 top-4 flex items-center gap-2">
+          <motion.div initial="visible" animate="visible" transition={transition}>
+            {hasKeys && <NewChatButton />}
+          </motion.div>
+          <motion.div initial="visible" animate="visible" transition={transition}>
+            <ChatHistoryButton />
+          </motion.div>
+          <motion.div
+            initial="visible"
+            animate={
+              isMobile && isEditing
+                ? 'hiddenRight'
+                : isMobile && scrollHidden
+                  ? 'partialRight'
+                  : 'visible'
+            }
+            variants={animationVariants}
+            transition={transition}
+          >
+            <SettingsButton />
+          </motion.div>
+        </div>
+      </header>
+
+      <main className="flex-1 flex flex-col w-full max-w-3xl pt-20 pb-44 mx-auto overflow-y-auto">
         <Messages
           threadId={threadId}
           messages={messages}
@@ -130,75 +156,18 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
           error={error}
           stop={stop}
         />
-        <ChatInput
-          threadId={threadId}
-          input={input}
-          status={status}
-          append={append}
-          setInput={setInput}
-          stop={stop}
-          messageCount={messages.length}
-          error={error}
-        />
       </main>
-      
-      {/* Logo in top left with blur background */}
-      <motion.div
-        className="fixed left-4 top-4 z-20"
-        initial={{ x: 0, opacity: 1 }}
-        animate={{
-          opacity: isMobile && (scrollHidden || isEditing) ? 0 : 1,
-          x: isMobile && (scrollHidden || isEditing) ? '-100%' : 0,
-        }}
-        transition={{ duration: 0.3, ease: 'easeInOut' }}
-      >
-        <div className="relative">
-          {/* Blur background for mobile */}
-          {isMobile && (
-            <div className="absolute inset-0 -m-2 bg-background/60 backdrop-blur-md rounded-lg" />
-          )}
-          <Link 
-            to="/chat" 
-            className="relative text-xl font-bold text-foreground hover:text-primary transition-colors cursor-pointer"
-          >
-            Pak.Chat
-          </Link>
-        </div>
-      </motion.div>
 
-      {/* Top buttons */}
-      <div className="fixed right-4 top-4 z-20 flex gap-2">
-        <motion.div
-          className="flex gap-2 p-1 bg-background/60 backdrop-blur-md rounded-lg border border-border/20"
-          initial={{ x: 0, opacity: 1 }}
-          animate={{
-            opacity: isMobile && isEditing ? 0 : 1,
-            x: isMobile && isEditing ? '100%' : 0,
-          }}
-          transition={{ duration: 0.3, ease: 'easeInOut' }}
-        >
-          {hasKeys && <NewChatButton className="backdrop-blur-sm" />}
-          <ChatHistoryButton className="backdrop-blur-sm" />
-        </motion.div>
-        <motion.div
-          ref={settingsRef}
-          className="p-1 bg-background/60 backdrop-blur-md rounded-lg border border-border/20"
-          initial={{ x: 0, opacity: 1 }}
-          animate={{
-            opacity: isMobile && (isEditing || scrollHidden) ? 0 : 1,
-            x: isMobile
-              ? isEditing
-                ? '100%'
-                : scrollHidden
-                  ? settingsWidth + 8
-                  : 0
-              : 0,
-          }}
-          transition={{ duration: 0.3, ease: 'easeInOut' }}
-        >
-          <SettingsButton className="backdrop-blur-sm" />
-        </motion.div>
-      </div>
+      <ChatInput
+        threadId={threadId}
+        input={input}
+        status={status}
+        append={append}
+        setInput={setInput}
+        stop={stop}
+        messageCount={messages.length}
+        error={error}
+      />
     </div>
   );
 }
