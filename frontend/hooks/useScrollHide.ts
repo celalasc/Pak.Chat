@@ -11,7 +11,8 @@ export function useScrollHide({
   hideOnScrollDown = true,
   showOnScrollUp = true,
 }: UseScrollHideOptions = {}) {
-  const [isVisible, setIsVisible] = useState(true);
+  // true when the header should be hidden
+  const [hidden, setHidden] = useState(false);
   const [lastScrollY, setLastScrollY] = useState(0);
 
   const handleScroll = useCallback(() => {
@@ -25,17 +26,17 @@ export function useScrollHide({
 
     // Если мы в самом верху страницы, всегда показываем элементы
     if (currentScrollY <= 50) {
-      setIsVisible(true);
+      setHidden(false);
       setLastScrollY(currentScrollY);
       return;
     }
 
     if (currentScrollY > lastScrollY && hideOnScrollDown) {
-      // Прокрутка вниз - скрываем
-      setIsVisible(false);
+      // Прокрутка вниз - скрываем элементы
+      setHidden(true);
     } else if (currentScrollY < lastScrollY && showOnScrollUp) {
-      // Прокрутка вверх - показываем
-      setIsVisible(true);
+      // Прокрутка вверх - показываем элементы
+      setHidden(false);
     }
 
     setLastScrollY(currentScrollY);
@@ -51,5 +52,5 @@ export function useScrollHide({
     };
   }, [handleScroll]);
 
-  return isVisible;
+  return hidden;
 } 
