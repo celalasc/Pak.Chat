@@ -19,6 +19,7 @@ import { useNavigate } from 'react-router';
 import { v4 as uuidv4 } from 'uuid';
 import { createThread } from '@/frontend/dexie/queries';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
+import { useUIStore } from '@/frontend/stores/uiStore';
 
 function PureMessage({
   threadId,
@@ -44,6 +45,7 @@ function PureMessage({
   const { keys, setKeys } = useAPIKeyStore();
   const [localKeys, setLocalKeys] = useState(keys);
   const { isMobile } = useIsMobile();
+  const setEditingMessageId = useUIStore((state) => state.setEditingMessageId);
   
   useEffect(() => { setLocalKeys(keys); }, [keys]);
   
@@ -57,6 +59,15 @@ function PureMessage({
     navigate(`/chat/${newId}`);
   };
 
+
+  // Sync editing state with the global UI store
+  useEffect(() => {
+    if (mode === 'edit') {
+      setEditingMessageId(message.id);
+    } else {
+      setEditingMessageId(null);
+    }
+  }, [mode, message.id, setEditingMessageId]);
 
   return (
     <div

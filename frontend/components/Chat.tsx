@@ -16,9 +16,10 @@ import ChatNavigationBars from './ChatNavigationBars';
 import { useQuoteShortcuts } from '@/frontend/hooks/useQuoteShortcuts';
 import { useScrollHide } from '@/frontend/hooks/useScrollHide';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
+import { useUIStore } from '@/frontend/stores/uiStore';
 import { Link } from 'react-router';
 import { cn } from '@/lib/utils';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useParams } from 'react-router';
 
 interface ChatProps {
@@ -30,34 +31,12 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
   const { keys } = useAPIKeyStore();
   const { selectedModel } = useModelStore();
   const { isMobile } = useIsMobile();
-  const isHeaderVisible = useScrollHide({ threshold: 15 });
+  const scrollHidden = useScrollHide({ threshold: 15 });
+  const isEditing = useUIStore((state) => !!state.editingMessageId);
   const { id } = useParams();
   const hasKeys = useAPIKeyStore(state => state.hasRequiredKeys());
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
   useQuoteShortcuts();
-
-  // Отслеживание видимости клавиатуры на мобильных устройствах
-  useEffect(() => {
-    if (!isMobile) return;
-
-    const handleResize = () => {
-      const viewportHeight = window.visualViewport?.height || window.innerHeight;
-      const windowHeight = window.innerHeight;
-      const heightDifference = windowHeight - viewportHeight;
-      
-      // Если разница больше 150px, считаем что клавиатура открыта
-      setIsKeyboardVisible(heightDifference > 150);
-    };
-
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', handleResize);
-      return () => window.visualViewport?.removeEventListener('resize', handleResize);
-    } else {
-      window.addEventListener('resize', handleResize);
-      return () => window.removeEventListener('resize', handleResize);
-    }
-  }, [isMobile]);
 
   const {
     messages,
@@ -161,10 +140,12 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
       </main>
       
       {/* Logo in top left with blur background */}
-      <div className={cn(
-        "fixed left-4 top-4 z-20 transition-all duration-300 ease-in-out",
-        isMobile && (!isHeaderVisible || isKeyboardVisible) && "transform -translate-x-full opacity-0"
-      )}>
+      <div
+        className={cn(
+          "fixed left-4 top-4 z-20 transition-transform duration-300 ease-in-out",
+          isMobile && (scrollHidden || isEditing) && "-translate-x-full opacity-0"
+        )}
+      >
         <div className="relative">
           {/* Blur background for mobile */}
           {isMobile && (
@@ -180,10 +161,13 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
       </div>
 
       {/* Top buttons */}
-      <div className={cn(
-        "fixed right-4 top-4 z-20 flex gap-2 p-1 bg-background/60 backdrop-blur-md rounded-lg border border-border/20 transition-transform duration-300 ease-in-out",
-        isMobile && (!isHeaderVisible || isKeyboardVisible) && "translate-x-full opacity-0"
-      )}>
+      <div
+        className={cn(
+          "fixed right-4 top-4 z-20 flex gap-2 p-1 bg-background/60 backdrop-blur-md rounded-lg border border-border/20 transition-transform duration-300 ease-in-out",
+          isMobile && isEditing && "translate-x-full opacity-0",
+          isMobile && !isEditing && scrollHidden && "translate-x-[44px]"
+        )}
+      >
         {hasKeys && <NewChatButton className="backdrop-blur-sm" />}
         <ChatHistoryButton className="backdrop-blur-sm" />
         <SettingsButton className="backdrop-blur-sm" />
