@@ -11,61 +11,6 @@ html, body {
   overflow-x: hidden;
 }
 
-/* Font faces */
-@font-face {
-  font-family: 'Proxima Vara';
-  src: url('/fonts/ProximaVara-Regular.woff2') format('woff2'),
-       url('/fonts/ProximaVara-Regular.woff') format('woff');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Proxima Vara';
-  src: url('/fonts/ProximaVara-Medium.woff2') format('woff2'),
-       url('/fonts/ProximaVara-Medium.woff') format('woff');
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Proxima Vara';
-  src: url('/fonts/ProximaVara-Semibold.woff2') format('woff2'),
-       url('/fonts/ProximaVara-Semibold.woff') format('woff');
-  font-weight: 600;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Berkeley Mono';
-  src: url('/fonts/BerkeleyMono-Regular.woff2') format('woff2'),
-       url('/fonts/BerkeleyMono-Regular.woff') format('woff');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Berkeley Mono';
-  src: url('/fonts/BerkeleyMono-Medium.woff2') format('woff2'),
-       url('/fonts/BerkeleyMono-Medium.woff') format('woff');
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Berkeley Mono';
-  src: url('/fonts/BerkeleyMono-Bold.woff2') format('woff2'),
-       url('/fonts/BerkeleyMono-Bold.woff') format('woff');
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-
 :root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -99,7 +44,7 @@ html, body {
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
-  /* Default system fonts; overridden via data attributes */
+  /* System fonts used unless overridden via data attributes */
   --font-sans: system-ui, -apple-system, sans-serif;
   --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
   --font-mono: ui-monospace, 'SF Mono', monospace;
@@ -120,11 +65,11 @@ html, body {
 
 /* Override fonts when user selects custom options */
 html[data-general-font='proxima-vara'] {
-  --font-sans: 'Proxima Vara', sans-serif;
+  --font-sans: var(--font-proxima-vara);
 }
 
 html[data-code-font='berkeley-mono'] {
-  --font-mono: 'Berkeley Mono', monospace;
+  --font-mono: var(--font-berkeley-mono);
 }
 
 .dark {
@@ -160,7 +105,7 @@ html[data-code-font='berkeley-mono'] {
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.275 0 0);
   --sidebar-ring: oklch(0.439 0 0);
-  /* Fonts inherit defaults; can be overridden via data attributes */
+  /* System fonts used unless overridden via data attributes */
   --font-sans: system-ui, -apple-system, sans-serif;
   --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
   --font-mono: ui-monospace, 'SF Mono', monospace;
@@ -397,4 +342,10 @@ html[data-code-font='berkeley-mono'] {
 
 .shiki {
   @apply !rounded-none;
+}
+
+/* Ensure custom code font overrides Shiki defaults */
+html[data-code-font] .shiki,
+html[data-code-font] .shiki code {
+  font-family: var(--font-mono);
 }
