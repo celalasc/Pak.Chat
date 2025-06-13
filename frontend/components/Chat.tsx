@@ -1,0 +1,152 @@
+"use client";
+
+import { useChat } from '@ai-sdk/react';
+import Messages from './Messages';
+import ChatInput from './ChatInput';
+import ChatHistoryButton from './ChatHistoryButton';
+import NewChatButton from './NewChatButton';
+import { UIMessage } from 'ai';
+import { v4 as uuidv4 } from 'uuid';
+import { createMessage, createThread } from '@/frontend/dexie/queries';
+import { db } from '@/frontend/dexie/db';
+import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
+import { useModelStore } from '@/frontend/stores/ModelStore';
+import SettingsButton from './SettingsButton';
+import { useQuoteShortcuts } from '@/frontend/hooks/useQuoteShortcuts';
+import { useScrollHide } from '@/frontend/hooks/useScrollHide';
+import { useIsMobile } from '@/frontend/hooks/useIsMobile';
+import { Link } from 'react-router';
+import { cn } from '@/lib/utils';
+import { useEffect } from 'react';
+import { useParams } from 'react-router';
+
+interface ChatProps {
+  threadId: string;
+  initialMessages: UIMessage[];
+}
+
+export default function Chat({ threadId, initialMessages }: ChatProps) {
+  const { keys } = useAPIKeyStore();
+  const { selectedModel } = useModelStore();
+  const { isMobile } = useIsMobile();
+  const isHeaderVisible = useScrollHide({ threshold: 15 });
+  const { id } = useParams();
+  const hasKeys = useAPIKeyStore(state => state.hasRequiredKeys());
+
+  useQuoteShortcuts();
+
+  const {
+    messages,
+    input,
+    setInput,
+    append,
+    setMessages,
+    reload,
+    stop,
+    status,
+    error,
+  } = useChat({
+    id: threadId,
+    initialMessages,
+    body: {
+      apiKeys: keys,
+      model: selectedModel,
+    },
+    onFinish: async (message) => {
+      const aiMessage: UIMessage = {
+        id: uuidv4(),
+        role: message.role,
+        content: message.content,
+        createdAt: new Date(),
+        parts: [
+          {
+            type: 'text',
+            text: message.content,
+          }
+        ],
+      };
+      
+      try {
+        await createMessage(threadId, aiMessage);
+      } catch (error) {
+        console.error(error);
+      }
+    },
+  });
+
+  useEffect(() => {
+    if (!id && initialMessages.length) {
+      (async () => {
+        await createThread(threadId);
+        // Backdate and rename the thread for a proper welcome title
+        const ts = initialMessages[0].createdAt;
+        await db.threads.update(threadId, {
+          title: 'Welcome',
+          createdAt: ts,
+          updatedAt: ts,
+          lastMessageAt: ts,
+        });
+        for (const msg of initialMessages) {
+          await createMessage(threadId, msg);
+        }
+      })();
+    }
+  }, [id, initialMessages, threadId]);
+
+  return (
+    <div className="relative w-full">
+      <main
+        className={`flex flex-col w-full max-w-3xl pt-10 pb-44 mx-auto transition-all duration-300 ease-in-out relative`}
+      >
+        <Messages
+          threadId={threadId}
+          messages={messages}
+          status={status}
+          setMessages={setMessages}
+          reload={reload}
+          error={error}
+          stop={stop}
+        />
+        <ChatInput
+          threadId={threadId}
+          input={input}
+          status={status}
+          append={append}
+          setInput={setInput}
+          stop={stop}
+          messageCount={messages.length}
+          error={error}
+        />
+      </main>
+      
+      {/* Logo in top left with blur background */}
+      <div className={cn(
+        "fixed left-4 top-4 z-20 transition-all duration-300 ease-in-out",
+        isMobile && !isHeaderVisible && "transform -translate-x-full opacity-0"
+      )}>
+        <div className="relative">
+          {/* Blur background for mobile */}
+          {isMobile && (
+            <div className="absolute inset-0 -m-2 bg-background/60 backdrop-blur-md rounded-lg" />
+          )}
+          <Link 
+            to="/chat" 
+            className="relative text-xl font-bold text-foreground hover:text-primary transition-colors cursor-pointer"
+          >
+            Pak.Chat
+          </Link>
+        </div>
+      </div>
+
+      {/* Top buttons */}
+      <div className={cn(
+        "fixed right-4 top-4 z-20 flex gap-2 p-1 bg-background/60 backdrop-blur-md rounded-lg border border-border/20 transition-transform duration-300 ease-in-out",
+        isMobile && !isHeaderVisible && "translate-x-14"
+      )}>
+        {hasKeys && <NewChatButton className="backdrop-blur-sm" />}
+        <ChatHistoryButton className="backdrop-blur-sm" />
+        <SettingsButton className="backdrop-blur-sm" />
+      </div>
+    </div>
+  );
+}
