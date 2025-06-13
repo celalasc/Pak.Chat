@@ -97,6 +97,9 @@ function PureChatInput({
     maxHeight: 200,
   });
 
+  // Tracks mobile keyboard state to adjust padding when the textarea is focused
+  const [keyboardFix, setKeyboardFix] = useState(false);
+
   const navigate = useNavigate();
   const { id } = useParams();
 
@@ -171,6 +174,7 @@ function PureChatInput({
       <div
         className={cn(
           'fixed bottom-0 pb-safe w-full max-w-3xl',
+          keyboardFix && 'mobile-keyboard-fix',
           messageCount === 0 &&
             'md:bottom-auto md:top-1/2 md:transform md:-translate-y-1/2'
         )}
@@ -219,13 +223,14 @@ function PureChatInput({
                   onKeyDown={handleKeyDown}
                   onChange={handleInputChange}
                   onFocus={() => {
-                    // На мобильных устройствах прокручиваем к полю ввода при фокусе
+                    // Apply padding fix when virtual keyboard appears
                     if (window.innerWidth <= 768) {
-                      setTimeout(() => {
-                        textareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                      }, 300);
+                      setKeyboardFix(true);
+                      // Ensure the input is visible without delaying the scroll
+                      textareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     }
                   }}
+                  onBlur={() => setKeyboardFix(false)}
                   aria-label="Chat message input"
                   aria-describedby="chat-input-description"
                   disabled={!canChat}
