@@ -27,6 +27,8 @@ function PureMessage({
   reload,
   isStreaming,
   stop,
+  isControlsVisible,
+  onShowControls,
 }: {
   threadId: string;
   message: UIMessage;
@@ -34,9 +36,10 @@ function PureMessage({
   reload: UseChatHelpers['reload'];
   isStreaming: boolean;
   stop: UseChatHelpers['stop'];
+  isControlsVisible: boolean;
+  onShowControls: () => void;
 }) {
   const [mode, setMode] = useState<'view' | 'edit'>('view');
-  const [mobileControlsVisible, setMobileControlsVisible] = useState(false);
   const isWelcome = message.id === 'welcome';
   const { keys, setKeys } = useAPIKeyStore();
   const [localKeys, setLocalKeys] = useState(keys);
@@ -54,11 +57,6 @@ function PureMessage({
     navigate(`/chat/${newId}`);
   };
 
-  const handleMobileMessageClick = () => {
-    if (isMobile && !isWelcome) {
-      setMobileControlsVisible(!mobileControlsVisible);
-    }
-  };
 
   return (
     <div
@@ -130,7 +128,7 @@ function PureMessage({
                 'relative group px-4 py-3 rounded-xl bg-secondary border border-secondary-foreground/2 max-w-[90%] sm:max-w-[80%] mx-2 sm:mx-0',
                 isMobile && 'cursor-pointer'
               )}
-              onClick={handleMobileMessageClick}
+              onClick={isMobile ? onShowControls : undefined}
             >
               {mode === 'edit' && (
                 <MessageEditor
@@ -154,8 +152,7 @@ function PureMessage({
                   setMessages={setMessages}
                   reload={reload}
                   stop={stop}
-                  isVisible={mobileControlsVisible}
-                  onToggleVisibility={() => setMobileControlsVisible(!mobileControlsVisible)}
+                  isVisible={isMobile ? isControlsVisible : false}
                 />
               )}
             </div>
@@ -166,7 +163,7 @@ function PureMessage({
                 'group flex flex-col gap-2 w-full px-2 sm:px-0',
                 isMobile && 'cursor-pointer'
               )}
-              onClick={handleMobileMessageClick}
+              onClick={isMobile ? onShowControls : undefined}
             >
               <SelectableText messageId={message.id} disabled={isStreaming}>
                 <MarkdownRenderer content={part.text} id={message.id} />
@@ -179,8 +176,7 @@ function PureMessage({
                   setMessages={setMessages}
                   reload={reload}
                   stop={stop}
-                  isVisible={mobileControlsVisible}
-                  onToggleVisibility={() => setMobileControlsVisible(!mobileControlsVisible)}
+                  isVisible={isMobile ? isControlsVisible : false}
                 />
               )}
             </div>
@@ -195,6 +191,7 @@ const PreviewMessage = memo(PureMessage, (prevProps, nextProps) => {
   if (prevProps.isStreaming !== nextProps.isStreaming) return false;
   if (prevProps.message.id !== nextProps.message.id) return false;
   if (!equal(prevProps.message.parts, nextProps.message.parts)) return false;
+  if (prevProps.isControlsVisible !== nextProps.isControlsVisible) return false;
   return true;
 });
 

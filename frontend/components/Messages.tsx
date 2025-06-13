@@ -5,6 +5,7 @@ import { UseChatHelpers } from '@ai-sdk/react';
 import equal from 'fast-deep-equal';
 import MessageLoading from './ui/MessageLoading';
 import Error from './Error';
+import useAutoHide from '../hooks/useAutoHide';
 
 function PureMessages({
   threadId,
@@ -23,6 +24,7 @@ function PureMessages({
   error: UseChatHelpers['error'];
   stop: UseChatHelpers['stop'];
 }) {
+  const { id: activeControlsId, show: showControls } = useAutoHide(800);
   return (
     <section className="flex flex-col space-y-12">
       {messages.map((message, index) => (
@@ -34,6 +36,8 @@ function PureMessages({
           setMessages={setMessages}
           reload={reload}
           stop={stop}
+          isControlsVisible={activeControlsId === message.id}
+          onShowControls={() => showControls(message.id)}
         />
       ))}
       {status === 'submitted' && <MessageLoading />}
