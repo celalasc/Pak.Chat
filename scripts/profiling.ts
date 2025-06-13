@@ -9,8 +9,14 @@ const renderCounts: Record<string, number> = {};
 
 whyDidYouRender(React, {
   trackAllPureComponents: true,
-  notifier: ({ Component }) => {
-    const name = (Component.displayName || Component.name || 'Unknown') as string;
+  notifier: ({ Component, displayName }) => {
+    // displayName is provided by why-did-you-render typings, but fall back to
+    // component metadata when unavailable.
+    const name =
+      displayName ||
+      (Component as any).displayName ||
+      (Component as any).name ||
+      'Unknown';
     renderCounts[name] = (renderCounts[name] || 0) + 1;
   },
 });
