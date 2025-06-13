@@ -13,16 +13,6 @@ const proximaVara = localFont({
       weight: '400',
       style: 'normal',
     },
-    {
-      path: '../public/fonts/ProximaVara-Medium.woff2',
-      weight: '500',
-      style: 'normal',
-    },
-    {
-      path: '../public/fonts/ProximaVara-Semibold.woff2',
-      weight: '600',
-      style: 'normal',
-    },
   ],
   variable: '--font-proxima-vara',
   display: 'swap',
@@ -33,16 +23,6 @@ const berkeleyMono = localFont({
      {
       path: '../public/fonts/BerkeleyMono-Regular.woff2',
       weight: '400',
-      style: 'normal',
-    },
-    {
-      path: '../public/fonts/BerkeleyMono-Medium.woff2',
-      weight: '500',
-      style: 'normal',
-    },
-    {
-      path: '../public/fonts/BerkeleyMono-Bold.woff2',
-      weight: '700',
       style: 'normal',
     },
   ],
