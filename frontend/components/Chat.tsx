@@ -10,7 +10,7 @@ import { Link } from 'react-router';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { useUIStore } from '@/frontend/stores/uiStore';
 import { useScrollHide } from '@/frontend/hooks/useScrollHide';
-import { motion } from 'framer-motion';
+import { motion, type Transition, easeInOut } from 'framer-motion';
 // additional imports from previous version
 import { UIMessage } from 'ai';
 import { v4 as uuidv4 } from 'uuid';
@@ -105,7 +105,8 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
     hiddenRight: { opacity: 0, x: '110%' },
     partialRight: { x: '48px' },
   } as const;
-  const transition = { duration: 0.3, ease: 'easeInOut' };
+  // Animation transition settings using framer-motion's easeInOut for smooth motion
+  const transition: Transition = { duration: 0.3, ease: easeInOut };
 
   return (
     <div className="w-full h-screen flex flex-col overflow-hidden">
