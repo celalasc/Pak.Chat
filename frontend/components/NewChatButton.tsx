@@ -1,6 +1,7 @@
 "use client"
 
 import { Link } from 'react-router';
+import { memo } from 'react';
 import { Button } from './ui/button';
 import { Plus } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
@@ -12,10 +13,10 @@ interface NewChatButtonProps {
   size?: "default" | "sm" | "lg" | "icon";
 }
 
-export default function NewChatButton({ 
-  className, 
-  variant = "outline", 
-  size = "icon" 
+function NewChatButtonComponent({
+  className,
+  variant = "outline",
+  size = "icon"
 }: NewChatButtonProps) {
   return (
     <Tooltip>
@@ -36,4 +37,6 @@ export default function NewChatButton({
       </TooltipContent>
     </Tooltip>
   );
-} 
+}
+
+export default memo(NewChatButtonComponent);

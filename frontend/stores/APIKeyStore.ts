@@ -63,4 +63,6 @@ export const useAPIKeyStore = create<APIKeyStore>()(
   )
 );
 
-withStorageDOMEvents(useAPIKeyStore);
+if (typeof window !== 'undefined') {
+  withStorageDOMEvents(useAPIKeyStore);
+}

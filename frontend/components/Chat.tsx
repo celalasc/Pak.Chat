@@ -1,6 +1,7 @@
 "use client";
 
 import { useChat } from '@ai-sdk/react';
+import { memo } from 'react';
 import Messages from './Messages';
 import ChatInput from './ChatInput';
 import ChatHistoryButton from './ChatHistoryButton';
@@ -10,7 +11,7 @@ import { Link } from 'react-router';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/frontend/stores/uiStore';
-import { useScrollHide } from '@/frontend/hooks/useScrollHide';
+import { useScrollHideRef } from '@/frontend/hooks/useScrollHide';
 import { motion, type Transition, easeInOut } from 'framer-motion';
 // additional imports from previous version
 import { UIMessage } from 'ai';
@@ -28,14 +29,14 @@ interface ChatProps {
   initialMessages: UIMessage[];
 }
 
-export default function Chat({ threadId, initialMessages }: ChatProps) {
+function ChatComponent({ threadId, initialMessages }: ChatProps) {
   // existing hooks
-  const { keys } = useAPIKeyStore();
+  const keys = useAPIKeyStore((state) => state.keys);
   const { selectedModel } = useModelStore();
   const { isMobile } = useIsMobile();
-  const scrollHidden = useScrollHide();
+  const scrollHiddenRef = useScrollHideRef();
   const isEditing = useUIStore((state) => !!state.editingMessageId);
-  const shouldHideHeader = scrollHidden || isEditing;
+  const shouldHideHeader = scrollHiddenRef.current || isEditing;
   const { id } = useParams();
   const hasKeys = useAPIKeyStore((state) => state.hasRequiredKeys());
 
@@ -176,3 +177,7 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
     </div>
   );
 }
+
+const Chat = memo(ChatComponent);
+
+export default Chat;
