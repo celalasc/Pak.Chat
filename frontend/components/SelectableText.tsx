@@ -1,4 +1,4 @@
-import { memo, useCallback, useRef } from 'react';
+import { memo, useCallback, useRef, useEffect } from 'react';
 import { useTextSelection } from '@/frontend/hooks/useTextSelection';
 import { useQuoteStore } from '@/frontend/stores/QuoteStore';
 import QuoteButton from './QuoteButton';
@@ -22,6 +22,19 @@ function PureSelectableText({
   const { selection, clearSelection } = useTextSelection();
   const { setQuote } = useQuoteStore();
   const { isMobile } = useIsMobile();
+  const safeAreaBottomRef = useRef(0);
+
+  useEffect(() => {
+    // Определяем размер нижней безопасной зоны на устройствах с вырезами
+    const div = document.createElement('div');
+    div.style.position = 'fixed';
+    div.style.bottom = '0';
+    div.style.height = 'env(safe-area-inset-bottom)';
+    div.style.pointerEvents = 'none';
+    document.body.appendChild(div);
+    safeAreaBottomRef.current = parseFloat(getComputedStyle(div).height) || 0;
+    document.body.removeChild(div);
+  }, []);
 
   const handleQuote = useCallback(() => {
     if (!selection?.text) return;
@@ -64,26 +77,31 @@ function PureSelectableText({
             const buttonWidth = 80; // приблизительная ширина кнопки
 
             let posX = left + width / 2 - buttonWidth / 2;
-            
+
             // Горизонтальное ограничение с учетом мобильных устройств
             const margin = isMobile ? 16 : 8;
             posX = Math.max(margin, Math.min(posX, window.innerWidth - buttonWidth - margin));
 
             // Вертикальное позиционирование
-            let posY = top - buttonHeight - 8;
-            
-            // Если не помещается сверху, показываем снизу
-            if (posY < margin) {
-              posY = bottom + 8;
-            }
-            
-            // Последняя проверка для нижнего края
-            posY = Math.min(posY, window.innerHeight - buttonHeight - margin);
+            let posY;
 
-            // На мобильных устройствах добавляем дополнительный отступ снизу
-            if (isMobile && posY > window.innerHeight - buttonHeight - 60) {
+            if (isMobile) {
+              // На мобильных всегда показываем кнопку снизу
+              posY = bottom + 8 + safeAreaBottomRef.current;
+            } else {
               posY = top - buttonHeight - 8;
+
+              // Если не помещается сверху, показываем снизу
+              if (posY < margin) {
+                posY = bottom + 8;
+              }
             }
+
+            // Ограничиваем нижнюю границу c учетом безопасной зоны
+            posY = Math.min(
+              posY,
+              window.innerHeight - buttonHeight - margin - safeAreaBottomRef.current
+            );
 
             return { x: posX, y: posY };
           })()}

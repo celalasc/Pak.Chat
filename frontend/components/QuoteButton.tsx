@@ -19,7 +19,7 @@ function PureQuoteButton({ onQuote, position, className }: QuoteButtonProps) {
       style={{
         left: position.x,
         top: position.y,
-        zIndex: 9999,
+        zIndex: 10000,
       }}
     >
       <Button
