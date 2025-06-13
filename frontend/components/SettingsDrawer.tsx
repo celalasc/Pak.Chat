@@ -9,6 +9,7 @@ import { Input } from './ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Label } from '@/components/ui/label';
+import { DrawerHandle } from './ui/DrawerHandle';
 import { 
   Settings, 
   Palette, 
@@ -120,9 +121,7 @@ export default function SettingsDrawer({ children, isOpen, setIsOpen }: Settings
         </DrawerTrigger>
         <DrawerContent className="max-h-[95vh] flex flex-col w-full p-0">
           {/* Pull handle */}
-          <div className="flex justify-center pt-2 pb-1 flex-shrink-0">
-            <div className="w-12 h-1 bg-muted-foreground/30 rounded-full" />
-          </div>
+          <DrawerHandle />
           
           {/* Header with backdrop blur */}
           <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-border/50 flex-shrink-0">
