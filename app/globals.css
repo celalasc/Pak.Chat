@@ -5,6 +5,61 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Font faces */
+@font-face {
+  font-family: 'Proxima Vara';
+  src: url('/fonts/ProximaVara-Regular.woff2') format('woff2'),
+       url('/fonts/ProximaVara-Regular.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Proxima Vara';
+  src: url('/fonts/ProximaVara-Medium.woff2') format('woff2'),
+       url('/fonts/ProximaVara-Medium.woff') format('woff');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Proxima Vara';
+  src: url('/fonts/ProximaVara-Semibold.woff2') format('woff2'),
+       url('/fonts/ProximaVara-Semibold.woff') format('woff');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Berkeley Mono';
+  src: url('/fonts/BerkeleyMono-Regular.woff2') format('woff2'),
+       url('/fonts/BerkeleyMono-Regular.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Berkeley Mono';
+  src: url('/fonts/BerkeleyMono-Medium.woff2') format('woff2'),
+       url('/fonts/BerkeleyMono-Medium.woff') format('woff');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Berkeley Mono';
+  src: url('/fonts/BerkeleyMono-Bold.woff2') format('woff2'),
+       url('/fonts/BerkeleyMono-Bold.woff') format('woff');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -288,6 +343,13 @@
     padding-top: env(safe-area-inset-top);
   }
   
+  /* Исправление для мобильной клавиатуры */
+  @supports (-webkit-touch-callout: none) {
+    .mobile-keyboard-fix {
+      padding-bottom: calc(env(safe-area-inset-bottom) + env(keyboard-inset-height, 0px));
+    }
+  }
+  
   /* Улучшенный скролл для модальных окон на мобильных */
   .mobile-modal-scroll {
     height: 100%;
@@ -301,6 +363,17 @@
   /* Дополнительные отступы для мобильных настроек */
   .mobile-settings-content {
     padding-bottom: calc(env(safe-area-inset-bottom) + 2rem);
+  }
+  
+  /* Исправление для мобильных устройств - предотвращение зума при фокусе на input */
+  @media screen and (max-width: 768px) {
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    textarea,
+    select {
+      font-size: 16px !important;
+    }
   }
 }
 

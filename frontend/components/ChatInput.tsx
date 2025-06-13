@@ -168,7 +168,7 @@ function PureChatInput({
 
   return (
     <>
-      <div className={`fixed w-full max-w-3xl bottom-0 ${messageCount === 0 ? 'md:bottom-auto md:top-1/2 md:transform md:-translate-y-1/2' : ''}`}>
+      <div className={`fixed w-full max-w-3xl ${messageCount === 0 ? 'md:bottom-auto md:top-1/2 md:transform md:-translate-y-1/2' : 'bottom-0 pb-safe'}`}>
         <div ref={containerRef} className={cn('relative bg-secondary p-2 pb-0 w-full', messageCount === 0 ? 'rounded-[20px]' : 'rounded-t-[20px]')}>
           {/* Scroll to bottom button */}
           <div className="absolute right-4 -top-12 z-50">
@@ -189,6 +189,7 @@ function PureChatInput({
                 </a>
               </div>
             )}
+
             <div className="flex flex-col">
               {currentQuote && (
                 <div className="bg-secondary px-4 pt-3">
@@ -211,6 +212,14 @@ function PureChatInput({
                   ref={textareaRef}
                   onKeyDown={handleKeyDown}
                   onChange={handleInputChange}
+                  onFocus={() => {
+                    // На мобильных устройствах прокручиваем к полю ввода при фокусе
+                    if (window.innerWidth <= 768) {
+                      setTimeout(() => {
+                        textareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }, 300);
+                    }
+                  }}
                   aria-label="Chat message input"
                   aria-describedby="chat-input-description"
                   disabled={!canChat}
@@ -248,6 +257,7 @@ const ChatInput = memo(PureChatInput, (prevProps, nextProps) => {
 
 const PureChatModelDropdown = () => {
   const getKey = useAPIKeyStore((state) => state.getKey);
+  const keys = useAPIKeyStore((state) => state.keys);
   const { selectedModel, setModel } = useModelStore();
 
   const isModelEnabled = useCallback(
@@ -256,7 +266,7 @@ const PureChatModelDropdown = () => {
       const apiKey = getKey(modelConfig.provider);
       return !!apiKey;
     },
-    [getKey]
+    [getKey, keys]
   );
 
   return (

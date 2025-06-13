@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Drawer, DrawerContent, DrawerTrigger, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
-import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle } from '@/frontend/components/ui/dialog';
+import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, DialogDescription } from '@/frontend/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -102,6 +102,9 @@ export default function SettingsDrawer({ children, isOpen, setIsOpen }: Settings
               <Settings className="h-5 w-5" />
               Settings
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              Configure your application settings, profile, and API keys
+            </DialogDescription>
           </DialogHeader>
           <ContentComponent />
         </DialogContent>
@@ -151,6 +154,9 @@ export default function SettingsDrawer({ children, isOpen, setIsOpen }: Settings
             <Settings className="h-5 w-5" />
             Settings
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Configure your application settings, profile, and API keys
+          </DialogDescription>
         </DialogHeader>
         <ContentComponent />
       </DialogContent>

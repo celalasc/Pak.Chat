@@ -13,12 +13,13 @@ function PureQuoteButton({ onQuote, position, className }: QuoteButtonProps) {
   return (
     <div
       className={cn(
-        'fixed z-50 animate-in fade-in-0 zoom-in-95 duration-200',
+        'fixed animate-in fade-in-0 zoom-in-95 duration-200',
         className
       )}
       style={{
         left: position.x,
         top: position.y,
+        zIndex: 9999,
       }}
     >
       <Button

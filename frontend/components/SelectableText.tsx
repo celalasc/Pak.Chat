@@ -3,6 +3,7 @@ import { useTextSelection } from '@/frontend/hooks/useTextSelection';
 import { useQuoteStore } from '@/frontend/stores/QuoteStore';
 import QuoteButton from './QuoteButton';
 import { v4 as uuidv4 } from 'uuid';
+import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 
 interface SelectableTextProps {
   children: React.ReactNode;
@@ -20,6 +21,7 @@ function PureSelectableText({
   const containerRef = useRef<HTMLDivElement>(null);
   const { selection, clearSelection } = useTextSelection();
   const { setQuote } = useQuoteStore();
+  const { isMobile } = useIsMobile();
 
   const handleQuote = useCallback(() => {
     if (!selection?.text) return;
@@ -59,19 +61,29 @@ function PureSelectableText({
           position={(function() {
             const { left, top, width, bottom } = selection.rect!;
             const buttonHeight = 32; // приблизительная высота кнопки
+            const buttonWidth = 80; // приблизительная ширина кнопки
 
-            let posX = left + width / 2 - 40; // 40 = половина ширины кнопки (80)
-            // Горизонтальное ограничение
-            posX = Math.max(8, Math.min(posX, window.innerWidth - 88));
+            let posX = left + width / 2 - buttonWidth / 2;
+            
+            // Горизонтальное ограничение с учетом мобильных устройств
+            const margin = isMobile ? 16 : 8;
+            posX = Math.max(margin, Math.min(posX, window.innerWidth - buttonWidth - margin));
 
-            // Сначала пробуем показать над выделением
+            // Вертикальное позиционирование
             let posY = top - buttonHeight - 8;
+            
             // Если не помещается сверху, показываем снизу
-            if (posY < 8) {
+            if (posY < margin) {
               posY = bottom + 8;
             }
-            // Последняя проверка, чтобы кнопка не вышла за нижний край
-            posY = Math.min(posY, window.innerHeight - buttonHeight - 8);
+            
+            // Последняя проверка для нижнего края
+            posY = Math.min(posY, window.innerHeight - buttonHeight - margin);
+
+            // На мобильных устройствах добавляем дополнительный отступ снизу
+            if (isMobile && posY > window.innerHeight - buttonHeight - 60) {
+              posY = top - buttonHeight - 8;
+            }
 
             return { x: posX, y: posY };
           })()}

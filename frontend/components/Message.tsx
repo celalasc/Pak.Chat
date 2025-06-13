@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { useNavigate } from 'react-router';
 import { v4 as uuidv4 } from 'uuid';
 import { createThread } from '@/frontend/dexie/queries';
+import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 
 function PureMessage({
   threadId,
@@ -35,17 +36,28 @@ function PureMessage({
   stop: UseChatHelpers['stop'];
 }) {
   const [mode, setMode] = useState<'view' | 'edit'>('view');
+  const [mobileControlsVisible, setMobileControlsVisible] = useState(false);
   const isWelcome = message.id === 'welcome';
   const { keys, setKeys } = useAPIKeyStore();
   const [localKeys, setLocalKeys] = useState(keys);
+  const { isMobile } = useIsMobile();
+  
   useEffect(() => { setLocalKeys(keys); }, [keys]);
+  
   const saveKeys = () => { setKeys(localKeys); toast.success('API keys saved'); };
   const navigate = useNavigate();
   const canChat = useAPIKeyStore(state => state.hasRequiredKeys());
+  
   const handleNewChat = async () => {
     const newId = uuidv4();
     await createThread(newId);
     navigate(`/chat/${newId}`);
+  };
+
+  const handleMobileMessageClick = () => {
+    if (isMobile && !isWelcome) {
+      setMobileControlsVisible(!mobileControlsVisible);
+    }
   };
 
   return (
@@ -114,7 +126,11 @@ function PureMessage({
           return message.role === 'user' ? (
             <div
               key={key}
-              className="relative group px-4 py-3 rounded-xl bg-secondary border border-secondary-foreground/2 max-w-[90%] sm:max-w-[80%] mx-2 sm:mx-0"
+              className={cn(
+                'relative group px-4 py-3 rounded-xl bg-secondary border border-secondary-foreground/2 max-w-[90%] sm:max-w-[80%] mx-2 sm:mx-0',
+                isMobile && 'cursor-pointer'
+              )}
+              onClick={handleMobileMessageClick}
             >
               {mode === 'edit' && (
                 <MessageEditor
@@ -138,11 +154,20 @@ function PureMessage({
                   setMessages={setMessages}
                   reload={reload}
                   stop={stop}
+                  isVisible={mobileControlsVisible}
+                  onToggleVisibility={() => setMobileControlsVisible(!mobileControlsVisible)}
                 />
               )}
             </div>
           ) : (
-            <div key={key} className="group flex flex-col gap-2 w-full px-2 sm:px-0">
+            <div 
+              key={key} 
+              className={cn(
+                'group flex flex-col gap-2 w-full px-2 sm:px-0',
+                isMobile && 'cursor-pointer'
+              )}
+              onClick={handleMobileMessageClick}
+            >
               <SelectableText messageId={message.id} disabled={isStreaming}>
                 <MarkdownRenderer content={part.text} id={message.id} />
               </SelectableText>
@@ -154,6 +179,8 @@ function PureMessage({
                   setMessages={setMessages}
                   reload={reload}
                   stop={stop}
+                  isVisible={mobileControlsVisible}
+                  onToggleVisibility={() => setMobileControlsVisible(!mobileControlsVisible)}
                 />
               )}
             </div>

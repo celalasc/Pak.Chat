@@ -6,6 +6,7 @@ import { UIMessage } from 'ai';
 import { UseChatHelpers } from '@ai-sdk/react';
 import { deleteTrailingMessages } from '@/frontend/dexie/queries';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
+import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 
 interface MessageControlsProps {
   threadId: string;
@@ -15,6 +16,8 @@ interface MessageControlsProps {
   setMode?: Dispatch<SetStateAction<'view' | 'edit'>>;
   reload: UseChatHelpers['reload'];
   stop: UseChatHelpers['stop'];
+  isVisible?: boolean; // Для мобильных устройств
+  onToggleVisibility?: () => void; // Для мобильных устройств
 }
 
 export default function MessageControls({
@@ -25,9 +28,12 @@ export default function MessageControls({
   setMode,
   reload,
   stop,
+  isVisible = false,
+  onToggleVisibility,
 }: MessageControlsProps) {
   const [copied, setCopied] = useState(false);
   const hasRequiredKeys = useAPIKeyStore((state) => state.hasRequiredKeys());
+  const { isMobile } = useIsMobile();
 
   const handleCopy = () => {
     navigator.clipboard.writeText(content);
@@ -72,12 +78,18 @@ export default function MessageControls({
     }, 0);
   };
 
+  // На мобильных устройствах показываем кнопки только когда isVisible = true
+  const shouldShowControls = isMobile ? isVisible : true;
+
   return (
     <div
       className={cn(
-        'opacity-0 group-hover:opacity-100 transition-opacity duration-100 flex gap-1',
+        'transition-opacity duration-100 flex gap-1',
         {
           'absolute mt-5 right-2': message.role === 'user',
+          'opacity-0 group-hover:opacity-100': !isMobile && shouldShowControls,
+          'opacity-100': isMobile && shouldShowControls,
+          'opacity-0': isMobile && !shouldShowControls,
         }
       )}
     >

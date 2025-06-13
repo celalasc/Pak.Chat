@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Drawer, DrawerContent, DrawerTrigger, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
-import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle } from '@/frontend/components/ui/dialog';
+import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, DialogDescription } from '@/frontend/components/ui/dialog';
 import { Button, buttonVariants } from './ui/button';
 import { Input } from './ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
@@ -317,6 +317,9 @@ export default function ChatHistoryDrawer({ children, isOpen, setIsOpen }: ChatH
               <MessageSquare className="h-5 w-5" />
               Chat History
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              Browse and search through your chat history
+            </DialogDescription>
             <div className="relative">
               <Input
                 placeholder="Search…"
@@ -383,6 +386,9 @@ export default function ChatHistoryDrawer({ children, isOpen, setIsOpen }: ChatH
             <MessageSquare className="h-5 w-5" />
             Chat History
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Browse and search through your chat history
+          </DialogDescription>
           <div className="relative">
             <Input
               placeholder="Search…"
