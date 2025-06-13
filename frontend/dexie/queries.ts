@@ -125,3 +125,62 @@ export const getMessageSummaries = async (threadId: string) => {
     .between([threadId, Dexie.minKey], [threadId, Dexie.maxKey])
     .toArray();
 };
+
+export const cloneThreadFromMessage = async (
+  threadId: string,
+  messageId: string
+) => {
+  const originalThread = await db.threads.get(threadId);
+  if (!originalThread) throw new Error('Thread not found');
+
+  const messages = await db.messages
+    .where('[threadId+createdAt]')
+    .between([threadId, Dexie.minKey], [threadId, Dexie.maxKey])
+    .toArray();
+
+  const index = messages.findIndex((m) => m.id === messageId);
+  if (index === -1) throw new Error('Message not found');
+
+  const messagesToClone = messages.slice(0, index + 1);
+  const newThreadId = uuidv4();
+
+  await db.transaction(
+    'rw',
+    [db.threads, db.messages, db.messageSummaries],
+    async () => {
+      await db.threads.add({
+        id: newThreadId,
+        title: originalThread.title,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastMessageAt: messagesToClone[messagesToClone.length - 1].createdAt,
+        isBranch: true,
+      });
+
+      for (const msg of messagesToClone) {
+        const newMessageId = uuidv4();
+        await db.messages.add({
+          ...msg,
+          id: newMessageId,
+          threadId: newThreadId,
+        });
+
+        const summaries = await db.messageSummaries
+          .where('messageId')
+          .equals(msg.id)
+          .toArray();
+
+        for (const summary of summaries) {
+          await db.messageSummaries.add({
+            ...summary,
+            id: uuidv4(),
+            threadId: newThreadId,
+            messageId: newMessageId,
+          });
+        }
+      }
+    }
+  );
+
+  return newThreadId;
+};

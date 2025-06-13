@@ -12,6 +12,7 @@ import { Link, useNavigate, useParams } from 'react-router';
 import { X, Pin, PinOff, Search, MessageSquare, Plus, Edit2, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Thread } from '@/frontend/dexie/db';
+import BranchIcon from './ui/BranchIcon';
 import { usePinnedThreads } from '@/frontend/hooks/usePinnedThreads';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 
@@ -220,6 +221,7 @@ export default function ChatHistoryDrawer({ children, isOpen, setIsOpen }: ChatH
                   <Pin className="h-3 w-3 text-primary shrink-0" />
                 )}
                 <span className="line-clamp-1 text-sm font-medium">{thread.title}</span>
+                {thread.isBranch && <BranchIcon className="h-3 w-3 shrink-0" />}
               </div>
               <span className="text-xs text-muted-foreground">{formatDate(new Date(thread.lastMessageAt))}</span>
             </div>
