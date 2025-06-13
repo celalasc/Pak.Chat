@@ -168,7 +168,13 @@ function PureChatInput({
 
   return (
     <>
-      <div className={`fixed w-full max-w-3xl ${messageCount === 0 ? 'md:bottom-auto md:top-1/2 md:transform md:-translate-y-1/2' : 'bottom-0 pb-safe'}`}>
+      <div
+        className={cn(
+          'fixed bottom-0 pb-safe w-full max-w-3xl',
+          messageCount === 0 &&
+            'md:bottom-auto md:top-1/2 md:transform md:-translate-y-1/2'
+        )}
+      >
         <div ref={containerRef} className={cn('relative bg-secondary p-2 pb-0 w-full', messageCount === 0 ? 'rounded-[20px]' : 'rounded-t-[20px]')}>
           {/* Scroll to bottom button */}
           <div className="absolute right-4 -top-12 z-50">

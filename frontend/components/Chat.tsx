@@ -12,12 +12,13 @@ import { db } from '@/frontend/dexie/db';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 import { useModelStore } from '@/frontend/stores/ModelStore';
 import SettingsButton from './SettingsButton';
+import ChatNavigationBars from './ChatNavigationBars';
 import { useQuoteShortcuts } from '@/frontend/hooks/useQuoteShortcuts';
 import { useScrollHide } from '@/frontend/hooks/useScrollHide';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { Link } from 'react-router';
 import { cn } from '@/lib/utils';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router';
 
 interface ChatProps {
@@ -116,8 +117,25 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
     }
   }, [id, initialMessages, threadId]);
 
+  const scrollToMessage = useCallback(
+    (messageId: string) => {
+      const index = messages.findIndex((m) => m.id === messageId);
+      if (index === -1) return;
+      const nodes = document.querySelectorAll<HTMLDivElement>('div[role="article"]');
+      const target = nodes[index];
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    },
+    [messages]
+  );
+
   return (
     <div className="relative w-full">
+      <ChatNavigationBars
+        messages={messages}
+        scrollToMessage={scrollToMessage}
+      />
       <main
         className={`flex flex-col w-full max-w-3xl pt-10 pb-44 mx-auto transition-all duration-300 ease-in-out relative`}
       >
