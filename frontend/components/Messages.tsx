@@ -7,6 +7,8 @@ import MessageLoading from './ui/MessageLoading';
 import Error from './Error';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useAutoHide } from '../hooks/useAutoHide';
+import { useIsMobile } from '@/frontend/hooks/useIsMobile';
+import { cn } from '@/lib/utils';
 
 function PureMessages({
   threadId,
@@ -30,18 +32,22 @@ function PureMessages({
 
   // Reference to the scroll container used by the virtualizer
   const parentRef = useRef<HTMLDivElement>(null);
+  const { isMobile } = useIsMobile();
 
   // Initialize the virtualizer; this handles measuring and rendering only
   // the visible portion of a potentially long list of messages.
   const rowVirtualizer = useVirtualizer({
     count: messages.length,
-    getScrollElement: () => parentRef.current,
+    getScrollElement: () =>
+      isMobile
+        ? document.scrollingElement ?? document.documentElement
+        : parentRef.current,
     estimateSize: () => 200,
     overscan: 5,
   });
 
   useEffect(() => {
-    const el = parentRef.current;
+    const el = isMobile ? document.scrollingElement : parentRef.current;
     if (!el) return;
     const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 10;
     if (atBottom && messages.length) {
@@ -50,14 +56,17 @@ function PureMessages({
         behavior: 'smooth',
       });
     }
-  }, [messages.length, rowVirtualizer]);
+  }, [messages.length, rowVirtualizer, isMobile]);
 
   const virtualItems = rowVirtualizer.getVirtualItems();
 
   return (
     <section
       ref={parentRef}
-      className="flex flex-col space-y-12 h-full overflow-y-auto"
+      className={cn(
+        'flex flex-col space-y-12 h-full',
+        !isMobile && 'overflow-y-auto'
+      )}
     >
       {shouldVirtualize ? (
         <div

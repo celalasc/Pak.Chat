@@ -232,6 +232,7 @@ html, body {
     @apply border-border outline-ring/50;
   }
   body {
+    overscroll-behavior: contain;
     font-family: var(--font-sans);
     @apply bg-background text-foreground;
   }

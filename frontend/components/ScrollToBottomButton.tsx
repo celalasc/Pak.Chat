@@ -18,24 +18,26 @@ export default function ScrollToBottomButton({
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
+    // document.scrollingElement accounts for browsers that scroll <body>
+    const scrollEl = document.scrollingElement ?? document.documentElement;
     const handleScroll = () => {
-      const scrollTop = window.scrollY;
-      const innerHeight = window.innerHeight;
-      const scrollHeight = document.documentElement.scrollHeight;
-      setIsVisible(scrollTop + innerHeight < scrollHeight - threshold);
+      const { scrollTop, clientHeight, scrollHeight } = scrollEl;
+      setIsVisible(scrollTop + clientHeight < scrollHeight - threshold);
     };
 
-    window.addEventListener('scroll', handleScroll);
+    // Listen on document to track the actual scrolling element
+    document.addEventListener('scroll', handleScroll, { passive: true });
     handleScroll();
-    
+
     return () => {
-      window.removeEventListener('scroll', handleScroll);
+      document.removeEventListener('scroll', handleScroll);
     };
   }, [threshold]);
 
   const scrollToBottom = () => {
-    window.scrollTo({
-      top: document.documentElement.scrollHeight,
+    const scrollEl = document.scrollingElement ?? document.documentElement;
+    scrollEl.scrollTo({
+      top: scrollEl.scrollHeight,
       behavior: 'smooth',
     });
   };
