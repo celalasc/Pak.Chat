@@ -37,8 +37,8 @@ function PureMessage({
   reload: UseChatHelpers['reload'];
   isStreaming: boolean;
   stop: UseChatHelpers['stop'];
-  isControlsVisible: boolean;
-  onShowControls: () => void;
+  isControlsVisible?: boolean;
+  onShowControls?: () => void;
 }) {
   const [mode, setMode] = useState<'view' | 'edit'>('view');
   const isWelcome = message.id === 'welcome';
@@ -163,7 +163,7 @@ function PureMessage({
                   setMessages={setMessages}
                   reload={reload}
                   stop={stop}
-                  isVisible={isMobile ? isControlsVisible : false}
+                  isVisible={isMobile ? !!isControlsVisible : false}
                 />
               )}
             </div>
@@ -187,7 +187,7 @@ function PureMessage({
                   setMessages={setMessages}
                   reload={reload}
                   stop={stop}
-                  isVisible={isMobile ? isControlsVisible : false}
+                  isVisible={isMobile ? !!isControlsVisible : false}
                 />
               )}
             </div>
