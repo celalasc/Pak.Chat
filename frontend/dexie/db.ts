@@ -7,6 +7,7 @@ interface Thread {
   createdAt: Date;
   updatedAt: Date;
   lastMessageAt: Date;
+  isBranch?: boolean; // marks thread as a branch of another
 }
 
 interface DBMessage {
