@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  * Only one set of controls can be visible at a time.
  * @param delay Time in ms after which controls should auto-hide.
  */
-export default function useAutoHide(delay: number) {
+export function useAutoHide(delay: number) {
   const [id, setId] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
