@@ -8,6 +8,10 @@ import Error from './Error';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useAutoHide } from '../hooks/useAutoHide';
 
+// Height estimate for each message in the virtualized list. Keeping this
+// outside the component ensures the function is not recreated on every render.
+const ESTIMATED_MESSAGE_HEIGHT = 200;
+
 function PureMessages({
   threadId,
   messages,
@@ -36,21 +40,26 @@ function PureMessages({
   const rowVirtualizer = useVirtualizer({
     count: messages.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 200,
+    estimateSize: () => ESTIMATED_MESSAGE_HEIGHT,
     overscan: 5,
   });
+
+  // Cache the virtualizer instance so effects have a stable reference.
+  const rowVirtualizerRef = useRef(rowVirtualizer);
+  rowVirtualizerRef.current = rowVirtualizer;
+
+  // Anchor element used to maintain scroll position when new messages arrive.
+  const bottomAnchorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const el = parentRef.current;
     if (!el) return;
     const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 10;
     if (atBottom && messages.length) {
-      rowVirtualizer.scrollToIndex(messages.length - 1, {
-        align: 'end',
-        behavior: 'smooth',
-      });
+      // Scroll to the anchor element instead of recalculating the entire tree.
+      bottomAnchorRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages.length, rowVirtualizer]);
+  }, [messages.length]);
 
   const virtualItems = rowVirtualizer.getVirtualItems();
 
@@ -115,6 +124,7 @@ function PureMessages({
 
       {status === 'submitted' && <MessageLoading />}
       {error && <Error message={error.message} />}
+      <div ref={bottomAnchorRef} />
     </section>
   );
 }
