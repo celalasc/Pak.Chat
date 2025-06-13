@@ -11,7 +11,7 @@ import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/frontend/stores/uiStore';
 import { useScrollHide } from '@/frontend/hooks/useScrollHide';
-import { motion } from 'framer-motion';
+import { motion, type Transition } from 'framer-motion';
 // additional imports from previous version
 import { UIMessage } from 'ai';
 import { v4 as uuidv4 } from 'uuid';
@@ -107,7 +107,7 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
     hiddenRight: { opacity: 0, x: '110%' },
     fade: { opacity: 0, x: 0 }, // fades out without horizontal shift
   } as const;
-  const transition = { duration: 0.3, ease: 'easeInOut' };
+  const transition: Transition = { duration: 0.3, ease: 'easeInOut' };
 
   return (
     <div className={cn(

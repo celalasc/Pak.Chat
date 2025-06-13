@@ -2,8 +2,8 @@ import { create, Mutate, StoreApi } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 // Available fonts presented in the settings UI
-export const GENERAL_FONTS = ['Inter', 'System Font'] as const;
-export const CODE_FONTS = ['JetBrains Mono', 'System Monospace Font'] as const;
+export const GENERAL_FONTS = ['Proxima Vara', 'System Font'] as const;
+export const CODE_FONTS = ['Berkeley Mono', 'System Monospace Font'] as const;
 export const THEMES = ['light', 'dark'] as const;
 
 export type GeneralFont = (typeof GENERAL_FONTS)[number];
@@ -42,10 +42,10 @@ export const withStorageDOMEvents = (store: StoreWithPersist) => {
 };
 
 const defaultSettings: Settings = {
-  // Default interface font uses Inter for broad language support
-  generalFont: 'Inter',
-  // Code font uses JetBrains Mono for improved readability
-  codeFont: 'JetBrains Mono',
+  // Default interface font
+  generalFont: 'Proxima Vara',
+  // Default code font
+  codeFont: 'Berkeley Mono',
   theme: 'light',
 };
 

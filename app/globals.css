@@ -5,6 +5,61 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Custom font faces */
+@font-face {
+  font-family: 'Proxima Vara';
+  src: url('/fonts/ProximaVara-Regular.woff2') format('woff2'),
+       url('/fonts/ProximaVara-Regular.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Proxima Vara';
+  src: url('/fonts/ProximaVara-Medium.woff2') format('woff2'),
+       url('/fonts/ProximaVara-Medium.woff') format('woff');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Proxima Vara';
+  src: url('/fonts/ProximaVara-Semibold.woff2') format('woff2'),
+       url('/fonts/ProximaVara-Semibold.woff') format('woff');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Berkeley Mono';
+  src: url('/fonts/BerkeleyMono-Regular.woff2') format('woff2'),
+       url('/fonts/BerkeleyMono-Regular.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Berkeley Mono';
+  src: url('/fonts/BerkeleyMono-Medium.woff2') format('woff2'),
+       url('/fonts/BerkeleyMono-Medium.woff') format('woff');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Berkeley Mono';
+  src: url('/fonts/BerkeleyMono-Bold.woff2') format('woff2'),
+       url('/fonts/BerkeleyMono-Bold.woff') format('woff');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* Prevent horizontal scrollbars */
 html, body {
   max-width: 100%;
@@ -44,10 +99,12 @@ html, body {
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
-  /* Default system fonts overridable via CSS classes */
-  --font-sans: system-ui, -apple-system, sans-serif;
+  /* Font variables */
+  --font-proxima-vara: 'Proxima Vara', sans-serif;
+  --font-berkeley-mono: 'Berkeley Mono', monospace;
+  --font-sans: var(--font-proxima-vara);
   --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
-  --font-mono: ui-monospace, 'SF Mono', monospace;
+  --font-mono: var(--font-berkeley-mono);
   --radius: 0.625rem;
   --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
   --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
@@ -96,10 +153,12 @@ html, body {
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.275 0 0);
   --sidebar-ring: oklch(0.439 0 0);
-  /* Default system fonts overridable via CSS classes */
-  --font-sans: system-ui, -apple-system, sans-serif;
+  /* Font variables */
+  --font-proxima-vara: 'Proxima Vara', sans-serif;
+  --font-berkeley-mono: 'Berkeley Mono', monospace;
+  --font-sans: var(--font-proxima-vara);
   --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
-  --font-mono: ui-monospace, 'SF Mono', monospace;
+  --font-mono: var(--font-berkeley-mono);
   --radius: 0.625rem;
   --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
   --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
@@ -180,10 +239,10 @@ html, body {
 
 @layer utilities {
   /* Font switcher classes */
-  .font-sans-inter { --font-sans: var(--font-inter); }
+  .font-sans-proxima-vara { --font-sans: var(--font-proxima-vara); }
   .font-sans-system-font { --font-sans: system-ui, -apple-system, sans-serif; }
 
-  .font-mono-jetbrains-mono { --font-mono: var(--font-jetbrains-mono); }
+  .font-mono-berkeley-mono { --font-mono: var(--font-berkeley-mono); }
   .font-mono-system-monospace-font { --font-mono: ui-monospace, 'SF Mono', monospace; }
 
   .font-mono { font-family: var(--font-mono) !important; }
