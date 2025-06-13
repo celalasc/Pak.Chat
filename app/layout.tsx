@@ -20,13 +20,17 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const generalFontCookie = cookies().get('general-font')?.value || 'Inter';
-  const codeFontCookie = cookies().get('code-font')?.value || 'JetBrains Mono';
+  // Сначала "дожидаемся" получения объекта с куками
+  const cookieStore = await cookies();
+
+  // Теперь безопасно вызываем .get() у полученного объекта
+  const generalFontCookie = cookieStore.get('general-font')?.value || 'Inter';
+  const codeFontCookie = cookieStore.get('code-font')?.value || 'JetBrains Mono';
 
   const generalFontClass = `font-sans-${generalFontCookie.replace(/\s+/g, '-').toLowerCase()}`;
   const codeFontClass = `font-mono-${codeFontCookie.replace(/\s+/g, '-').toLowerCase()}`;
