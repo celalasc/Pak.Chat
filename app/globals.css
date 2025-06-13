@@ -44,7 +44,7 @@ html, body {
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
-  /* System fonts used unless overridden via data attributes */
+  /* Default system fonts overridable via CSS classes */
   --font-sans: system-ui, -apple-system, sans-serif;
   --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
   --font-mono: ui-monospace, 'SF Mono', monospace;
@@ -61,15 +61,6 @@ html, body {
   --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.1),
     0 8px 10px -1px hsl(0 0% 0% / 0.1);
   --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
-}
-
-/* Override fonts when user selects custom options */
-html[data-general-font='inter'] {
-  --font-sans: var(--font-inter);
-}
-
-html[data-code-font='jetbrains-mono'] {
-  --font-mono: var(--font-jetbrains-mono);
 }
 
 .dark {
@@ -105,7 +96,7 @@ html[data-code-font='jetbrains-mono'] {
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.275 0 0);
   --sidebar-ring: oklch(0.439 0 0);
-  /* System fonts used unless overridden via data attributes */
+  /* Default system fonts overridable via CSS classes */
   --font-sans: system-ui, -apple-system, sans-serif;
   --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
   --font-mono: ui-monospace, 'SF Mono', monospace;
@@ -188,6 +179,13 @@ html[data-code-font='jetbrains-mono'] {
 }
 
 @layer utilities {
+  /* Font switcher classes */
+  .font-sans-inter { --font-sans: var(--font-inter); }
+  .font-sans-system-font { --font-sans: system-ui, -apple-system, sans-serif; }
+
+  .font-mono-jetbrains-mono { --font-mono: var(--font-jetbrains-mono); }
+  .font-mono-system-monospace-font { --font-mono: ui-monospace, 'SF Mono', monospace; }
+
   .font-mono { font-family: var(--font-mono) !important; }
   .font-sans { font-family: var(--font-sans) !important; }
   .no-scrollbar::-webkit-scrollbar {

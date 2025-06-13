@@ -6,15 +6,20 @@ export function useSettings() {
 
   useEffect(() => {
     const root = document.documentElement;
-    // Apply selected fonts using data attributes for CSS hooks
-    root.setAttribute(
-      'data-general-font',
-      settings.generalFont.replace(/\s+/g, '-').toLowerCase()
+    const generalFontClass = `font-sans-${settings.generalFont
+      .replace(/\s+/g, '-')
+      .toLowerCase()}`;
+    const codeFontClass = `font-mono-${settings.codeFont
+      .replace(/\s+/g, '-')
+      .toLowerCase()}`;
+
+    root.classList.remove(
+      'font-sans-inter',
+      'font-sans-system-font',
+      'font-mono-jetbrains-mono',
+      'font-mono-system-monospace-font'
     );
-    root.setAttribute(
-      'data-code-font',
-      settings.codeFont.replace(/\s+/g, '-').toLowerCase()
-    );
+    root.classList.add(generalFontClass, codeFontClass);
   }, [settings.generalFont, settings.codeFont]);
 
   return settings;
