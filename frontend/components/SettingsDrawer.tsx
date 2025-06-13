@@ -164,7 +164,8 @@ export default function SettingsDrawer({ children, isOpen, setIsOpen }: Settings
 }
 
 const CustomizationTab = () => {
-  const { settings, setSettings } = useSettingsStore();
+  const settings = useSettingsStore((s) => s.settings);
+  const setSettings = useSettingsStore((s) => s.setSettings);
   const { setTheme } = useTheme();
 
   const handleFontChange = (type: 'generalFont' | 'codeFont', value: GeneralFont | CodeFont) => {
@@ -384,7 +385,8 @@ const ProfileTab = () => {
 };
 
 const APIKeysTab = () => {
-  const { keys, setKeys } = useAPIKeyStore();
+  const keys = useAPIKeyStore((s) => s.keys);
+  const setKeys = useAPIKeyStore((s) => s.setKeys);
 
   const {
     register,

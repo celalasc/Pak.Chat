@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { Button } from './ui/button';
 import { History } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
@@ -13,10 +13,10 @@ interface ChatHistoryButtonProps {
   size?: "default" | "sm" | "lg" | "icon";
 }
 
-export default function ChatHistoryButton({ 
-  className, 
-  variant = "outline", 
-  size = "icon" 
+function ChatHistoryButtonComponent({
+  className,
+  variant = "outline",
+  size = "icon"
 }: ChatHistoryButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -40,4 +40,6 @@ export default function ChatHistoryButton({
       </Tooltip>
     </ChatHistoryDrawer>
   );
-} 
+}
+
+export default memo(ChatHistoryButtonComponent);
