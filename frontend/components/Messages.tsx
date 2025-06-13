@@ -31,7 +31,6 @@ function PureMessages({
     count: messages.length,
     estimateSize: () => 200,
     overscan: 5,
-    getScrollElement: () => window,
     threshold: 50,
   });
 
