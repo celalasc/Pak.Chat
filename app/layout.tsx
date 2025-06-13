@@ -1,32 +1,20 @@
 import type { Metadata, Viewport } from 'next';
-import localFont from 'next/font/local';
+import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import 'katex/dist/katex.min.css';
 import { Toaster } from '@/frontend/components/ui/sonner';
 import Providers from '@/frontend/components/Providers';
 
-// Register local fonts and expose CSS variables for dynamic switching
-const proximaVara = localFont({
-  src: [
-    {
-      path: '../public/fonts/ProximaVara-Regular.woff2',
-      weight: '400',
-      style: 'normal',
-    },
-  ],
-  variable: '--font-proxima-vara',
+// Configure Inter and JetBrains Mono from Google Fonts
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
   display: 'swap',
 });
 
-const berkeleyMono = localFont({
-  src: [
-     {
-      path: '../public/fonts/BerkeleyMono-Regular.woff2',
-      weight: '400',
-      style: 'normal',
-    },
-  ],
-  variable: '--font-berkeley-mono',
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-jetbrains-mono',
   display: 'swap',
 });
 
@@ -35,7 +23,6 @@ export const metadata: Metadata = {
   description: 'High-Performance LLM Application',
 };
 
-// Export viewport settings for consistent mobile layout and to prevent zooming
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
@@ -53,7 +40,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${proximaVara.variable} ${berkeleyMono.variable}`}
+      className={`${inter.variable} ${jetbrainsMono.variable}`}
     >
       <body suppressHydrationWarning={true} className="antialiased">
         <Providers>
