@@ -8,6 +8,7 @@ import NewChatButton from './NewChatButton';
 import SettingsButton from './SettingsButton';
 import { Link } from 'react-router';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
+import { cn } from '@/lib/utils';
 import { useUIStore } from '@/frontend/stores/uiStore';
 import { useScrollHide } from '@/frontend/hooks/useScrollHide';
 import { motion } from 'framer-motion';
@@ -109,7 +110,9 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
   const transition = { duration: 0.3, ease: 'easeInOut' };
 
   return (
-    <div className="w-full h-screen flex flex-col overflow-hidden">
+    <div className={cn(
+      "w-full flex flex-col overflow-hidden h-screen mobile-vh"
+    )}>
       <header className="relative z-20 shrink-0">
         <div className="fixed left-4 right-4 top-4 flex items-center gap-x-1">
           <motion.div

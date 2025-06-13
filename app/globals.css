@@ -325,6 +325,19 @@ html, body {
   .mobile-settings-content {
     padding-bottom: calc(env(safe-area-inset-bottom) + 2rem);
   }
+
+  /* Высота с учетом динамического viewport на мобильных */
+  @media (max-width: 768px) {
+    .mobile-vh {
+      height: 100vh;
+    }
+
+    @supports (height: 100dvh) {
+      .mobile-vh {
+        height: 100dvh;
+      }
+    }
+  }
   
   /* Исправление для мобильных устройств - предотвращение зума при фокусе на input */
   @media screen and (max-width: 768px) {

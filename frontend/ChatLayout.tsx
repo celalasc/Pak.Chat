@@ -1,8 +1,12 @@
 import { Outlet } from 'react-router';
+import { cn } from '@/lib/utils';
 
-export default function ChatLayout() {
+interface ChatLayoutProps {
+  isMobile: boolean;
+}
+export default function ChatLayout({ isMobile }: ChatLayoutProps) {
   return (
-    <div className="w-full h-full">
+    <div className={cn('w-full h-full', isMobile && 'overflow-hidden')}>
       <Outlet />
     </div>
   );
