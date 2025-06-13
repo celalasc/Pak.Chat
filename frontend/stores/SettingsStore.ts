@@ -41,7 +41,9 @@ export const withStorageDOMEvents = (store: StoreWithPersist) => {
 };
 
 const defaultSettings: Settings = {
-  generalFont: 'System Font',
+  // Default interface font uses Proxima Vara when available
+  generalFont: 'Proxima Vara',
+  // Code font remains Berkeley Mono by default
   codeFont: 'Berkeley Mono',
   theme: 'light',
 };
