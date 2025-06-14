@@ -30,7 +30,7 @@ export const MODEL_CONFIGS: Record<AIModel, ModelConfig> = {
     provider: 'google',
   },
   'Gemini 2.5 Flash': {
-    modelId: 'gemini-2.5-flash-preview-04-17',
+    modelId: 'gemini-2.5-flash-preview-05-20',
     provider: 'google',
   },
   'GPT-4o': {

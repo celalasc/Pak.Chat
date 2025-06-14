@@ -12,8 +12,9 @@ export async function POST(req: NextRequest) {
     const { messages, model, apiKeys } = await req.json();
 
     const modelConfig = getModelConfig(model as AIModel);
-
+    
     const apiKey = apiKeys[modelConfig.provider];
+    
     if (!apiKey) {
       return new NextResponse(
         JSON.stringify({ error: 'Missing API key' }),

@@ -76,17 +76,24 @@ export default function SettingsDrawer({ children, isOpen, setIsOpen }: Settings
         </TabsList>
         
         <div className="flex-1 mt-4 min-h-0 overflow-y-auto scrollbar-none enhanced-scroll">
-          <TabsContent value="customization" className={cn("mt-0", isMobile ? "mobile-settings-content" : "")}>
-            <CustomizationTab />
-          </TabsContent>
+          {/* Ленивая отрисовка содержимого вкладок */}
+          {activeTab === 'customization' && (
+            <div className={cn("mt-0", isMobile ? "mobile-settings-content" : "")}>
+              <CustomizationTab />
+            </div>
+          )}
           
-          <TabsContent value="profile" className={cn("mt-0", isMobile ? "mobile-settings-content" : "")}>
-            <ProfileTab />
-          </TabsContent>
+          {activeTab === 'profile' && (
+            <div className={cn("mt-0", isMobile ? "mobile-settings-content" : "")}>
+              <ProfileTab />
+            </div>
+          )}
           
-          <TabsContent value="api-keys" className={cn("mt-0", isMobile ? "mobile-settings-content" : "")}>
-            <APIKeysTab />
-          </TabsContent>
+          {activeTab === 'api-keys' && (
+            <div className={cn("mt-0", isMobile ? "mobile-settings-content" : "")}>
+              <APIKeysTab />
+            </div>
+          )}
         </div>
       </Tabs>
     </div>
@@ -414,21 +421,21 @@ const ProfileTab = () => {
 const APIKeysTab = () => {
   const { keys, setKeys, keysLoading } = useAPIKeyStore();
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isDirty },
-    reset,
-  } = useForm<FormValues>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: keys,
   });
 
+  const { register, handleSubmit, formState: { errors, isDirty }, reset } = form;
+
+  // Сбрасываем форму ОДИН раз - когда загрузились ключи
   useEffect(() => {
     if (!keysLoading) {
-      reset(keys);
+      form.reset(keys);
     }
-  }, [keys, reset, keysLoading]);
+    // зависим только от keysLoading
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [keysLoading]);
 
   const onSubmit = useCallback(
     (values: FormValues) => {
@@ -439,7 +446,7 @@ const APIKeysTab = () => {
   );
 
   return (
-    <div className="space-y-6 pb-4">
+    <div className="space-y-6 pb-4" key={keysLoading ? 'loading' : 'ready'}>
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">

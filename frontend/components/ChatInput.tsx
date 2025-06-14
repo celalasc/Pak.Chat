@@ -100,24 +100,6 @@ function PureChatInput({
     toast.success('API keys saved'); 
   };
 
-  if (error) {
-    return (
-      <div className={`fixed w-full max-w-3xl bottom-0 ${messageCount === 0 ? 'md:bottom-auto md:top-1/2 md:transform md:-translate-y-1/2' : ''}`}>
-        <div className={cn('bg-secondary p-4 pb-2 w-full', messageCount === 0 ? 'rounded-[20px]' : 'rounded-t-[20px]')}>
-          <div className="space-y-2">
-            {(['google','openrouter','openai'] as const).map(provider => (
-              <Input key={provider}
-                value={localKeys[provider]||''}
-                onChange={e => setLocalKeys(prev => ({ ...prev, [provider]: e.target.value }))}
-                placeholder={`${provider.charAt(0).toUpperCase()+provider.slice(1)} API Key`} />
-            ))}
-          </div>
-          <Button className="mt-2 w-full" onClick={saveKeys}>Save API Keys</Button>
-        </div>
-      </div>
-    );
-  }
-
   const handleSubmit = useCallback(async () => {
     if (!canChat) {
       return;
@@ -188,6 +170,25 @@ function PureChatInput({
     setInput(e.target.value);
     adjustHeight();
   };
+
+  // Если есть ошибка, показываем форму для ввода API ключей
+  if (error) {
+    return (
+      <div className={`fixed w-full max-w-3xl bottom-0 ${messageCount === 0 ? 'md:bottom-auto md:top-1/2 md:transform md:-translate-y-1/2' : ''}`}>
+        <div className={cn('bg-secondary p-4 pb-2 w-full', messageCount === 0 ? 'rounded-[20px]' : 'rounded-t-[20px]')}>
+          <div className="space-y-2">
+            {(['google','openrouter','openai'] as const).map(provider => (
+              <Input key={provider}
+                value={localKeys[provider]||''}
+                onChange={e => setLocalKeys(prev => ({ ...prev, [provider]: e.target.value }))}
+                placeholder={`${provider.charAt(0).toUpperCase()+provider.slice(1)} API Key`} />
+            ))}
+          </div>
+          <Button className="mt-2 w-full" onClick={saveKeys}>Save API Keys</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

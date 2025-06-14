@@ -15,6 +15,11 @@ type APIKeyState = {
   setLocal: (keys: Partial<APIKeys>) => void;
 };
 
+// Функция для глубокого сравнения объектов
+const deepEqual = (a: APIKeys, b: APIKeys): boolean => {
+  return JSON.stringify(a) === JSON.stringify(b);
+};
+
 const store = create<APIKeyState>(() => ({
   keys: { google: '', openrouter: '', openai: '' },
   keysLoading: true,
@@ -37,32 +42,69 @@ export function useAPIKeyStore() {
     convexUser ? {} : 'skip'
   );
   const saveApiKeys = useMutation(api.userSettings.saveApiKeys);
-  const { keys } = store();
+  
+  // Получаем состояние из store
+  const storeState = store();
   const keysLoading = convexUser === undefined;
-  const setLocal = (updates: Partial<APIKeys>) =>
-    store.setState((state) => ({ keys: { ...state.keys, ...updates } }));
+  
+  // Возвращаем keys напрямую из store
+  const keys = storeState.keys;
+  
+  const setLocal = (updates: Partial<APIKeys>) => {
+    const currentKeys = store.getState().keys;
+    const newKeys = { ...currentKeys, ...updates };
+    
+    // Защита от пустых вызовов - проверяем, действительно ли изменились ключи
+    if (!deepEqual(currentKeys, newKeys)) {
+      store.setState({ keys: newKeys });
+    }
+  };
 
   useEffect(() => {
     if (settings && user) {
       const decrypted = decryptData<APIKeys>(settings.encryptedApiKeys, user.uid);
-      store.setState({ keys: decrypted, keysLoading: false });
+      const currentKeys = store.getState().keys;
+      
+      // Защита от пустых вызовов - обновляем только если ключи действительно изменились
+      if (!deepEqual(currentKeys, decrypted)) {
+        store.setState({ keys: decrypted, keysLoading: false });
+      } else if (store.getState().keysLoading) {
+        store.setState({ keysLoading: false });
+      }
     } else if (settings === null) {
       store.setState({ keysLoading: false });
     }
   }, [settings, user]);
 
   const setKeys = async (updates: Partial<APIKeys>) => {
-    const newKeys = { ...store.getState().keys, ...updates };
-    store.setState({ keys: newKeys });
-    if (user) {
-      const encrypted = encryptData(newKeys, user.uid);
-      try {
-        await saveApiKeys({ encryptedApiKeys: encrypted });
-      } catch (error) {
-        console.error('Failed to save API keys', error);
-        const { toast } = await import('sonner');
-        toast.error('Failed to save keys');
+    const currentKeys = store.getState().keys;
+    const newKeys = { ...currentKeys, ...updates };
+    
+    console.log('setKeys called with updates:', updates);
+    console.log('Current keys:', currentKeys);
+    console.log('New keys:', newKeys);
+    
+    // Защита от пустых вызовов - проверяем, действительно ли изменились ключи
+    if (!deepEqual(currentKeys, newKeys)) {
+      console.log('Keys changed, updating store');
+      store.setState({ keys: newKeys });
+      
+      if (user) {
+        console.log('User exists, encrypting and saving to Convex');
+        const encrypted = encryptData(newKeys, user.uid);
+        try {
+          await saveApiKeys({ encryptedApiKeys: encrypted });
+          console.log('Keys saved successfully to Convex');
+        } catch (error) {
+          console.error('Failed to save API keys', error);
+          const { toast } = await import('sonner');
+          toast.error('Failed to save keys');
+        }
+      } else {
+        console.log('No user, keys saved only locally');
       }
+    } else {
+      console.log('Keys unchanged, skipping update');
     }
   };
 
