@@ -13,6 +13,10 @@ type APIKeyState = {
   keys: APIKeys;
   keysLoading: boolean;
   setLocal: (keys: Partial<APIKeys>) => void;
+  /** Возвращает ключ по имени провайдера */
+  getKey: (provider: Provider) => string | undefined;
+  /** Проверяет наличие обязательных ключей */
+  hasRequiredKeys: () => boolean;
 };
 
 // Функция для глубокого сравнения объектов
@@ -24,6 +28,8 @@ const store = create<APIKeyState>(() => ({
   keys: { google: '', openrouter: '', openai: '' },
   keysLoading: true,
   setLocal: () => {},
+  getKey: (provider: Provider) => store.getState().keys[provider],
+  hasRequiredKeys: () => !!store.getState().keys.google,
 }));
 
 export function useAPIKeyStore() {
@@ -46,9 +52,9 @@ export function useAPIKeyStore() {
   // Получаем состояние из store
   const storeState = store();
   const keysLoading = convexUser === undefined;
-  
-  // Возвращаем keys напрямую из store
-  const keys = storeState.keys;
+
+  // Возвращаем keys и утилиты из состояния
+  const { keys, getKey, hasRequiredKeys } = storeState;
   
   const setLocal = (updates: Partial<APIKeys>) => {
     const currentKeys = store.getState().keys;
@@ -107,10 +113,6 @@ export function useAPIKeyStore() {
       console.log('Keys unchanged, skipping update');
     }
   };
-
-  const hasRequiredKeys = useCallback(() =>
-    !keysLoading && !!keys.google, [keysLoading, keys.google]);
-  const getKey = useCallback((provider: Provider) => keys[provider] || null, [keys]);
 
   return { keys, setKeys, hasRequiredKeys, getKey, setLocal, keysLoading };
 }

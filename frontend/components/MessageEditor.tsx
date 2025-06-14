@@ -29,7 +29,7 @@ export default function MessageEditor({
   stop: UseChatHelpers['stop'];
 }) {
   const [draftContent, setDraftContent] = useState(content);
-  const getKey = useAPIKeyStore((state) => state.getKey);
+  const { getKey } = useAPIKeyStore();
 
   const { complete } = useCompletion({
     api: '/api/completion',
@@ -105,9 +105,9 @@ export default function MessageEditor({
       setTimeout(() => {
         reload();
       }, 0);
-    } catch (error) {
-      console.error('Failed to save message:', error);
-      toast.error('Failed to save message');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to save changes');
     }
   };
 

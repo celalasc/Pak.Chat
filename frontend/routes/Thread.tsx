@@ -26,13 +26,7 @@ export default function Thread() {
     );
   }
 
-  if (messagesResult === undefined) {
-    return (
-      <div className="flex justify-center items-center h-full">
-        <p>Loading messages...</p>
-      </div>
-    );
-  }
+  if (messagesResult === undefined) return null;
 
   // Handle both array and pagination result formats
   let messages: any[] = [];
@@ -52,7 +46,9 @@ export default function Thread() {
 
   return (
     <ErrorBoundary>
-      <Chat key={id} threadId={threadId} initialMessages={uiMessages} />
+      <div className="fade-in">
+        <Chat key={id} threadId={threadId} initialMessages={uiMessages} />
+      </div>
     </ErrorBoundary>
   );
 }

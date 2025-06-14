@@ -20,7 +20,9 @@ export default function Home() {
   return (
     <>
       {!hasKeys && <KeyPrompt />}
-      <Chat threadId={uuidv4()} initialMessages={initialMessages} />
+      <div className="fade-in">
+        <Chat threadId={uuidv4()} initialMessages={initialMessages} />
+      </div>
     </>
   );
 }

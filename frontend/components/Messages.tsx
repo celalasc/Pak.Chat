@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import PreviewMessage from './Message';
+import VirtualMessages from './VirtualMessages';
 import { UIMessage } from 'ai';
 import { UseChatHelpers } from '@ai-sdk/react';
 import equal from 'fast-deep-equal';
@@ -42,7 +43,7 @@ function PureMessages({
   );
 }
 
-const Messages = memo(PureMessages, (prevProps, nextProps) => {
+const PureMessagesMemo = memo(PureMessages, (prevProps, nextProps) => {
   if (prevProps.status !== nextProps.status) return false;
   if (prevProps.error !== nextProps.error) return false;
   if (prevProps.messages.length !== nextProps.messages.length) return false;
@@ -50,6 +51,14 @@ const Messages = memo(PureMessages, (prevProps, nextProps) => {
   return true;
 });
 
-Messages.displayName = 'Messages';
+PureMessagesMemo.displayName = 'Messages';
 
-export default Messages;
+const LargeListBoundary = 50;
+
+export default function Messages(props: React.ComponentProps<typeof PureMessages>) {
+  return props.messages.length > LargeListBoundary ? (
+    <VirtualMessages {...props} />
+  ) : (
+    <PureMessagesMemo {...props} />
+  );
+}

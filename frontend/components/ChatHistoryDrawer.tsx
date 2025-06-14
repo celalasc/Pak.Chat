@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, memo, useDeferredValue } from 'react';
 import { Drawer, DrawerContent, DrawerTrigger, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, DialogDescription } from '@/frontend/components/ui/dialog';
 import { Button, buttonVariants } from './ui/button';
@@ -25,8 +25,9 @@ interface ChatHistoryDrawerProps {
   setIsOpen: (open: boolean) => void;
 }
 
-export default function ChatHistoryDrawer({ children, isOpen, setIsOpen }: ChatHistoryDrawerProps) {
-  const [searchQuery, setSearchQuery] = useState('');
+function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistoryDrawerProps) {
+  const [raw, setRaw] = useState('');
+  const searchQuery = useDeferredValue(raw);
   const [editingThreadId, setEditingThreadId] = useState<Id<'threads'> | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
   const [deletingThreadId, setDeletingThreadId] = useState<Id<'threads'> | null>(null);
@@ -48,7 +49,7 @@ export default function ChatHistoryDrawer({ children, isOpen, setIsOpen }: ChatH
   const handleOpenChange = useCallback((open: boolean) => {
     setIsOpen(open);
     if (!open) {
-      setSearchQuery('');
+      setRaw('');
       setEditingThreadId(null);
       setEditingTitle('');
       setDeletingThreadId(null);
@@ -303,13 +304,7 @@ export default function ChatHistoryDrawer({ children, isOpen, setIsOpen }: ChatH
     return null;
   }
   
-  if (threads === undefined) {
-    return (
-      <div className="flex justify-center items-center h-full">
-        <p>Loading chat history...</p>
-      </div>
-    );
-  }
+  if (threads === undefined) return null;
 
   const ContentComponent = () => (
     <div className="flex h-full flex-col">
@@ -362,7 +357,7 @@ export default function ChatHistoryDrawer({ children, isOpen, setIsOpen }: ChatH
                 placeholder="Search…"
                 className="rounded-lg py-1.5 pl-8 text-sm w-full"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => setRaw(e.target.value)}
               />
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground size-3.5" />
             </div>
@@ -406,7 +401,7 @@ export default function ChatHistoryDrawer({ children, isOpen, setIsOpen }: ChatH
                     placeholder="Search…"
                     className="rounded-lg py-1.5 pl-8 text-sm w-full"
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) => setRaw(e.target.value)}
                   />
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground size-3.5" />
                 </div>
@@ -447,7 +442,7 @@ export default function ChatHistoryDrawer({ children, isOpen, setIsOpen }: ChatH
               placeholder="Search…"
               className="rounded-lg py-1.5 pl-8 text-sm w-full"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => setRaw(e.target.value)}
             />
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground size-3.5" />
           </div>
@@ -458,4 +453,6 @@ export default function ChatHistoryDrawer({ children, isOpen, setIsOpen }: ChatH
       </DialogContent>
     </Dialog>
   );
-} 
+}
+
+export default memo(ChatHistoryDrawerComponent);

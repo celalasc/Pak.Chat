@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { Drawer, DrawerContent, DrawerTrigger, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, DialogDescription } from '@/frontend/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -46,7 +46,7 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-export default function SettingsDrawer({ children, isOpen, setIsOpen }: SettingsDrawerProps) {
+function SettingsDrawerComponent({ children, isOpen, setIsOpen }: SettingsDrawerProps) {
   const { isMobile, mounted } = useIsMobile(600);
   const [activeTab, setActiveTab] = useState("customization");
 
@@ -553,3 +553,5 @@ const ApiKeyField = ({
     )}
   </div>
 ); 
+export default memo(SettingsDrawerComponent);
+

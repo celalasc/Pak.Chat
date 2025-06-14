@@ -391,3 +391,12 @@
 .blur-md {
     filter: blur(8px);
 }
+
+@keyframes fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.fade-in {
+  animation: fade .2s ease-in;
+}

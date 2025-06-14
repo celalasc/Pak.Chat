@@ -6,6 +6,7 @@ import equal from 'fast-deep-equal';
 import MessageControls from './MessageControls';
 import { UseChatHelpers } from '@ai-sdk/react';
 import MessageEditor from './MessageEditor';
+import ErrorBoundary from './ErrorBoundary';
 import MessageReasoning from './MessageReasoning';
 import SelectableText from './SelectableText';
 import QuotedMessage from './QuotedMessage';
@@ -131,15 +132,17 @@ function PureMessage({
               onClick={handleMobileMessageClick}
             >
               {mode === 'edit' && (
-                <MessageEditor
-                  threadId={threadId}
-                  message={message}
-                  content={part.text}
-                  setMessages={setMessages}
-                  reload={reload}
-                  setMode={setMode}
-                  stop={stop}
-                />
+                <ErrorBoundary>
+                  <MessageEditor
+                    threadId={threadId}
+                    message={message}
+                    content={part.text}
+                    setMessages={setMessages}
+                    reload={reload}
+                    setMode={setMode}
+                    stop={stop}
+                  />
+                </ErrorBoundary>
               )}
               {mode === 'view' && <QuotedMessage content={part.text} />}
 
