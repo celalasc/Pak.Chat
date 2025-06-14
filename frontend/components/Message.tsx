@@ -19,6 +19,8 @@ import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router';
 import { v4 as uuidv4 } from 'uuid';
+import { useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 
 function PureMessage({
@@ -47,10 +49,11 @@ function PureMessage({
   
   const saveKeys = () => { setKeys(localKeys); toast.success('API keys saved'); };
   const navigate = useNavigate();
+  const createThread = useMutation(api.threads.create);
   const canChat = useAPIKeyStore(state => state.hasRequiredKeys());
-  
+
   const handleNewChat = async () => {
-    const newId = uuidv4();
+    const newId = await createThread({ title: 'New Chat' });
     navigate(`/chat/${newId}`);
   };
 

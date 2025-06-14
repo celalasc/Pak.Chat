@@ -1,6 +1,8 @@
 "use client"
 
 import { useNavigate } from 'react-router';
+import { useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 import { Button } from './ui/button';
 import { Plus } from 'lucide-react';
 import { WithTooltip } from './WithTooltip';
@@ -12,15 +14,17 @@ interface NewChatButtonProps {
   size?: "default" | "sm" | "lg" | "icon";
 }
 
-export default function NewChatButton({ 
-  className, 
-  variant = "outline", 
-  size = "icon" 
+export default function NewChatButton({
+  className,
+  variant = "outline",
+  size = "icon"
 }: NewChatButtonProps) {
   const navigate = useNavigate();
+  const createThread = useMutation(api.threads.create);
 
-  const handleClick = () => {
-    navigate('/chat');
+  const handleClick = async () => {
+    const newId = await createThread({ title: 'New chat' });
+    navigate(`/chat/${newId}`);
   };
 
   return (

@@ -1,8 +1,11 @@
 import { Button } from '@/frontend/components/ui/button';
 import { Key } from 'lucide-react';
 import { Link } from 'react-router';
+import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 
 export default function KeyPrompt() {
+  const { hasRequiredKeys, keysLoading } = useAPIKeyStore();
+  if (keysLoading || hasRequiredKeys()) return null;
   return (
     <div className="fixed bottom-6 left-1/2 z-50">
       <div className="flex items-center p-4 pr-5 border rounded-lg bg-background shadow-lg gap-4 max-w-md">

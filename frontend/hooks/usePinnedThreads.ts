@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { isConvexId } from '@/lib/ids';
 
 const PINNED_THREADS_KEY = 'pak-chat-pinned-threads';
 
@@ -11,7 +12,8 @@ export const usePinnedThreads = () => {
       const stored = localStorage.getItem(PINNED_THREADS_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        setPinnedThreadsState(new Set(parsed));
+        const valid = parsed.filter(isConvexId);
+        setPinnedThreadsState(new Set(valid));
       }
     } catch (error) {
       console.error('Failed to load pinned threads:', error);
@@ -19,9 +21,10 @@ export const usePinnedThreads = () => {
   }, []);
 
   const setPinnedThreads = (newPinned: Set<string>) => {
-    setPinnedThreadsState(newPinned);
+    const filtered = new Set([...newPinned].filter(isConvexId));
+    setPinnedThreadsState(filtered);
     try {
-      localStorage.setItem(PINNED_THREADS_KEY, JSON.stringify(Array.from(newPinned)));
+      localStorage.setItem(PINNED_THREADS_KEY, JSON.stringify(Array.from(filtered)));
     } catch (error) {
       console.error('Failed to save pinned threads:', error);
     }
