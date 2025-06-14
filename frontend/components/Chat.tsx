@@ -4,15 +4,8 @@ import { useChat } from '@ai-sdk/react';
 import { memo } from 'react';
 import Messages from './Messages';
 import ChatInput from './ChatInput';
-import ChatHistoryButton from './ChatHistoryButton';
-import NewChatButton from './NewChatButton';
-import SettingsButton from './SettingsButton';
-import { Link } from 'react-router';
-import { useIsMobile } from '@/frontend/hooks/useIsMobile';
+import ChatHeader from './ChatHeader';
 import { cn } from '@/lib/utils';
-import { useUIStore } from '@/frontend/stores/uiStore';
-import { useScrollHideRef } from '@/frontend/hooks/useScrollHide';
-import { motion, type Transition, easeInOut } from 'framer-motion';
 // additional imports from previous version
 import { UIMessage } from 'ai';
 import { v4 as uuidv4 } from 'uuid';
@@ -33,12 +26,7 @@ function ChatComponent({ threadId, initialMessages }: ChatProps) {
   // existing hooks
   const keys = useAPIKeyStore((state) => state.keys);
   const { selectedModel } = useModelStore();
-  const { isMobile } = useIsMobile();
-  const scrollHiddenRef = useScrollHideRef();
-  const isEditing = useUIStore((state) => !!state.editingMessageId);
-  const shouldHideHeader = scrollHiddenRef.current || isEditing;
   const { id } = useParams();
-  const hasKeys = useAPIKeyStore((state) => state.hasRequiredKeys());
 
   useQuoteShortcuts();
 
@@ -100,57 +88,12 @@ function ChatComponent({ threadId, initialMessages }: ChatProps) {
   }, [id, initialMessages, threadId]);
 
 
-  // framer-motion animation settings
-  // Animation states for header controls
-  const animationVariants = {
-    visible: { opacity: 1, x: 0, y: 0 },
-    hiddenLeft: { opacity: 0, x: '-110%' },
-    hiddenRight: { opacity: 0, x: '110%' },
-    fade: { opacity: 0, x: 0 }, // fades out without horizontal shift
-  } as const;
-  const transition: Transition = { duration: 0.3, ease: easeInOut };
 
   return (
     <div className={cn(
       "w-full flex flex-col overflow-hidden h-screen mobile-vh"
     )}>
-      <header className="relative z-20 shrink-0">
-        <div className="fixed left-4 right-4 top-4 flex items-center gap-x-1">
-          <motion.div
-            initial="visible"
-            animate={isMobile && shouldHideHeader ? 'hiddenLeft' : 'visible'}
-            variants={animationVariants}
-            transition={transition}
-          >
-            <Link to="/chat" className="text-xl font-bold">
-              Pak.Chat
-            </Link>
-          </motion.div>
-
-          <div className="ml-auto flex items-center gap-x-1">
-            <motion.div initial="visible" animate="visible" transition={transition}>
-              {hasKeys && <NewChatButton />}
-            </motion.div>
-            <motion.div initial="visible" animate="visible" transition={transition}>
-              <ChatHistoryButton />
-            </motion.div>
-            <motion.div
-              initial="visible"
-              animate={
-                isMobile && isEditing
-                  ? 'hiddenRight'
-                  : isMobile && scrollHiddenRef.current
-                    ? 'fade'
-                    : 'visible'
-              }
-              variants={animationVariants}
-              transition={transition}
-            >
-              <SettingsButton />
-            </motion.div>
-          </div>
-        </div>
-      </header>
+      <ChatHeader />
 
       <main className="flex-1 flex flex-col w-full max-w-3xl pt-20 pb-44 mx-auto overflow-y-auto">
         <Messages

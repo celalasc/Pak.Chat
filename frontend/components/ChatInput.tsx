@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { ChevronDown, Check, ArrowUpIcon } from 'lucide-react';
 import { memo, useCallback, useMemo, useRef, useState } from 'react';
@@ -13,9 +13,10 @@ import {
   DropdownMenuTrigger,
 } from '@/frontend/components/ui/dropdown-menu';
 import useAutoResizeTextarea from '@/hooks/useAutoResizeTextArea';
-import { UseChatHelpers, useCompletion } from '@ai-sdk/react';
-import { useParams } from 'react-router';
-import { useNavigate } from 'react-router';
+import { UseChatHelpers } from '@ai-sdk/react';
+import { useParams, useNavigate } from 'react-router';
+import { useIsMobile } from '@/frontend/hooks/useIsMobile';
+import styles from '@/frontend/styles/chat.module.css';
 import { createMessage, createThread } from '@/frontend/dexie/queries';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 import { useModelStore } from '@/frontend/stores/ModelStore';
@@ -28,6 +29,16 @@ import { toast } from 'sonner';
 import { useMessageSummary } from '../hooks/useMessageSummary';
 import QuoteDisplay from './QuoteDisplay';
 import { Input } from '@/frontend/components/ui/input';
+
+/* -------------------------------------------------------------------------------- */
+/*  Константы                                                                       */
+/* -------------------------------------------------------------------------------- */
+
+export const CHAT_INPUT_HEIGHT = 72; // px – используется и в Messages для отступа
+
+/* -------------------------------------------------------------------------------- */
+/*  Типы                                                                            */
+/* -------------------------------------------------------------------------------- */
 
 interface ChatInputProps {
   threadId: string;
@@ -49,6 +60,10 @@ interface SendButtonProps {
   disabled: boolean;
 }
 
+/* -------------------------------------------------------------------------------- */
+/*  Вспомогательные функции                                                         */
+/* -------------------------------------------------------------------------------- */
+
 const createUserMessage = (id: string, text: string): UIMessage => ({
   id,
   parts: [{ type: 'text', text }],
@@ -56,6 +71,10 @@ const createUserMessage = (id: string, text: string): UIMessage => ({
   content: text,
   createdAt: new Date(),
 });
+
+/* -------------------------------------------------------------------------------- */
+/*  Основной компонент                                                              */
+/* -------------------------------------------------------------------------------- */
 
 function PureChatInput({
   threadId,
@@ -67,95 +86,94 @@ function PureChatInput({
   stop,
   messageCount,
 }: ChatInputProps) {
+  /* ----------------------- глобальные сто́ры ----------------------------------- */
+
   const canChat = useAPIKeyStore((state) => state.hasRequiredKeys());
-  const { currentQuote, clearQuote } = useQuoteStore();
   const keys = useAPIKeyStore((s) => s.keys);
   const setKeys = useAPIKeyStore((s) => s.setKeys);
+
+  const { currentQuote, clearQuote } = useQuoteStore();
+  const { complete } = useMessageSummary();
+
+  /* ----------------------- локальное состояние ---------------------------------- */
+
   const [localKeys, setLocalKeys] = useState(keys);
-  const saveKeys = () => { setKeys(localKeys); toast.success('API keys saved'); };
+  const [keyboardFix, setKeyboardFix] = useState(false); // iOS-клавиатура
 
-  if (error) {
-    return (
-      <div className={`fixed w-full max-w-3xl bottom-0 ${messageCount === 0 ? 'md:bottom-auto md:top-1/2 md:transform md:-translate-y-1/2' : ''}`}>
-        <div className={cn('bg-secondary p-4 pb-2 w-full', messageCount === 0 ? 'rounded-[20px]' : 'rounded-t-[20px]')}>
-          <div className="space-y-2">
-            {(['google','openrouter','openai'] as const).map(provider => (
-              <Input key={provider}
-                value={localKeys[provider]||''}
-                onChange={e => setLocalKeys(prev => ({ ...prev, [provider]: e.target.value }))}
-                placeholder={`${provider.charAt(0).toUpperCase()+provider.slice(1)} API Key`} />
-            ))}
-          </div>
-          <Button className="mt-2 w-full" onClick={saveKeys}>Save API Keys</Button>
-        </div>
-      </div>
-    );
-  }
-
-  const containerRef = useRef<HTMLDivElement>(null);
-  const { textareaRef, adjustHeight } = useAutoResizeTextarea({
-    minHeight: 72,
-    maxHeight: 200,
-  });
-
-  // Tracks mobile keyboard state to adjust padding when the textarea is focused
-  const [keyboardFix, setKeyboardFix] = useState(false);
+  /* ----------------------- навигация / роутинг ---------------------------------- */
 
   const navigate = useNavigate();
   const { id } = useParams();
+
+  /* ----------------------- хуки / рефы ----------------------------------------- */
+
+  const { isMobile } = useIsMobile();
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const { textareaRef, adjustHeight } = useAutoResizeTextarea({
+    minHeight: CHAT_INPUT_HEIGHT,
+    maxHeight: 200,
+  });
+
+  /* ----------------------- мемо / вычисления ----------------------------------- */
 
   const isDisabled = useMemo(
     () => !input.trim() || status === 'streaming' || status === 'submitted',
     [input, status]
   );
 
-  const { complete } = useMessageSummary();
+  /* ----------------------- handlers -------------------------------------------- */
+
+  const saveKeys = () => {
+    setKeys(localKeys);
+    toast.success('API keys saved');
+  };
 
   const handleSubmit = useCallback(async () => {
-    if (!canChat) {
-      return;
-    }
+    if (!canChat) return;
     if (!input.trim() || status === 'streaming' || status === 'submitted') return;
 
-    const currentInput = textareaRef.current?.value || input;
-
+    const currentInput = textareaRef.current?.value ?? input;
     const messageId = uuidv4();
 
-    // Формируем финальный текст сообщения с цитатой
+    /* Формируем текст с учётом цитаты */
     let finalMessage = currentInput.trim();
     if (currentQuote) {
-      finalMessage = `> ${currentQuote.text.replace(/\n/g, '\n> ')}\n\n${currentInput.trim()}`;
+      finalMessage = `> ${currentQuote.text.replace(/\n/g, '\n> ')}\n\n${finalMessage}`;
     }
 
+    /* Новый тред? */
     if (!id) {
       navigate(`/chat/${threadId}`);
       await createThread(threadId);
-      complete(finalMessage, {
-        body: { threadId, messageId, isTitle: true },
-      });
+      complete(finalMessage, { body: { threadId, messageId, isTitle: true } });
     } else {
       complete(finalMessage, { body: { messageId, threadId } });
     }
 
+    /* Пишем в IndexedDB и в память UI */
     const userMessage = createUserMessage(messageId, finalMessage);
     await createMessage(threadId, userMessage);
-
     append(userMessage);
+
+    /* Сбросы */
     setInput('');
-    clearQuote(); // Очищаем цитату после отправки
+    clearQuote();
     adjustHeight(true);
   }, [
+    canChat,
     input,
     status,
-    setInput,
-    adjustHeight,
-    append,
-    id,
     textareaRef,
-    threadId,
-    complete,
     currentQuote,
+    id,
+    threadId,
+    navigate,
+    complete,
+    setInput,
     clearQuote,
+    append,
+    adjustHeight,
   ]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -170,103 +188,187 @@ function PureChatInput({
     adjustHeight();
   };
 
-  return (
-    <>
+  /* -------------------------------------------------------------------------------- */
+  /*  UI: при отсутствии ключей показываем форму, иначе обычный инпут                 */
+  /* -------------------------------------------------------------------------------- */
+
+  if (error) {
+    return (
       <div
         className={cn(
-          'fixed bottom-0 pb-safe w-full max-w-3xl',
-          keyboardFix && 'mobile-keyboard-fix',
+          'fixed bottom-0 w-full',
+          styles.desktopInput,
+          'max-w-3xl',
           messageCount === 0 &&
             'md:bottom-auto md:top-1/2 md:transform md:-translate-y-1/2'
         )}
         style={{ height: CHAT_INPUT_HEIGHT }}
       >
-        <div ref={containerRef} className={cn('relative bg-secondary p-2 pb-0 w-full', messageCount === 0 ? 'rounded-[20px]' : 'rounded-t-[20px]')}>
-          {/* Scroll to bottom button */}
-          <div className="absolute right-4 -top-12 z-50">
-            <ScrollToBottomButton />
+        <div
+          className={cn(
+            'bg-secondary p-4 pb-2 w-full',
+            messageCount === 0 ? 'rounded-[20px]' : 'rounded-t-[20px]'
+          )}
+        >
+          <div className="space-y-2">
+            {(['google', 'openrouter', 'openai'] as const).map((provider) => (
+              <Input
+                key={provider}
+                value={localKeys[provider] || ''}
+                onChange={(e) =>
+                  setLocalKeys((prev) => ({ ...prev, [provider]: e.target.value }))
+                }
+                placeholder={`${provider.charAt(0).toUpperCase() + provider.slice(1)} API Key`}
+              />
+            ))}
           </div>
-          <div className="relative">
-            {/* Provider links when no API keys */}
-            {!canChat && messageCount > 1 && (
-              <div className="flex flex-wrap justify-around gap-4 px-4 py-2 bg-secondary">
-                <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline">
-                  Create Google API Key
-                </a>
-                <a href="https://openrouter.ai/settings/keys" target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline">
-                  Create OpenRouter API Key
-                </a>
-                <a href="https://platform.openai.com/settings/organization/api-keys" target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline">
-                  Create OpenAI API Key
-                </a>
+          <Button className="mt-2 w-full" onClick={saveKeys}>
+            Save API Keys
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  /* -------------------------------------------------------------------------------- */
+  /*  Рендер основного поля ввода                                                     */
+  /* -------------------------------------------------------------------------------- */
+
+  const wrapperClass = cn(
+    isMobile ? 'fixed bottom-0 pb-safe w-full' : 'sticky bottom-0 pb-safe',
+    !isMobile && styles.desktopInput,
+    keyboardFix && 'mobile-keyboard-fix',
+    messageCount === 0 &&
+      'md:bottom-auto md:top-1/2 md:transform md:-translate-y-1/2'
+  );
+
+  return (
+    <div
+      ref={containerRef}
+      className={wrapperClass}
+      style={isMobile ? { height: CHAT_INPUT_HEIGHT } : undefined}
+    >
+      <div
+        className={cn(
+          'relative bg-secondary p-2 pb-0 w-full',
+          messageCount === 0 ? 'rounded-[20px]' : 'rounded-t-[20px]'
+        )}
+      >
+        {/* Кнопка «вниз» */}
+        <div className="absolute right-4 -top-12 z-50">
+          <ScrollToBottomButton />
+        </div>
+
+        <div className="relative">
+          {/* Ссылки на создание ключей */}
+          {!canChat && messageCount > 1 && (
+            <div className="flex flex-wrap justify-around gap-4 px-4 py-2 bg-secondary">
+              <a
+                href="https://aistudio.google.com/apikey"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-blue-500 hover:underline"
+              >
+                Create Google API Key
+              </a>
+              <a
+                href="https://openrouter.ai/settings/keys"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-blue-500 hover:underline"
+              >
+                Create OpenRouter API Key
+              </a>
+              <a
+                href="https://platform.openai.com/settings/organization/api-keys"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-blue-500 hover:underline"
+              >
+                Create OpenAI API Key
+              </a>
+            </div>
+          )}
+
+          <div className="flex flex-col">
+            {currentQuote && (
+              <div className="bg-secondary px-4 pt-3">
+                <QuoteDisplay quote={currentQuote} onRemove={clearQuote} />
               </div>
             )}
 
-            <div className="flex flex-col">
-              {currentQuote && (
-                <div className="bg-secondary px-4 pt-3">
-                  <QuoteDisplay quote={currentQuote} onRemove={clearQuote} />
-                </div>
-              )}
-              <div className="bg-secondary overflow-y-auto max-h-[300px]">
-                <Textarea
-                  id="chat-input"
-                  value={input}
-                  placeholder={!canChat ? "Enter API key to enable chat" : "What can I do for you?"}
-                  className={cn(
-                    'w-full px-4 py-3 border-none shadow-none dark:bg-transparent',
-                    'placeholder:text-muted-foreground resize-none',
-                    'focus-visible:ring-0 focus-visible:ring-offset-0',
-                    'scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted-foreground/30',
-                    'scrollbar-thumb-rounded-full',
-                    'min-h-[72px]'
-                  )}
-                  ref={textareaRef}
-                  onKeyDown={handleKeyDown}
-                  onChange={handleInputChange}
-                  onFocus={() => {
-                    // Apply padding fix when virtual keyboard appears
-                    if (window.innerWidth <= 768) {
-                      setKeyboardFix(true);
-                      // Ensure the input is visible without delaying the scroll
-                      textareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }
-                  }}
-                  onBlur={() => setKeyboardFix(false)}
-                  aria-label="Chat message input"
-                  aria-describedby="chat-input-description"
-                  disabled={!canChat}
-                />
-                <span id="chat-input-description" className="sr-only">
-                  {canChat ? 'Press Enter to send, Shift+Enter for new line' : 'Enter API key to enable chat'}
-                </span>
-              </div>
-            </div>
-            <div className="h-14 flex items-center px-2">
-              <div className="flex items-center justify-between w-full">
-                <ChatModelDropdown />
-
-                {status === 'submitted' || status === 'streaming' ? (
-                  <StopButton stop={stop} />
-                ) : (
-                  <SendButton onSubmit={handleSubmit} disabled={isDisabled || !canChat} />
+            <div className="bg-secondary overflow-y-auto max-h-[300px]">
+              <Textarea
+                id="chat-input"
+                value={input}
+                placeholder={
+                  !canChat ? 'Enter API key to enable chat' : 'What can I do for you?'
+                }
+                className={cn(
+                  'w-full px-4 py-3 border-none shadow-none dark:bg-transparent',
+                  'placeholder:text-muted-foreground resize-none',
+                  'focus-visible:ring-0 focus-visible:ring-offset-0',
+                  'scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted-foreground/30',
+                  'scrollbar-thumb-rounded-full',
+                  'min-h-[72px]'
                 )}
-              </div>
+                ref={textareaRef}
+                onKeyDown={handleKeyDown}
+                onChange={handleInputChange}
+                onFocus={() => {
+                  /* фиксим iOS «jump» */
+                  if (window.innerWidth <= 768) {
+                    setKeyboardFix(true);
+                    textareaRef.current?.scrollIntoView({
+                      behavior: 'smooth',
+                      block: 'center',
+                    });
+                  }
+                }}
+                onBlur={() => setKeyboardFix(false)}
+                aria-label="Chat message input"
+                aria-describedby="chat-input-description"
+                disabled={!canChat}
+              />
+              <span id="chat-input-description" className="sr-only">
+                {canChat
+                  ? 'Press Enter to send, Shift+Enter for new line'
+                  : 'Enter API key to enable chat'}
+              </span>
+            </div>
+          </div>
+
+          {/* Нижняя панель с выбором модели и кнопкой отправки */}
+          <div className="h-14 flex items-center px-2">
+            <div className="flex items-center justify-between w-full">
+              <ChatModelDropdown />
+
+              {status === 'submitted' || status === 'streaming' ? (
+                <StopButton stop={stop} />
+              ) : (
+                <SendButton onSubmit={handleSubmit} disabled={isDisabled || !canChat} />
+              )}
             </div>
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
-const ChatInput = memo(PureChatInput, (prevProps, nextProps) => {
+/* -------------------------------------------------------------------------------- */
+/*  memo-обёртки                                                                    */
+/* -------------------------------------------------------------------------------- */
+
+const ChatInput = memo(PureChatInput, (prev, next) => {
   return (
-    prevProps.input === nextProps.input &&
-    prevProps.status === nextProps.status &&
-    prevProps.messageCount === nextProps.messageCount
+    prev.input === next.input &&
+    prev.status === next.status &&
+    prev.messageCount === next.messageCount
   );
 });
+
+/* ---- Dropdown модели ---- */
 
 const PureChatModelDropdown = () => {
   const getKey = useAPIKeyStore((state) => state.getKey);
@@ -275,97 +377,77 @@ const PureChatModelDropdown = () => {
 
   const isModelEnabled = useCallback(
     (model: AIModel) => {
-      const modelConfig = getModelConfig(model);
-      const apiKey = getKey(modelConfig.provider);
-      return !!apiKey;
+      const cfg = getModelConfig(model);
+      return !!getKey(cfg.provider);
     },
     [getKey, keys]
   );
 
   return (
-    <div className="flex items-center gap-2">
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            className="flex items-center gap-1 h-8 pl-2 pr-2 text-xs rounded-md text-foreground hover:bg-primary/10 focus-visible:ring-1 focus-visible:ring-offset-0 focus-visible:ring-blue-500"
-            aria-label={`Selected model: ${selectedModel}`}
-          >
-            <div className="flex items-center gap-1">
-              {selectedModel}
-              <ChevronDown className="w-3 h-3 opacity-50" />
-            </div>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          className={cn('min-w-[10rem]', 'border-border', 'bg-popover')}
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          className="flex items-center gap-1 h-8 pl-2 pr-2 text-xs rounded-md text-foreground hover:bg-primary/10 focus-visible:ring-1 focus-visible:ring-offset-0 focus-visible:ring-blue-500"
         >
-          {AI_MODELS.map((model) => {
-            const isEnabled = isModelEnabled(model);
-            return (
-              <DropdownMenuItem
-                key={model}
-                onSelect={() => isEnabled && setModel(model)}
-                disabled={!isEnabled}
-                className={cn(
-                  'flex items-center justify-between gap-2',
-                  'cursor-pointer'
-                )}
-              >
-                <span>{model}</span>
-                {selectedModel === model && (
-                  <Check
-                    className="w-4 h-4 text-blue-500"
-                    aria-label="Selected"
-                  />
-                )}
-              </DropdownMenuItem>
-            );
-          })}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+          <span className="flex items-center gap-1">
+            {selectedModel}
+            <ChevronDown className="w-3 h-3 opacity-50" />
+          </span>
+        </Button>
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent className={cn('min-w-[10rem]', 'border-border', 'bg-popover')}>
+        {AI_MODELS.map((model) => {
+          const enabled = isModelEnabled(model);
+          return (
+            <DropdownMenuItem
+              key={model}
+              onSelect={() => enabled && setModel(model)}
+              disabled={!enabled}
+              className="flex items-center justify-between gap-2 cursor-pointer"
+            >
+              <span>{model}</span>
+              {selectedModel === model && <Check className="w-4 h-4 text-blue-500" />}
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 };
 
 const ChatModelDropdown = memo(PureChatModelDropdown);
 
-const PureStopButton = ({ stop }: StopButtonProps) => {
-  return (
-    <Button
-      variant="outline"
-      size="icon"
-      onClick={stop}
-      aria-label="Stop generating response"
-      className="rounded-full"
-    >
-      <StopIcon size={20} />
-    </Button>
-  );
-};
+/* ---- Stop / Send ---- */
+
+const PureStopButton = ({ stop }: StopButtonProps) => (
+  <Button
+    variant="outline"
+    size="icon"
+    onClick={stop}
+    aria-label="Stop generating response"
+    className="rounded-full"
+  >
+    <StopIcon size={20} />
+  </Button>
+);
 
 const StopButton = memo(PureStopButton);
 
-const PureSendButton = ({ onSubmit, disabled }: SendButtonProps) => {
-  return (
-    <Button
-      onClick={onSubmit}
-      variant="default"
-      size="icon"
-      disabled={disabled}
-      aria-label="Send message"
-      className="rounded-full"
-    >
-      <ArrowUpIcon size={18} />
-    </Button>
-  );
-};
+const PureSendButton = ({ onSubmit, disabled }: SendButtonProps) => (
+  <Button
+    onClick={onSubmit}
+    variant="default"
+    size="icon"
+    disabled={disabled}
+    aria-label="Send message"
+    className="rounded-full"
+  >
+    <ArrowUpIcon size={18} />
+  </Button>
+);
 
-const SendButton = memo(PureSendButton, (prevProps, nextProps) => {
-  return prevProps.disabled === nextProps.disabled;
-});
+const SendButton = memo(PureSendButton, (prev, next) => prev.disabled === next.disabled);
 
 export default ChatInput;
-
-// Height of the fixed chat input in pixels. Used to offset chat padding.
-export const CHAT_INPUT_HEIGHT = 72; // px
