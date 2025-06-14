@@ -36,5 +36,10 @@ const nextConfig = {
 };
 module.exports = withAnalyzer({
   ...nextConfig,
-  experimental: { turbotrace: true },
+  
+  // This helps Next.js resolve the `target.css` file within `next/font/local`.
+  // It ensures that Turbopack can properly resolve CSS files for font optimization.
+  turbopack: {
+    resolveExtensions: ['.ts', '.tsx', '.js', '.jsx', '.json', '.css'],
+  },
 });

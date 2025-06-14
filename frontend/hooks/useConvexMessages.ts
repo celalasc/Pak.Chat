@@ -5,15 +5,15 @@ import { Id } from "@/convex/_generated/dataModel";
 export function useConvexMessages(threadId: Id<"threads"> | null) {
   // Получение сообщений треда
   const messages = useQuery(
-    api.messages.getThreadMessages,
+    api.messages.get,
     threadId ? { threadId } : "skip"
   );
 
   // Мутации
-  const addMessage = useMutation(api.messages.addMessage);
-  const updateMessage = useMutation(api.messages.updateMessage);
-  const deleteMessage = useMutation(api.messages.deleteMessage);
-  const deleteMessagesAfter = useMutation(api.messages.deleteMessagesAfter);
+  const addMessage = useMutation(api.messages.send);
+  const updateMessage = useMutation(api.messages.edit);
+  const deleteMessage = useMutation(api.messages.remove);
+  const deleteMessagesAfter = useMutation(api.messages.removeAfter);
 
   // Обертки для удобства использования
   const handleAddMessage = async (

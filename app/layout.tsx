@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
-import localFont from 'next/font/local';
+// import localFont from 'next/font/local';
 import './globals.css';
 import 'katex/dist/katex.min.css';
 import { Toaster } from '@/frontend/components/ui/sonner';
@@ -21,13 +21,14 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
-const proxima = localFont({
-  src: [
-    { path: '../public/fonts/ProximaVara-Regular.woff2', weight: '400' },
-    { path: '../public/fonts/ProximaVara-Semibold.woff2', weight: '600' },
-  ],
-  variable: '--font-sans',
-});
+// Temporarily commented out due to empty font files
+// const proxima = localFont({
+//   src: [
+//     { path: '../public/fonts/ProximaVara-Regular.woff2', weight: '400' },
+//     { path: '../public/fonts/ProximaVara-Semibold.woff2', weight: '600' },
+//   ],
+//   variable: '--font-sans',
+// });
 
 export const metadata: Metadata = {
   title: 'Pak.Chat',
@@ -51,7 +52,7 @@ export default function RootLayout({
       </head>
       <body
         suppressHydrationWarning={true}
-        className={`${geistSans.variable} ${geistMono.variable} ${proxima.variable} antialiased font-sans`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased font-sans`}
       >
         <Suspense fallback={<AppShellSkeleton />}>
           <Providers>

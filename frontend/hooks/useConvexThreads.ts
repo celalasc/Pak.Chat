@@ -8,21 +8,20 @@ export function useConvexThreads() {
   
   // Получение тредов пользователя
   const threads = useQuery(
-    api.threads.getUserThreads,
-    user ? { userId: user.uid } : "skip"
+    api.threads.list,
+    user ? {} : "skip"
   );
 
   // Мутации
-  const createThread = useMutation(api.threads.createThread);
-  const updateThreadTitle = useMutation(api.threads.updateThreadTitle);
-  const deleteThread = useMutation(api.threads.deleteThread);
+  const createThread = useMutation(api.threads.create);
+  const updateThreadTitle = useMutation(api.threads.rename);
+  const deleteThread = useMutation(api.threads.remove);
 
   // Обертки для удобства использования
   const handleCreateThread = async (title: string) => {
     if (!user) return null;
     return await createThread({
       title,
-      userId: user.uid,
     });
   };
 
