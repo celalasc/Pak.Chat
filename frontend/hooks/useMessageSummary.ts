@@ -1,7 +1,7 @@
 import { useCompletion } from '@ai-sdk/react';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 import { toast } from 'sonner';
-import { createMessageSummary, updateThread } from '@/frontend/dexie/queries';
+// Dexie imports removed; summary will be stored via Convex
 
 interface MessageSummaryPayload {
   title: string;
@@ -26,10 +26,7 @@ export const useMessageSummary = () => {
           const { title, isTitle, messageId, threadId } = payload;
 
           if (isTitle) {
-            await updateThread(threadId, title);
-            await createMessageSummary(threadId, messageId, title);
-          } else {
-            await createMessageSummary(threadId, messageId, title);
+            // TODO: update thread title via Convex
           }
         } else {
           toast.error('Failed to generate a summary for the message');

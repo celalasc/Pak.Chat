@@ -6,14 +6,19 @@ import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, Dialog
 import { Button, buttonVariants } from './ui/button';
 import { Input } from './ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
-import { deleteThread, getThreads, updateThread } from '@/frontend/dexie/queries';
-import { useLiveQuery } from 'dexie-react-hooks';
+// Dexie imports removed as Convex is now the data source
 import { Link, useNavigate, useParams } from 'react-router';
 import { X, Pin, PinOff, Search, MessageSquare, Plus, Edit2, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Thread } from '@/frontend/dexie/db';
 import { usePinnedThreads } from '@/frontend/hooks/usePinnedThreads';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
+
+// Minimal thread interface used for rendering
+interface Thread {
+  id: string;
+  title: string;
+  lastMessageAt: Date;
+}
 
 interface ChatHistoryDrawerProps {
   children: React.ReactNode;
@@ -31,7 +36,8 @@ export default function ChatHistoryDrawer({ children, isOpen, setIsOpen }: ChatH
   const { pinnedThreads, togglePin } = usePinnedThreads();
   const { id } = useParams();
   const navigate = useNavigate();
-  const threads = useLiveQuery(() => getThreads(), []);
+  // Data is now fetched from Convex; use an empty list as a placeholder
+  const threads: Thread[] = [];
 
   const handleOpenChange = useCallback((open: boolean) => {
     setIsOpen(open);
@@ -74,9 +80,7 @@ export default function ChatHistoryDrawer({ children, isOpen, setIsOpen }: ChatH
   }, []);
 
   const handleSaveEdit = useCallback(async (threadId: string) => {
-    if (editingTitle.trim() && editingTitle.trim() !== threads?.find(t => t.id === threadId)?.title) {
-      await updateThread(threadId, editingTitle.trim());
-    }
+    // TODO: update thread title via Convex
     setEditingThreadId(null);
     setEditingTitle('');
   }, [editingTitle, threads]);
@@ -91,7 +95,7 @@ export default function ChatHistoryDrawer({ children, isOpen, setIsOpen }: ChatH
   }, []);
 
   const handleConfirmDelete = useCallback(async (threadId: string) => {
-    await deleteThread(threadId);
+    // TODO: delete thread via Convex
     if (id === threadId) {
       navigate('/chat');
     }

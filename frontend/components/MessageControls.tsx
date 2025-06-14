@@ -4,7 +4,6 @@ import { cn } from '@/lib/utils';
 import { Check, Copy, RefreshCcw, SquarePen } from 'lucide-react';
 import { UIMessage } from 'ai';
 import { UseChatHelpers } from '@ai-sdk/react';
-import { deleteTrailingMessages } from '@/frontend/dexie/queries';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 
@@ -48,7 +47,7 @@ export default function MessageControls({
     stop();
 
     if (message.role === 'user') {
-      await deleteTrailingMessages(threadId, message.createdAt as Date, false);
+      // TODO: delete trailing messages via Convex
 
       setMessages((messages) => {
         const index = messages.findIndex((m) => m.id === message.id);
@@ -60,7 +59,7 @@ export default function MessageControls({
         return messages;
       });
     } else {
-      await deleteTrailingMessages(threadId, message.createdAt as Date);
+      // TODO: delete trailing messages via Convex
 
       setMessages((messages) => {
         const index = messages.findIndex((m) => m.id === message.id);
