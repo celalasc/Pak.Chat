@@ -16,6 +16,8 @@ import useAutoResizeTextarea from '@/hooks/useAutoResizeTextArea';
 import { UseChatHelpers, useCompletion } from '@ai-sdk/react';
 import { useParams } from 'react-router';
 import { useNavigate } from 'react-router';
+import { useIsMobile } from '@/frontend/hooks/useIsMobile';
+import styles from '@/frontend/styles/chat.module.css';
 import { createMessage, createThread } from '@/frontend/dexie/queries';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 import { useModelStore } from '@/frontend/stores/ModelStore';
@@ -103,6 +105,7 @@ function PureChatInput({
 
   const navigate = useNavigate();
   const { id } = useParams();
+  const { isMobile } = useIsMobile();
 
   const isDisabled = useMemo(
     () => !input.trim() || status === 'streaming' || status === 'submitted',
@@ -172,14 +175,16 @@ function PureChatInput({
 
   return (
     <>
-      <div
-        className={cn(
-          'fixed bottom-0 pb-safe w-full max-w-3xl',
-          keyboardFix && 'mobile-keyboard-fix',
-          messageCount === 0 &&
-            'md:bottom-auto md:top-1/2 md:transform md:-translate-y-1/2'
-        )}
-      >
+        <div
+          className={cn(
+            'sticky bottom-0 pb-safe',
+            styles.desktopInput,
+            isMobile && 'w-full',
+            keyboardFix && 'mobile-keyboard-fix',
+            messageCount === 0 &&
+              'md:bottom-auto md:top-1/2 md:transform md:-translate-y-1/2'
+          )}
+        >
         <div ref={containerRef} className={cn('relative bg-secondary p-2 pb-0 w-full', messageCount === 0 ? 'rounded-[20px]' : 'rounded-t-[20px]')}>
           {/* Scroll to bottom button */}
           <div className="absolute right-4 -top-12 z-50">
