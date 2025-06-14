@@ -1,6 +1,13 @@
 import { dirname } from "path";
 import { fileURLToPath } from "url";
 import { FlatCompat } from "@eslint/eslintrc";
+import noNestedInteractive from "./eslint-rules/no-nested-interactive.js";
+
+const customPlugin = {
+  rules: {
+    'no-nested-interactive': noNestedInteractive,
+  },
+};
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -10,7 +17,18 @@ const compat = new FlatCompat({
 });
 
 const eslintConfig = [
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
+  ...compat.extends(
+    "next/core-web-vitals",
+    "next/typescript",
+    "plugin:jsx-a11y/recommended"
+  ),
+  {
+    plugins: { custom: customPlugin },
+    rules: {
+      "jsx-a11y/no-noninteractive-element-interactions": "error",
+      "custom/no-nested-interactive": "error",
+    },
+  },
 ];
 
 export default eslintConfig;

@@ -4,6 +4,7 @@ import { useQuery, useConvexAuth } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { UIMessage } from 'ai';
+import ErrorBoundary from '@/frontend/components/ErrorBoundary';
 
 export default function Thread() {
   const { id } = useParams();
@@ -49,5 +50,9 @@ export default function Thread() {
     parts: [{ type: 'text', text: msg.content }],
   }));
 
-  return <Chat key={id} threadId={threadId} initialMessages={uiMessages} />;
+  return (
+    <ErrorBoundary>
+      <Chat key={id} threadId={threadId} initialMessages={uiMessages} />
+    </ErrorBoundary>
+  );
 }
