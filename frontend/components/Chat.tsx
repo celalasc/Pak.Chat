@@ -7,8 +7,6 @@ import ChatHistoryButton from './ChatHistoryButton';
 import NewChatButton from './NewChatButton';
 import { UIMessage } from 'ai';
 import { v4 as uuidv4 } from 'uuid';
-import { createMessage, createThread } from '@/frontend/dexie/queries';
-import { db } from '@/frontend/dexie/db';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 import { useModelStore } from '@/frontend/stores/ModelStore';
 import SettingsButton from './SettingsButton';
@@ -89,31 +87,12 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
         ],
       };
       
-      try {
-        await createMessage(threadId, aiMessage);
-      } catch (error) {
-        console.error(error);
-      }
+      // TODO: save message to Convex
     },
   });
 
   useEffect(() => {
-    if (!id && initialMessages.length) {
-      (async () => {
-        await createThread(threadId);
-        // Backdate and rename the thread for a proper welcome title
-        const ts = initialMessages[0].createdAt;
-        await db.threads.update(threadId, {
-          title: 'Welcome',
-          createdAt: ts,
-          updatedAt: ts,
-          lastMessageAt: ts,
-        });
-        for (const msg of initialMessages) {
-          await createMessage(threadId, msg);
-        }
-      })();
-    }
+    // TODO: migrate initial thread creation to Convex
   }, [id, initialMessages, threadId]);
 
   return (

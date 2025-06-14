@@ -17,7 +17,6 @@ import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router';
 import { v4 as uuidv4 } from 'uuid';
-import { createThread } from '@/frontend/dexie/queries';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 
 function PureMessage({
@@ -50,7 +49,6 @@ function PureMessage({
   
   const handleNewChat = async () => {
     const newId = uuidv4();
-    await createThread(newId);
     navigate(`/chat/${newId}`);
   };
 

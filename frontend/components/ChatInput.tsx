@@ -16,7 +16,6 @@ import useAutoResizeTextarea from '@/hooks/useAutoResizeTextArea';
 import { UseChatHelpers, useCompletion } from '@ai-sdk/react';
 import { useParams } from 'react-router';
 import { useNavigate } from 'react-router';
-import { createMessage, createThread } from '@/frontend/dexie/queries';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 import { useModelStore } from '@/frontend/stores/ModelStore';
 import { useQuoteStore } from '@/frontend/stores/QuoteStore';
@@ -125,7 +124,6 @@ function PureChatInput({
 
     if (!id) {
       navigate(`/chat/${threadId}`);
-      await createThread(threadId);
       complete(finalMessage, {
         body: { threadId, messageId, isTitle: true },
       });
@@ -134,7 +132,6 @@ function PureChatInput({
     }
 
     const userMessage = createUserMessage(messageId, finalMessage);
-    await createMessage(threadId, userMessage);
 
     append(userMessage);
     setInput('');

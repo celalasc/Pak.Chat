@@ -1,8 +1,4 @@
-import {
-  createMessage,
-  deleteTrailingMessages,
-  createMessageSummary,
-} from '@/frontend/dexie/queries';
+// Dexie imports removed; operations will be handled via Convex
 import { UseChatHelpers, useCompletion } from '@ai-sdk/react';
 import { useState } from 'react';
 import { UIMessage } from 'ai';
@@ -43,8 +39,8 @@ export default function MessageEditor({
         const payload = await response.json();
 
         if (response.ok) {
-          const { title, messageId, threadId } = payload;
-          await createMessageSummary(threadId, messageId, title);
+          const { title } = payload;
+          // TODO: save summary via Convex
         } else {
           toast.error(
             payload.error || 'Failed to generate a summary for the message'
@@ -58,7 +54,7 @@ export default function MessageEditor({
 
   const handleSave = async () => {
     try {
-      await deleteTrailingMessages(threadId, message.createdAt as Date);
+      // TODO: delete trailing messages via Convex
 
       const updatedMessage = {
         ...message,
@@ -73,7 +69,7 @@ export default function MessageEditor({
         createdAt: new Date(),
       };
 
-      await createMessage(threadId, updatedMessage);
+      // TODO: save updated message via Convex
 
       setMessages((messages) => {
         const index = messages.findIndex((m) => m.id === message.id);
