@@ -4,12 +4,9 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [
       {
-        source: '/:path*',
-        destination: 'https://YOUR-CONVEX-URL.convex.site/:path*',
-      },
-      {
-        source: '/((?!api/).*)',
-        destination: '/static-app-shell',
+        // Proxy user sync calls to Convex
+        source: '/syncUser',
+        destination: 'https://quixotic-beagle-767.convex.site/syncUser',
       },
     ];
   },
