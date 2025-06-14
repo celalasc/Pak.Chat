@@ -60,9 +60,10 @@
   font-display: swap;
 }
 
-/* Prevent horizontal scrollbars */
+/* Prevent horizontal scrollbars and enforce viewport height */
 html, body {
   max-width: 100%;
+  min-height: 100dvh;
   overflow-x: hidden;
 }
 
@@ -233,6 +234,8 @@ html, body {
   }
   body {
     overscroll-behavior: contain;
+    overscroll-behavior-y: none;
+    background: var(--bg);
     font-family: var(--font-sans);
     @apply bg-background text-foreground;
   }
