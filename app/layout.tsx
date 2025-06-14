@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
+import localFont from 'next/font/local';
 import './globals.css';
 import 'katex/dist/katex.min.css';
 import { Toaster } from '@/frontend/components/ui/sonner';
@@ -20,6 +21,14 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
+const proxima = localFont({
+  src: [
+    { path: '../public/fonts/ProximaVara-Regular.woff2', weight: '400' },
+    { path: '../public/fonts/ProximaVara-Semibold.woff2', weight: '600' },
+  ],
+  variable: '--font-sans',
+});
+
 export const metadata: Metadata = {
   title: 'Pak.Chat',
   description: 'High-Performance LLM Application',
@@ -33,6 +42,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <link rel="preconnect" href="https://fonts.gstatic.com" />
         {/* Allow Firebase auth popup to close when COOP is set */}
         <meta
           httpEquiv="Cross-Origin-Opener-Policy"
@@ -41,7 +51,7 @@ export default function RootLayout({
       </head>
       <body
         suppressHydrationWarning={true}
-        className={`${geistSans.variable} ${geistMono.variable} antialiased font-sans`}
+        className={`${geistSans.variable} ${geistMono.variable} ${proxima.variable} antialiased font-sans`}
       >
         <Suspense fallback={<AppShellSkeleton />}>
           <Providers>

@@ -1,6 +1,6 @@
-import type { NextConfig } from 'next';
+const withAnalyzer = require('@next/bundle-analyzer')({ enabled: process.env.ANALYZE === 'true' });
 
-const nextConfig: NextConfig = {
+const nextConfig = {
   headers() {
     return [
       {
@@ -34,5 +34,7 @@ const nextConfig: NextConfig = {
     ];
   },
 };
-
-export default nextConfig;
+module.exports = withAnalyzer({
+  ...nextConfig,
+  experimental: { turbotrace: true },
+});

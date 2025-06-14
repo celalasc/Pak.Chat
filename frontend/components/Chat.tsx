@@ -16,7 +16,7 @@ import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { cn } from '@/lib/utils';
 import { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'react-router';
-import { useMutation } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 
@@ -31,7 +31,21 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
   const { isMobile } = useIsMobile();
   const isHeaderVisible = useScrollHide({ threshold: 15 });
   const { id } = useParams();
-  const sendMessage = useMutation(api.messages.send);
+  const sendMessage = useMutation(api.messages.send, {
+    optimisticUpdate: (ctx, args) => {
+      ctx.setQueryData(api.messages.get, { threadId: args.threadId }, prev => ([
+        ...(prev as any[]),
+        {
+          _id: 'optimistic-' + Date.now(),
+          threadId: args.threadId,
+          role: args.role,
+          content: args.content,
+          createdAt: Date.now(),
+          authorId: 'me',
+        },
+      ]));
+    },
+  });
   const hasKeys = useMemo(() => hasRequiredKeys(), [hasRequiredKeys]);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
@@ -75,6 +89,7 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
     body: {
       apiKeys: keys,
       model: selectedModel,
+      net: navigator.connection?.effectiveType ?? '4g',
     },
     onFinish: async (message) => {
       const aiMessage: UIMessage = {

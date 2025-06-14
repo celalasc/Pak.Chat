@@ -26,8 +26,8 @@ interface ChatHistoryDrawerProps {
 }
 
 function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistoryDrawerProps) {
-  const [raw, setRaw] = useState('');
-  const searchQuery = useDeferredValue(raw);
+  const [rawQuery, setRawQuery] = useState('');
+  const searchQuery = useDeferredValue(rawQuery);
   const [editingThreadId, setEditingThreadId] = useState<Id<'threads'> | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
   const [deletingThreadId, setDeletingThreadId] = useState<Id<'threads'> | null>(null);
@@ -49,7 +49,7 @@ function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistory
   const handleOpenChange = useCallback((open: boolean) => {
     setIsOpen(open);
     if (!open) {
-      setRaw('');
+      setRawQuery('');
       setEditingThreadId(null);
       setEditingTitle('');
       setDeletingThreadId(null);
@@ -357,7 +357,7 @@ function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistory
                 placeholder="Search…"
                 className="rounded-lg py-1.5 pl-8 text-sm w-full"
                 value={searchQuery}
-                onChange={(e) => setRaw(e.target.value)}
+                onChange={(e) => setRawQuery(e.target.value)}
               />
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground size-3.5" />
             </div>
@@ -401,7 +401,7 @@ function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistory
                     placeholder="Search…"
                     className="rounded-lg py-1.5 pl-8 text-sm w-full"
                     value={searchQuery}
-                    onChange={(e) => setRaw(e.target.value)}
+                    onChange={(e) => setRawQuery(e.target.value)}
                   />
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground size-3.5" />
                 </div>
@@ -442,7 +442,7 @@ function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistory
               placeholder="Search…"
               className="rounded-lg py-1.5 pl-8 text-sm w-full"
               value={searchQuery}
-              onChange={(e) => setRaw(e.target.value)}
+              onChange={(e) => setRawQuery(e.target.value)}
             />
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground size-3.5" />
           </div>

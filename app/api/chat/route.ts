@@ -9,7 +9,7 @@ export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, model, apiKeys } = await req.json();
+    const { messages, model, apiKeys, net } = await req.json();
 
     const modelConfig = getModelConfig(model as AIModel);
     
@@ -49,6 +49,9 @@ export async function POST(req: NextRequest) {
         );
     }
 
+    const netType = (net ?? '4g') as string;
+    const chunking = netType.includes('2g') || netType.includes('3g') ? 'sentence' : 'word';
+
     const result = streamText({
       model: aiModel,
       messages,
@@ -70,7 +73,7 @@ export async function POST(req: NextRequest) {
       - Display: 
       $$\\frac{d}{dx}\\sin(x) = \\cos(x)$$
       `,
-      experimental_transform: [smoothStream({ chunking: 'word' })],
+      experimental_transform: [smoothStream({ chunking })],
       abortSignal: req.signal,
     });
 
