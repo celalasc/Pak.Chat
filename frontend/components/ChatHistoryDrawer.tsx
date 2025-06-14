@@ -1,24 +1,23 @@
 "use client"
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Drawer, DrawerContent, DrawerTrigger, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, DialogDescription } from '@/frontend/components/ui/dialog';
 import { Button, buttonVariants } from './ui/button';
 import { Input } from './ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 // Dexie imports removed as Convex is now the data source
-import { Link, useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams } from 'react-router';
 import { X, Pin, PinOff, Search, MessageSquare, Plus, Edit2, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePinnedThreads } from '@/frontend/hooks/usePinnedThreads';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import type { Doc, Id } from '@/convex/_generated/dataModel';
 
 // Minimal thread interface used for rendering
-interface Thread {
-  id: string;
-  title: string;
-  lastMessageAt: Date;
-}
+type Thread = Doc<'threads'>;
 
 interface ChatHistoryDrawerProps {
   children: React.ReactNode;
@@ -28,17 +27,25 @@ interface ChatHistoryDrawerProps {
 
 export default function ChatHistoryDrawer({ children, isOpen, setIsOpen }: ChatHistoryDrawerProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
+  const [editingThreadId, setEditingThreadId] = useState<Id<'threads'> | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
-  const [deletingThreadId, setDeletingThreadId] = useState<string | null>(null);
+  const [deletingThreadId, setDeletingThreadId] = useState<Id<'threads'> | null>(null);
   
   const { isMobile, mounted } = useIsMobile(600);
   const { pinnedThreads, togglePin } = usePinnedThreads();
   const { id } = useParams();
   const navigate = useNavigate();
-  // Data is now fetched from Convex; use an empty list as a placeholder
-  const threads: Thread[] = [];
+  const threads = useQuery(api.threads.list);
+  const createThread = useMutation(api.threads.create);
+  const removeThread = useMutation(api.threads.remove);
 
+  if (threads === undefined) {
+    return (
+      <div className="flex justify-center items-center h-full">
+        <p>Loading chat history...</p>
+      </div>
+    );
+  }
   const handleOpenChange = useCallback((open: boolean) => {
     setIsOpen(open);
     if (!open) {
@@ -59,13 +66,13 @@ export default function ChatHistoryDrawer({ children, isOpen, setIsOpen }: ChatH
       : threads;
 
     // Separate pinned and unpinned threads
-    const pinned = filtered.filter(thread => pinnedThreads.has(thread.id));
-    const unpinned = filtered.filter(thread => !pinnedThreads.has(thread.id));
+    const pinned = filtered.filter(thread => pinnedThreads.has(thread._id));
+    const unpinned = filtered.filter(thread => !pinnedThreads.has(thread._id));
 
     return [...pinned, ...unpinned];
   }, [threads, searchQuery, pinnedThreads]);
 
-  const handleThreadClick = useCallback((threadId: string) => {
+  const handleThreadClick = useCallback((threadId: Id<'threads'>) => {
     if (id === threadId) {
       handleOpenChange(false);
       return;
@@ -75,42 +82,48 @@ export default function ChatHistoryDrawer({ children, isOpen, setIsOpen }: ChatH
   }, [id, navigate, handleOpenChange]);
 
   const handleEdit = useCallback((thread: Thread) => {
-    setEditingThreadId(thread.id);
+    setEditingThreadId(thread._id);
     setEditingTitle(thread.title);
   }, []);
 
-  const handleSaveEdit = useCallback(async (threadId: string) => {
-    // TODO: update thread title via Convex
+  const handleSaveEdit = useCallback(async (threadId: Id<'threads'>) => {
+    // TODO: implement rename via Convex
     setEditingThreadId(null);
     setEditingTitle('');
-  }, [editingTitle, threads]);
+  }, [editingTitle]);
 
   const handleCancelEdit = useCallback(() => {
     setEditingThreadId(null);
     setEditingTitle('');
   }, []);
 
-  const handleDelete = useCallback((threadId: string) => {
+  const handleDelete = useCallback((threadId: Id<'threads'>) => {
     setDeletingThreadId(threadId);
   }, []);
 
-  const handleConfirmDelete = useCallback(async (threadId: string) => {
-    // TODO: delete thread via Convex
+  const handleConfirmDelete = useCallback(async (threadId: Id<'threads'>) => {
+    await removeThread({ threadId });
     if (id === threadId) {
       navigate('/chat');
     }
     setDeletingThreadId(null);
-  }, [id, navigate]);
+  }, [id, navigate, removeThread]);
 
   const handleCancelDelete = useCallback(() => {
     setDeletingThreadId(null);
   }, []);
 
-  const handlePinToggle = useCallback((threadId: string, event: React.MouseEvent) => {
+  const handlePinToggle = useCallback((threadId: Id<'threads'>, event: React.MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
     togglePin(threadId);
   }, [togglePin]);
+
+  const handleNewChat = useCallback(async () => {
+    const newThreadId = await createThread({ title: 'New Chat' });
+    navigate(`/chat/${newThreadId}`);
+    handleOpenChange(false);
+  }, [createThread, navigate, handleOpenChange]);
 
   const formatDate = (date: Date) => {
     const now = new Date();
@@ -133,18 +146,18 @@ export default function ChatHistoryDrawer({ children, isOpen, setIsOpen }: ChatH
     const lastWeek = new Date(today);
     lastWeek.setDate(lastWeek.getDate() - 7);
     
-    const todayThreads = threads.filter(t => 
-      new Date(t.lastMessageAt).toDateString() === today.toDateString()
+    const todayThreads = threads.filter(t =>
+      new Date(t._creationTime).toDateString() === today.toDateString()
     );
-    const yesterdayThreads = threads.filter(t => 
-      new Date(t.lastMessageAt).toDateString() === yesterday.toDateString()
+    const yesterdayThreads = threads.filter(t =>
+      new Date(t._creationTime).toDateString() === yesterday.toDateString()
     );
     const lastWeekThreads = threads.filter(t => {
-      const threadDate = new Date(t.lastMessageAt);
+      const threadDate = new Date(t._creationTime);
       return threadDate > lastWeek && threadDate < yesterday;
     });
-    const olderThreads = threads.filter(t => 
-      new Date(t.lastMessageAt) <= lastWeek
+    const olderThreads = threads.filter(t =>
+      new Date(t._creationTime) <= lastWeek
     );
     
     if (todayThreads.length > 0) groups.push({ name: 'Today', threads: todayThreads });
@@ -158,16 +171,16 @@ export default function ChatHistoryDrawer({ children, isOpen, setIsOpen }: ChatH
   const groupedThreads = useMemo(() => groupThreadsByDate(filteredThreads), [filteredThreads, searchQuery]);
 
   const renderThreadItem = useCallback((thread: Thread) => (
-    <div key={thread.id}>
+    <div key={thread._id}>
       <div className="space-y-1.5">
-        {editingThreadId === thread.id ? (
+        {editingThreadId === thread._id ? (
           <div className="flex items-center gap-2 p-2 rounded-lg bg-muted">
             <Input
               value={editingTitle}
               onChange={(e) => setEditingTitle(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
-                  handleSaveEdit(thread.id);
+                  handleSaveEdit(thread._id);
                 } else if (e.key === 'Escape') {
                   handleCancelEdit();
                 }
@@ -179,7 +192,7 @@ export default function ChatHistoryDrawer({ children, isOpen, setIsOpen }: ChatH
               size="icon" 
               variant="ghost" 
               className="h-8 w-8"
-              onClick={() => handleSaveEdit(thread.id)}
+              onClick={() => handleSaveEdit(thread._id)}
             >
               <Check className="size-4" />
             </Button>
@@ -192,13 +205,13 @@ export default function ChatHistoryDrawer({ children, isOpen, setIsOpen }: ChatH
               <X className="size-4" />
             </Button>
           </div>
-        ) : deletingThreadId === thread.id ? (
+        ) : deletingThreadId === thread._id ? (
           <div className="flex items-center gap-2 p-2 rounded-lg bg-destructive/10 border border-destructive/20">
             <span className="flex-1 text-sm">Delete this chat?</span>
             <Button 
               size="sm" 
               variant="destructive"
-              onClick={() => handleConfirmDelete(thread.id)}
+              onClick={() => handleConfirmDelete(thread._id)}
             >
               Delete
             </Button>
@@ -214,18 +227,18 @@ export default function ChatHistoryDrawer({ children, isOpen, setIsOpen }: ChatH
           <div
             className={cn(
               "group flex items-center justify-between rounded-lg px-2 py-1.5 hover:bg-accent cursor-pointer transition-colors",
-              id === thread.id && "bg-accent"
+              id === thread._id && "bg-accent"
             )}
-            onClick={() => handleThreadClick(thread.id)}
+            onClick={() => handleThreadClick(thread._id)}
           >
             <div className="flex-1 min-w-0 pr-2">
               <div className="flex items-center gap-2">
-                {pinnedThreads.has(thread.id) && (
+                {pinnedThreads.has(thread._id) && (
                   <Pin className="h-3 w-3 text-primary shrink-0" />
                 )}
                 <span className="line-clamp-1 text-sm font-medium">{thread.title}</span>
               </div>
-              <span className="text-xs text-muted-foreground">{formatDate(new Date(thread.lastMessageAt))}</span>
+              <span className="text-xs text-muted-foreground">{formatDate(new Date(thread._creationTime))}</span>
             </div>
             <div className="flex gap-0.5 sm:gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
               <Tooltip>
@@ -251,27 +264,27 @@ export default function ChatHistoryDrawer({ children, isOpen, setIsOpen }: ChatH
                     size="icon" 
                     variant="ghost" 
                     className="h-6 w-6 sm:h-7 sm:w-7"
-                    onClick={(e) => handlePinToggle(thread.id, e)}
+                    onClick={(e) => handlePinToggle(thread._id, e)}
                   >
-                    {pinnedThreads.has(thread.id) ? (
+                    {pinnedThreads.has(thread._id) ? (
                       <PinOff className="size-2.5 sm:size-3" />
                     ) : (
                       <Pin className="size-2.5 sm:size-3" />
                     )}
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>{pinnedThreads.has(thread.id) ? 'Unpin' : 'Pin'}</TooltipContent>
+                <TooltipContent>{pinnedThreads.has(thread._id) ? 'Unpin' : 'Pin'}</TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button 
+                  <Button
                     size="icon" 
                     variant="ghost" 
                     className="h-6 w-6 sm:h-7 sm:w-7"
                     onClick={(e) => { 
                       e.preventDefault(); 
                       e.stopPropagation(); 
-                      handleDelete(thread.id); 
+                      handleDelete(thread._id);
                     }}
                   >
                     <X className="size-2.5 sm:size-3" />
@@ -320,6 +333,14 @@ export default function ChatHistoryDrawer({ children, isOpen, setIsOpen }: ChatH
             <DialogTitle className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5" />
               Chat History
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleNewChat}
+                className="ml-auto"
+              >
+                <Plus className="size-4" />
+              </Button>
             </DialogTitle>
             <DialogDescription className="sr-only">
               Browse and search through your chat history
@@ -359,6 +380,14 @@ export default function ChatHistoryDrawer({ children, isOpen, setIsOpen }: ChatH
                 <DrawerTitle className="flex items-center gap-2 text-lg">
                   <MessageSquare className="h-5 w-5" />
                   Chat History
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleNewChat}
+                    className="ml-auto"
+                  >
+                    <Plus className="size-4" />
+                  </Button>
                 </DrawerTitle>
                 <div className="relative">
                   <Input
@@ -389,6 +418,14 @@ export default function ChatHistoryDrawer({ children, isOpen, setIsOpen }: ChatH
           <DialogTitle className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5" />
             Chat History
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleNewChat}
+              className="ml-auto"
+            >
+              <Plus className="size-4" />
+            </Button>
           </DialogTitle>
           <DialogDescription className="sr-only">
             Browse and search through your chat history
