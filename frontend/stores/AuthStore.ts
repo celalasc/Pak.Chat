@@ -9,6 +9,7 @@ interface AuthState {
   login: () => Promise<void>;
   logout: () => Promise<void>;
   toggleBlur: () => void;
+  init: () => () => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => {
@@ -33,12 +34,16 @@ export const useAuthStore = create<AuthState>((set) => {
     },
   };
 
-  // 2. Слушатель состояния Firebase
-  if (typeof window !== 'undefined') {
-    onAuthStateChanged(auth, async (user) => {
+  // Allows React components to start and clean up the auth listener
+  const init = () => {
+    if (typeof window === 'undefined') {
+      return () => {};
+    }
+    const unsub = onAuthStateChanged(auth, async (user) => {
       set({ user, loading: false });
     });
-  }
+    return unsub;
+  };
 
   // 3. Начальное состояние + действия
   return {
@@ -46,5 +51,6 @@ export const useAuthStore = create<AuthState>((set) => {
     loading: true,
     blurPersonalData: false,
     ...actions,
+    init,
   };
-}); 
+});

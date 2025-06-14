@@ -1,10 +1,12 @@
 'use client';
 import { useAuthStore } from '@/frontend/stores/AuthStore';
+import { useEffect } from 'react';
 
 export default function AuthListener() {
-  // Этот хук просто вызывает useAuthStore и тем самым
-  // инициализирует его логику, включая onAuthStateChanged.
-  // Он ничего не рендерит.
-  useAuthStore(); 
+  const init = useAuthStore((s) => s.init);
+
+  // Start Firebase auth listener on mount and clean up on unmount
+  useEffect(() => init(), [init]);
+
   return null;
-} 
+}
