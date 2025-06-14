@@ -179,6 +179,7 @@ function PureChatInput({
           messageCount === 0 &&
             'md:bottom-auto md:top-1/2 md:transform md:-translate-y-1/2'
         )}
+        style={{ height: CHAT_INPUT_HEIGHT }}
       >
         <div ref={containerRef} className={cn('relative bg-secondary p-2 pb-0 w-full', messageCount === 0 ? 'rounded-[20px]' : 'rounded-t-[20px]')}>
           {/* Scroll to bottom button */}
@@ -365,3 +366,6 @@ const SendButton = memo(PureSendButton, (prevProps, nextProps) => {
 });
 
 export default ChatInput;
+
+// Height of the fixed chat input in pixels. Used to offset chat padding.
+export const CHAT_INPUT_HEIGHT = 72; // px

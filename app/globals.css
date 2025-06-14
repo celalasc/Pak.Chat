@@ -380,6 +380,11 @@ html, body {
     overscroll-behavior: contain;
     scroll-behavior: smooth;
   }
+
+  /* Prevent scroll chaining in mobile chat */
+  .mobile-chat-scroll {
+    overscroll-behavior: contain;
+  }
   
   /* Дополнительные отступы для мобильных настроек */
   .mobile-settings-content {

@@ -9,6 +9,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { useAutoHide } from '../hooks/useAutoHide';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { cn } from '@/lib/utils';
+import { CHAT_INPUT_HEIGHT } from './ChatInput';
 
 /** Постоянная оценка высоты одного сообщения для виртуализатора. */
 const ESTIMATED_MESSAGE_HEIGHT = 200;
@@ -80,8 +81,10 @@ function PureMessages({
       ref={parentRef}
       className={cn(
         'flex flex-col space-y-12 h-full',
-        !isMobile && 'overflow-y-auto'
+        !isMobile && 'overflow-y-auto',
+        isMobile && 'mobile-chat-scroll'
       )}
+      style={{ paddingBottom: CHAT_INPUT_HEIGHT }}
     >
       {shouldVirtualize ? (
         /* «Плёнка» с абсолютным позиционированием виртуальных строк */
