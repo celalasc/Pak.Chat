@@ -1,17 +1,16 @@
 import { useEffect } from 'react';
-import { useMutation } from 'convex/react';
+import { useMutation, useConvexAuth } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { useAuthStore } from '@/frontend/stores/AuthStore';
 
 export function useUserSync() {
-  const { user } = useAuthStore();
+  const { isAuthenticated, isLoading } = useConvexAuth();
   const syncUser = useMutation(api.users.sync);
 
   useEffect(() => {
-    if (user) {
+    if (!isLoading && isAuthenticated) {
       syncUser().catch(error => {
         console.error('Failed to sync user:', error);
       });
     }
-  }, [user, syncUser]);
-} 
+  }, [isAuthenticated, isLoading, syncUser]);
+}
