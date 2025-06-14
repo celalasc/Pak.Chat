@@ -1,6 +1,6 @@
 import Chat from '@/frontend/components/Chat';
 import { useParams } from 'react-router';
-import { useQuery } from 'convex/react';
+import { usePaginatedQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { UIMessage } from 'ai';
@@ -10,14 +10,18 @@ export default function Thread() {
   if (!id) throw new Error('Thread ID is required');
 
   const threadId = id as Id<'threads'>;
-  const messages = useQuery(api.messages.get, { threadId });
+  const { results, status, loadMore } = usePaginatedQuery(
+    api.messages.get,
+    { threadId },
+    { initialNumItems: 50 }
+  );
 
   const uiMessages: UIMessage[] =
-    messages?.map(msg => ({
+    results?.map(msg => ({
       id: msg._id,
       role: msg.role,
       content: msg.content,
-      createdAt: new Date(msg._creationTime),
+      createdAt: new Date(msg.createdAt),
       parts: [{ type: 'text', text: msg.content }],
     })) || [];
 

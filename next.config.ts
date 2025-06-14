@@ -1,8 +1,12 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  rewrites: async () => {
+  async rewrites() {
     return [
+      {
+        source: '/:path*',
+        destination: 'https://YOUR-CONVEX-URL.convex.site/:path*',
+      },
       {
         source: '/((?!api/).*)',
         destination: '/static-app-shell',

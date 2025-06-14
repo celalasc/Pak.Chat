@@ -1,11 +1,15 @@
 import { Dispatch, SetStateAction, useState } from 'react';
 import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
-import { Check, Copy, RefreshCcw, SquarePen } from 'lucide-react';
+import { Check, Copy, RefreshCcw, SquarePen, GitBranch } from 'lucide-react';
 import { UIMessage } from 'ai';
 import { UseChatHelpers } from '@ai-sdk/react';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
+import { useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import type { Id } from '@/convex/_generated/dataModel';
+import { useNavigate } from 'react-router';
 
 interface MessageControlsProps {
   threadId: string;
@@ -33,6 +37,10 @@ export default function MessageControls({
   const [copied, setCopied] = useState(false);
   const hasRequiredKeys = useAPIKeyStore((state) => state.hasRequiredKeys());
   const { isMobile } = useIsMobile();
+  const removeAfter = useMutation(api.messages.removeAfter);
+  const removeMessage = useMutation(api.messages.remove);
+  const cloneThread = useMutation(api.threads.clone);
+  const navigate = useNavigate();
 
   const handleCopy = () => {
     navigator.clipboard.writeText(content);
@@ -47,7 +55,10 @@ export default function MessageControls({
     stop();
 
     if (message.role === 'user') {
-      // TODO: delete trailing messages via Convex
+      await removeAfter({
+        threadId: threadId as Id<'threads'>,
+        afterMessageId: message.id as Id<'messages'>,
+      });
 
       setMessages((messages) => {
         const index = messages.findIndex((m) => m.id === message.id);
@@ -59,7 +70,11 @@ export default function MessageControls({
         return messages;
       });
     } else {
-      // TODO: delete trailing messages via Convex
+      await removeAfter({
+        threadId: threadId as Id<'threads'>,
+        afterMessageId: message.id as Id<'messages'>,
+      });
+      await removeMessage({ messageId: message.id as Id<'messages'> });
 
       setMessages((messages) => {
         const index = messages.findIndex((m) => m.id === message.id);
@@ -98,6 +113,22 @@ export default function MessageControls({
       {setMode && hasRequiredKeys && (
         <Button variant="ghost" size="icon" onClick={() => setMode('edit')}>
           <SquarePen className="w-4 h-4" />
+        </Button>
+      )}
+      {hasRequiredKeys && (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={async () => {
+            const newId = await cloneThread({
+              threadId: threadId as Id<'threads'>,
+              title: 'New Branch',
+            });
+            navigate(`/chat/${newId}`);
+            onToggleVisibility?.();
+          }}
+        >
+          <GitBranch className="w-4 h-4" />
         </Button>
       )}
       {hasRequiredKeys && (
