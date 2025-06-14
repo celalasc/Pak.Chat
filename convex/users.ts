@@ -43,7 +43,14 @@ export const sync = mutation({
   args: {},
   async handler(ctx) {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
+    // When a user signs in, the token may take a moment to attach. In that case
+    // we exit quietly so the client can retry.
+    if (!identity) {
+      console.log(
+        "users.sync called, but identity is not yet available. Exiting gracefully."
+      );
+      return null;
+    }
 
     const existingUser = await ctx.db
       .query("users")
@@ -62,6 +69,7 @@ export const sync = mutation({
       }
       return existingUser._id;
     } else {
+      console.log(`Creating new user: ${identity.name}`);
       return await ctx.db.insert("users", {
         name: identity.name!,
         email: identity.email,
