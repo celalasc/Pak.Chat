@@ -48,6 +48,7 @@ type FormValues = z.infer<typeof formSchema>;
 
 export default function SettingsDrawer({ children, isOpen, setIsOpen }: SettingsDrawerProps) {
   const { isMobile, mounted } = useIsMobile(600);
+  const [activeTab, setActiveTab] = useState("customization");
 
   const handleOpenChange = useCallback((open: boolean) => {
     setIsOpen(open);
@@ -55,7 +56,7 @@ export default function SettingsDrawer({ children, isOpen, setIsOpen }: Settings
 
   const ContentComponent = ({ className }: { className?: string }) => (
     <div className={cn("flex flex-col gap-4 flex-1 min-h-0", className)}>
-      <Tabs defaultValue="customization" className="flex-1 flex flex-col min-h-0">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
         <TabsList className={cn("grid w-full flex-shrink-0", isMobile ? "grid-cols-3" : "grid-cols-3")}>
           <TabsTrigger value="customization" className="flex items-center gap-1 text-xs sm:text-sm">
             <Palette className="h-3 w-3 sm:h-4 sm:w-4" />

@@ -1,6 +1,6 @@
 "use client"
 
-import { Link } from 'react-router';
+import { useNavigate } from 'react-router';
 import { Button } from './ui/button';
 import { Plus } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
@@ -17,19 +17,24 @@ export default function NewChatButton({
   variant = "outline", 
   size = "icon" 
 }: NewChatButtonProps) {
+  const navigate = useNavigate();
+
+  const handleClick = () => {
+    navigate('/chat');
+  };
+
   return (
     <Tooltip>
-      <TooltipTrigger asChild>
-        <Link to="/chat">
-          <Button
-            variant={variant}
-            size={size}
-            className={cn("bg-background/80 backdrop-blur-sm border-border/50", className)}
-            aria-label="Create new chat"
-          >
-            <Plus className="h-5 w-5" />
-          </Button>
-        </Link>
+      <TooltipTrigger>
+        <Button
+          variant={variant}
+          size={size}
+          className={cn("bg-background/80 backdrop-blur-sm border-border/50", className)}
+          aria-label="Create new chat"
+          onClick={handleClick}
+        >
+          <Plus className="h-5 w-5" />
+        </Button>
       </TooltipTrigger>
       <TooltipContent side="bottom">
         New Chat

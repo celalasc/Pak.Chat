@@ -12,7 +12,7 @@ import { X, Pin, PinOff, Search, MessageSquare, Plus, Edit2, Check } from 'lucid
 import { cn } from '@/lib/utils';
 import { usePinnedThreads } from '@/frontend/hooks/usePinnedThreads';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
-import { useQuery, useMutation } from 'convex/react';
+import { useQuery, useMutation, useConvexAuth } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import type { Doc, Id } from '@/convex/_generated/dataModel';
 
@@ -35,41 +35,16 @@ export default function ChatHistoryDrawer({ children, isOpen, setIsOpen }: ChatH
   const { pinnedThreads, togglePin } = usePinnedThreads();
   const { id } = useParams();
   const navigate = useNavigate();
-  const { data: threads, error: threadsError } = useQuery(
+  const { isAuthenticated } = useConvexAuth();
+  
+  const threads = useQuery(
     api.threads.list,
-    undefined,
-    { suspense: false }
+    isAuthenticated ? undefined : "skip"
   );
   const createThread = useMutation(api.threads.create);
-  const removeThread = useMutation(api.threads.remove).withOptimisticUpdate(
-    (store, { threadId }) => {
-      store.setQueryData(api.threads.list, undefined, old =>
-        old ? old.filter(t => t._id !== threadId) : old
-      );
-    }
-  );
-  const renameThread = useMutation(api.threads.rename).withOptimisticUpdate(
-    (store, { threadId, title }) => {
-      store.setQueryData(api.threads.list, undefined, old =>
-        old ? old.map(t => (t._id === threadId ? { ...t, title } : t)) : old
-      );
-    }
-  );
+  const removeThread = useMutation(api.threads.remove);
+  const renameThread = useMutation(api.threads.rename);
 
-  if (threadsError) {
-    return (
-      <div className="flex justify-center items-center h-full">
-        <p className="text-red-500">Failed to load chat history</p>
-      </div>
-    );
-  }
-  if (threads === undefined) {
-    return (
-      <div className="flex justify-center items-center h-full">
-        <p>Loading chat history...</p>
-      </div>
-    );
-  }
   const handleOpenChange = useCallback((open: boolean) => {
     setIsOpen(open);
     if (!open) {
@@ -322,6 +297,19 @@ export default function ChatHistoryDrawer({ children, isOpen, setIsOpen }: ChatH
       </div>
     </div>
   ), [editingThreadId, deletingThreadId, id, editingTitle, pinnedThreads, handleThreadClick, handleEdit, handleSaveEdit, handleCancelEdit, handleConfirmDelete, handleCancelDelete, handlePinToggle, handleDelete]);
+
+  // Early returns after all hooks
+  if (!isAuthenticated) {
+    return null;
+  }
+  
+  if (threads === undefined) {
+    return (
+      <div className="flex justify-center items-center h-full">
+        <p>Loading chat history...</p>
+      </div>
+    );
+  }
 
   const ContentComponent = () => (
     <div className="flex h-full flex-col">

@@ -13,9 +13,8 @@ import SettingsButton from './SettingsButton';
 import { useQuoteShortcuts } from '@/frontend/hooks/useQuoteShortcuts';
 import { useScrollHide } from '@/frontend/hooks/useScrollHide';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
-import { Link } from 'react-router';
 import { cn } from '@/lib/utils';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'react-router';
 import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
@@ -27,14 +26,13 @@ interface ChatProps {
 }
 
 export default function Chat({ threadId, initialMessages }: ChatProps) {
-  const { keys } = useAPIKeyStore();
+  const { keys, hasRequiredKeys, keysLoading } = useAPIKeyStore();
   const { selectedModel } = useModelStore();
   const { isMobile } = useIsMobile();
   const isHeaderVisible = useScrollHide({ threshold: 15 });
   const { id } = useParams();
   const sendMessage = useMutation(api.messages.send);
-  const { hasRequiredKeys, keysLoading } = useAPIKeyStore();
-  const hasKeys = hasRequiredKeys();
+  const hasKeys = useMemo(() => hasRequiredKeys(), [hasRequiredKeys]);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
   useQuoteShortcuts();
@@ -139,12 +137,12 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
           {isMobile && (
             <div className="absolute inset-0 -m-2 bg-background/60 backdrop-blur-md rounded-lg" />
           )}
-          <Link 
-            to="/chat" 
+          <span 
             className="relative text-xl font-bold text-foreground hover:text-primary transition-colors cursor-pointer"
+            onClick={() => window.location.href = '/chat'}
           >
             Pak.Chat
-          </Link>
+          </span>
         </div>
       </div>
 

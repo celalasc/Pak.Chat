@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useMutation, useQuery, useConvexAuth } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { encryptData, decryptData } from '@/frontend/lib/crypto';
@@ -66,9 +66,9 @@ export function useAPIKeyStore() {
     }
   };
 
-  const hasRequiredKeys = () =>
-    !store.getState().keysLoading && !!store.getState().keys.google;
-  const getKey = (provider: Provider) => store.getState().keys[provider] || null;
+  const hasRequiredKeys = useCallback(() =>
+    !keysLoading && !!keys.google, [keysLoading, keys.google]);
+  const getKey = useCallback((provider: Provider) => keys[provider] || null, [keys]);
 
   return { keys, setKeys, hasRequiredKeys, getKey, setLocal, keysLoading };
 }

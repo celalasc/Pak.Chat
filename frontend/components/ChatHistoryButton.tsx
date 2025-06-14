@@ -23,7 +23,7 @@ export default function ChatHistoryButton({
   return (
     <ChatHistoryDrawer isOpen={isOpen} setIsOpen={setIsOpen}>
       <Tooltip>
-        <TooltipTrigger asChild>
+        <TooltipTrigger>
           <Button
             variant={variant}
             size={size}

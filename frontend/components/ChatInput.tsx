@@ -69,10 +69,26 @@ function PureChatInput({
   stop,
   messageCount,
 }: ChatInputProps) {
+  // Все хуки должны быть вызваны до любых условных возвратов
   const { hasRequiredKeys, keys, setKeys } = useAPIKeyStore();
   const canChat = hasRequiredKeys();
   const { currentQuote, clearQuote } = useQuoteStore();
   const [localKeys, setLocalKeys] = useState(keys);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { textareaRef, adjustHeight } = useAutoResizeTextarea({
+    minHeight: 72,
+    maxHeight: 200,
+  });
+  const navigate = useNavigate();
+  const { id } = useParams();
+  const createThread = useMutation(api.threads.create);
+  const sendMessage = useMutation(api.messages.send);
+  const { complete } = useMessageSummary();
+
+  const isDisabled = useMemo(
+    () => !input.trim() || status === 'streaming' || status === 'submitted',
+    [input, status]
+  );
   
   // Синхронизируем localKeys с основным состоянием
   useEffect(() => {
@@ -101,24 +117,6 @@ function PureChatInput({
       </div>
     );
   }
-
-  const containerRef = useRef<HTMLDivElement>(null);
-  const { textareaRef, adjustHeight } = useAutoResizeTextarea({
-    minHeight: 72,
-    maxHeight: 200,
-  });
-
-  const navigate = useNavigate();
-  const { id } = useParams();
-  const createThread = useMutation(api.threads.create);
-  const sendMessage = useMutation(api.messages.send);
-
-  const isDisabled = useMemo(
-    () => !input.trim() || status === 'streaming' || status === 'submitted',
-    [input, status]
-  );
-
-  const { complete } = useMessageSummary();
 
   const handleSubmit = useCallback(async () => {
     if (!canChat) {
@@ -162,6 +160,7 @@ function PureChatInput({
       role: 'user',
     });
   }, [
+    canChat,
     input,
     status,
     setInput,
