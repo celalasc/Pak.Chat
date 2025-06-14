@@ -116,9 +116,9 @@ function PureChatInput({
       finalMessage = `> ${currentQuote.text.replace(/\n/g, '\n> ')}\n\n${currentInput.trim()}`;
     }
 
-    let currentThreadId = threadId;
-
-    if (!id) {
+    let currentThreadId: Id<'threads'>;
+    const isConvexId = id && !id.includes('-');
+    if (!id || !isConvexId) {
       const newThreadId = await createThread({ title: 'New Chat' });
       navigate(`/chat/${newThreadId}`);
       currentThreadId = newThreadId;
@@ -126,7 +126,8 @@ function PureChatInput({
         body: { threadId: newThreadId, messageId, isTitle: true },
       });
     } else {
-      complete(finalMessage, { body: { messageId, threadId } });
+      currentThreadId = id as Id<'threads'>;
+      complete(finalMessage, { body: { messageId, threadId: currentThreadId } });
     }
 
     const userMessage = createUserMessage(messageId, finalMessage);
@@ -171,8 +172,8 @@ function PureChatInput({
     adjustHeight();
   };
 
-  // Если есть ошибка, показываем форму для ввода API ключей
-  if (error) {
+  // Если есть ошибка и нельзя отправлять сообщения, показываем форму для ввода API ключей
+  if (error && !canChat) {
     return (
       <div className={`fixed w-full max-w-3xl bottom-0 ${messageCount === 0 ? 'md:bottom-auto md:top-1/2 md:transform md:-translate-y-1/2' : ''}`}>
         <div className={cn('bg-secondary p-4 pb-2 w-full', messageCount === 0 ? 'rounded-[20px]' : 'rounded-t-[20px]')}>

@@ -4,6 +4,8 @@ import './globals.css';
 import 'katex/dist/katex.min.css';
 import { Toaster } from '@/frontend/components/ui/sonner';
 import Providers from '@/frontend/components/Providers';
+import AppShellSkeleton from '@/frontend/components/AppShellSkeleton';
+import { Suspense } from 'react';
 import AuthListener from '@/frontend/components/AuthListener';
 import ConvexClientProvider from '@/frontend/components/ConvexClientProvider';
 import UserSync from '@/frontend/components/UserSync';
@@ -41,14 +43,16 @@ export default function RootLayout({
         suppressHydrationWarning={true}
         className={`${geistSans.variable} ${geistMono.variable} antialiased font-sans`}
       >
-        <Providers>
-          <AuthListener />
-          <ConvexClientProvider>
-            <UserSync />
-            {children}
-          </ConvexClientProvider>
-          <Toaster richColors position="top-right" />
-        </Providers>
+        <Suspense fallback={<AppShellSkeleton />}>
+          <Providers>
+            <AuthListener />
+            <ConvexClientProvider>
+              <UserSync />
+              {children}
+            </ConvexClientProvider>
+            <Toaster richColors position="top-right" />
+          </Providers>
+        </Suspense>
       </body>
     </html>
   );
