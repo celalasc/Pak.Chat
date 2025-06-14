@@ -17,6 +17,9 @@ import { Link } from 'react-router';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router';
+import { useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 
 interface ChatProps {
   threadId: string;
@@ -29,6 +32,7 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
   const { isMobile } = useIsMobile();
   const isHeaderVisible = useScrollHide({ threshold: 15 });
   const { id } = useParams();
+  const sendMessage = useMutation(api.messages.send);
   const hasKeys = useAPIKeyStore(state => state.hasRequiredKeys());
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
@@ -86,8 +90,11 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
           }
         ],
       };
-      
-      // TODO: save message to Convex
+      await sendMessage({
+        threadId: threadId as Id<'threads'>,
+        role: 'assistant',
+        content: message.content,
+      });
     },
   });
 

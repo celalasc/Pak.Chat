@@ -16,6 +16,9 @@ import useAutoResizeTextarea from '@/hooks/useAutoResizeTextArea';
 import { UseChatHelpers, useCompletion } from '@ai-sdk/react';
 import { useParams } from 'react-router';
 import { useNavigate } from 'react-router';
+import { useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 import { useModelStore } from '@/frontend/stores/ModelStore';
 import { useQuoteStore } from '@/frontend/stores/QuoteStore';
@@ -98,6 +101,8 @@ function PureChatInput({
 
   const navigate = useNavigate();
   const { id } = useParams();
+  const createThread = useMutation(api.threads.create);
+  const sendMessage = useMutation(api.messages.send);
 
   const isDisabled = useMemo(
     () => !input.trim() || status === 'streaming' || status === 'submitted',
@@ -122,10 +127,14 @@ function PureChatInput({
       finalMessage = `> ${currentQuote.text.replace(/\n/g, '\n> ')}\n\n${currentInput.trim()}`;
     }
 
+    let currentThreadId = threadId;
+
     if (!id) {
-      navigate(`/chat/${threadId}`);
+      const newThreadId = await createThread({ title: 'New Chat' });
+      navigate(`/chat/${newThreadId}`);
+      currentThreadId = newThreadId;
       complete(finalMessage, {
-        body: { threadId, messageId, isTitle: true },
+        body: { threadId: newThreadId, messageId, isTitle: true },
       });
     } else {
       complete(finalMessage, { body: { messageId, threadId } });
@@ -137,6 +146,12 @@ function PureChatInput({
     setInput('');
     clearQuote(); // Очищаем цитату после отправки
     adjustHeight(true);
+
+    await sendMessage({
+      threadId: currentThreadId as Id<'threads'>,
+      content: finalMessage,
+      role: 'user',
+    });
   }, [
     input,
     status,
@@ -149,6 +164,9 @@ function PureChatInput({
     complete,
     currentQuote,
     clearQuote,
+    createThread,
+    sendMessage,
+    navigate,
   ]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
