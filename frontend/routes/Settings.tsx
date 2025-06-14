@@ -31,3 +31,5 @@ export default function Settings() {
     </section>
   );
 }
+
+export { ErrorBoundary } from '@/frontend/components/ErrorBoundary';

@@ -35,3 +35,5 @@ export default function Thread() {
 
   return <Chat key={id} threadId={threadId} initialMessages={uiMessages} />;
 }
+
+export { ErrorBoundary } from '@/frontend/components/ErrorBoundary';

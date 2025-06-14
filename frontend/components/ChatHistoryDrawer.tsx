@@ -12,7 +12,7 @@ import { X, Pin, PinOff, Search, MessageSquare, Plus, Edit2, Check } from 'lucid
 import { cn } from '@/lib/utils';
 import { usePinnedThreads } from '@/frontend/hooks/usePinnedThreads';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
-import { useQuery, useMutation } from 'convex/react';
+import { useQuery, useMutation, useConvexAuth } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import type { Doc, Id } from '@/convex/_generated/dataModel';
 
@@ -35,9 +35,10 @@ export default function ChatHistoryDrawer({ children, isOpen, setIsOpen }: ChatH
   const { pinnedThreads, togglePin } = usePinnedThreads();
   const { id } = useParams();
   const navigate = useNavigate();
+  const { isAuthenticated } = useConvexAuth();
   const { data: threads, error: threadsError } = useQuery(
     api.threads.list,
-    undefined,
+    isAuthenticated ? undefined : 'skip',
     { suspense: false }
   );
   const createThread = useMutation(api.threads.create);
@@ -62,6 +63,9 @@ export default function ChatHistoryDrawer({ children, isOpen, setIsOpen }: ChatH
         <p className="text-red-500">Failed to load chat history</p>
       </div>
     );
+  }
+  if (!isAuthenticated) {
+    return null;
   }
   if (threads === undefined) {
     return (

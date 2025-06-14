@@ -122,6 +122,7 @@ function PureChatInput({
 
   const handleSubmit = useCallback(async () => {
     if (!canChat) {
+      navigate('/settings');
       return;
     }
     if (!input.trim() || status === 'streaming' || status === 'submitted') return;

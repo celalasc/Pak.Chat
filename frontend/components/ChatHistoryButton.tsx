@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Button } from './ui/button';
 import { History } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
+import { WithTooltip } from './WithTooltip';
 import ChatHistoryDrawer from './ChatHistoryDrawer';
 import { cn } from '@/lib/utils';
 
@@ -22,22 +22,17 @@ export default function ChatHistoryButton({
 
   return (
     <ChatHistoryDrawer isOpen={isOpen} setIsOpen={setIsOpen}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant={variant}
-            size={size}
-            className={cn("bg-background/80 backdrop-blur-sm border-border/50", className)}
-            aria-label="Open chat history"
-            onClick={() => setIsOpen(true)}
-          >
-            <History className="h-5 w-5" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom">
-          History
-        </TooltipContent>
-      </Tooltip>
+      <WithTooltip label="History">
+        <Button
+          variant={variant}
+          size={size}
+          className={cn("bg-background/80 backdrop-blur-sm border-border/50", className)}
+          aria-label="Open chat history"
+          onClick={() => setIsOpen(true)}
+        >
+          <History className="h-5 w-5" />
+        </Button>
+      </WithTooltip>
     </ChatHistoryDrawer>
   );
-} 
+}

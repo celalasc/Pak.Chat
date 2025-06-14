@@ -34,3 +34,5 @@ export default function Index() {
     </main>
   );
 }
+
+export { ErrorBoundary } from '@/frontend/components/ErrorBoundary';
