@@ -8,6 +8,8 @@ import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+import { isConvexId } from '@/lib/ids';
+import { toast } from 'sonner';
 import type { Id } from '@/convex/_generated/dataModel';
 import { useNavigate } from 'react-router';
 
@@ -53,6 +55,11 @@ export default function MessageControls({
   const handleRegenerate = async () => {
     // stop the current request
     stop();
+
+    if (!isConvexId(threadId)) {
+      toast.error('Thread not yet created');
+      return;
+    }
 
     if (message.role === 'user') {
       await removeAfter({
@@ -120,6 +127,10 @@ export default function MessageControls({
           variant="ghost"
           size="icon"
           onClick={async () => {
+            if (!isConvexId(threadId)) {
+              toast.error('Thread not yet created');
+              return;
+            }
             const newId = await cloneThread({
               threadId: threadId as Id<'threads'>,
               title: 'New Branch',

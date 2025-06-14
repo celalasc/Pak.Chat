@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
+import { isConvexId } from '@/lib/ids';
 
 export default function MessageEditor({
   threadId,
@@ -58,6 +59,10 @@ export default function MessageEditor({
   const editMessage = useMutation(api.messages.edit);
 
   const handleSave = async () => {
+    if (!isConvexId(threadId)) {
+      toast.error('Thread not yet created');
+      return;
+    }
     try {
       await removeAfter({
         threadId: threadId as Id<'threads'>,

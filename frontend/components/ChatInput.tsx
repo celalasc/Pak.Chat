@@ -25,6 +25,7 @@ import { useQuoteStore } from '@/frontend/stores/QuoteStore';
 import { AI_MODELS, AIModel, getModelConfig } from '@/lib/models';
 import { UIMessage } from 'ai';
 import { v4 as uuidv4 } from 'uuid';
+import { isConvexId } from '@/lib/ids';
 import { StopIcon } from './ui/icons';
 import { toast } from 'sonner';
 import { useMessageSummary } from '../hooks/useMessageSummary';
@@ -117,8 +118,8 @@ function PureChatInput({
     }
 
     let currentThreadId: Id<'threads'>;
-    const isConvexId = id && !id.includes('-');
-    if (!id || !isConvexId) {
+    const valid = isConvexId(id);
+    if (!id || !valid) {
       const newThreadId = await createThread({ title: 'New Chat' });
       navigate(`/chat/${newThreadId}`);
       currentThreadId = newThreadId;
@@ -158,6 +159,7 @@ function PureChatInput({
     createThread,
     sendMessage,
     navigate,
+    isConvexId,
   ]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {

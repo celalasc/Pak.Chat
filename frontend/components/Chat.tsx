@@ -18,6 +18,8 @@ import { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'react-router';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+import { isConvexId } from '@/lib/ids';
+import { toast } from 'sonner';
 import { Id } from '@/convex/_generated/dataModel';
 
 interface ChatProps {
@@ -104,6 +106,10 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
           }
         ],
       };
+      if (!isConvexId(threadId)) {
+        toast.error('Thread not yet created');
+        return;
+      }
       await sendMessage({
         threadId: threadId as Id<'threads'>,
         role: 'assistant',

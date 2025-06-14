@@ -1,5 +1,3 @@
-import Chat from '@/frontend/components/Chat';
-import { v4 as uuidv4 } from 'uuid';
 import { UIMessage } from 'ai';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 import KeyPrompt from '@/frontend/components/KeyPrompt';
@@ -20,8 +18,8 @@ export default function Home() {
   return (
     <>
       {!hasKeys && <KeyPrompt />}
-      <div className="fade-in">
-        <Chat threadId={uuidv4()} initialMessages={initialMessages} />
+      <div className="fade-in p-4 text-muted-foreground text-center">
+        Select a chat on the left or press +
       </div>
     </>
   );
