@@ -16,10 +16,13 @@ export const useAuthStore = create<AuthState>((set) => {
   // 1. Действия
   const actions = {
     async login() {
+      set({ loading: true });
       try {
         await signInWithPopup(auth, new GoogleAuthProvider());
       } catch (error) {
-        console.error("Login failed:", error);
+        console.error('Login failed:', error);
+      } finally {
+        set({ loading: false });
       }
     },
     async logout() {

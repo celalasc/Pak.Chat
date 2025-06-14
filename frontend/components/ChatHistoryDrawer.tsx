@@ -35,13 +35,11 @@ export default function ChatHistoryDrawer({ children, isOpen, setIsOpen }: ChatH
   const { pinnedThreads, togglePin } = usePinnedThreads();
   const { id } = useParams();
   const navigate = useNavigate();
-  let threads: Thread[] | undefined;
-  let threadsError: unknown = null;
-  try {
-    threads = useQuery(api.threads.list);
-  } catch (err) {
-    threadsError = err;
-  }
+  const { data: threads, error: threadsError } = useQuery(
+    api.threads.list,
+    undefined,
+    { suspense: false }
+  );
   const createThread = useMutation(api.threads.create);
   const removeThread = useMutation(api.threads.remove).withOptimisticUpdate(
     (store, { threadId }) => {

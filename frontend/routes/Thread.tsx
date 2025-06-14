@@ -10,17 +10,11 @@ export default function Thread() {
   if (!id) throw new Error('Thread ID is required');
 
   const threadId = id as Id<'threads'>;
-  let paginated;
-  let queryError: unknown = null;
-  try {
-    paginated = usePaginatedQuery(
-      api.messages.get,
-      { threadId },
-      { initialNumItems: 50 }
-    );
-  } catch (err) {
-    queryError = err;
-  }
+  const { results, error: queryError } = usePaginatedQuery(
+    api.messages.get,
+    { threadId },
+    { initialNumItems: 50, suspense: false }
+  );
 
   if (queryError) {
     return (
@@ -29,8 +23,6 @@ export default function Thread() {
       </div>
     );
   }
-
-  const { results, status, loadMore } = paginated!;
 
   const uiMessages: UIMessage[] =
     results?.map(msg => ({
