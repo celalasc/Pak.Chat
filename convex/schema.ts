@@ -1,17 +1,44 @@
+// convex/schema.ts
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
-  // Таблица для хранения чатов (тредов)
-  threads: defineTable({
-    title: v.string(),
-    userId: v.string(), // ID пользователя, создавшего тред
-  }).index("by_user", ["userId"]), // Индекс для быстрого поиска чатов по пользователю
+  // Users table synchronized with Firebase
+  users: defineTable({
+    name: v.string(),
+    email: v.optional(v.string()),
+    avatarUrl: v.optional(v.string()),
+    tokenIdentifier: v.string(),
+  }).index("by_token", ["tokenIdentifier"]),
 
-  // Таблица для хранения сообщений
+  // User settings including encrypted API keys
+  userSettings: defineTable({
+    userId: v.id("users"),
+    encryptedApiKeys: v.string(),
+  }).index("by_user", ["userId"]),
+
+  // Chat threads
+  threads: defineTable({
+    userId: v.id("users"),
+    title: v.string(),
+    createdAt: v.number(),
+    parentThreadId: v.optional(v.id("threads")),
+    forkedFromMessageId: v.optional(v.id("messages")),
+  }).index("by_user_and_time", ["userId", "createdAt"]),
+
+  // Messages
   messages: defineTable({
-    threadId: v.id("threads"), // Ссылка на тред
+    threadId: v.id("threads"),
+    authorId: v.id("users"),
     role: v.union(v.literal("user"), v.literal("assistant")),
     content: v.string(),
-  }).index("by_thread", ["threadId"]), // Индекс для быстрого поиска сообщений в треде
-}); 
+    createdAt: v.number(),
+  }).index("by_thread_and_time", ["threadId", "createdAt"]),
+
+  // Message edit history
+  messageVersions: defineTable({
+    messageId: v.id("messages"),
+    content: v.string(),
+    editedAt: v.number(),
+  }).index("by_message", ["messageId"]),
+});

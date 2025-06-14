@@ -3,11 +3,13 @@ import { UseChatHelpers, useCompletion } from '@ai-sdk/react';
 import { useState } from 'react';
 import { UIMessage } from 'ai';
 import { Dispatch, SetStateAction } from 'react';
-import { v4 as uuidv4 } from 'uuid';
 import { Textarea } from './ui/textarea';
 import { Button } from './ui/button';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 import { toast } from 'sonner';
+import { useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import type { Id } from '@/convex/_generated/dataModel';
 
 export default function MessageEditor({
   threadId,
@@ -52,13 +54,23 @@ export default function MessageEditor({
     },
   });
 
+  const removeAfter = useMutation(api.messages.removeAfter);
+  const editMessage = useMutation(api.messages.edit);
+
   const handleSave = async () => {
     try {
-      // TODO: delete trailing messages via Convex
+      await removeAfter({
+        threadId: threadId as Id<'threads'>,
+        afterMessageId: message.id as Id<'messages'>,
+      });
+
+      await editMessage({
+        messageId: message.id as Id<'messages'>,
+        content: draftContent,
+      });
 
       const updatedMessage = {
         ...message,
-        id: uuidv4(),
         content: draftContent,
         parts: [
           {
@@ -68,8 +80,6 @@ export default function MessageEditor({
         ],
         createdAt: new Date(),
       };
-
-      // TODO: save updated message via Convex
 
       setMessages((messages) => {
         const index = messages.findIndex((m) => m.id === message.id);

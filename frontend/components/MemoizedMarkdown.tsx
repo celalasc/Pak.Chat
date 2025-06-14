@@ -3,6 +3,7 @@ import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+import rehypeSanitize from 'rehype-sanitize';
 import { marked } from 'marked';
 import ShikiHighlighter from 'react-shiki';
 import type { ComponentProps } from 'react';
@@ -121,7 +122,7 @@ function PureMarkdownRendererBlock({ content }: { content: string }) {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm, [remarkMath]]}
-      rehypePlugins={[rehypeKatex]}
+      rehypePlugins={[rehypeKatex, rehypeSanitize]}
       components={components}
     >
       {content}

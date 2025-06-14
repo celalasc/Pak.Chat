@@ -37,7 +37,20 @@ export default function ChatHistoryDrawer({ children, isOpen, setIsOpen }: ChatH
   const navigate = useNavigate();
   const threads = useQuery(api.threads.list);
   const createThread = useMutation(api.threads.create);
-  const removeThread = useMutation(api.threads.remove);
+  const removeThread = useMutation(api.threads.remove).withOptimisticUpdate(
+    (store, { threadId }) => {
+      store.setQueryData(api.threads.list, undefined, old =>
+        old ? old.filter(t => t._id !== threadId) : old
+      );
+    }
+  );
+  const renameThread = useMutation(api.threads.rename).withOptimisticUpdate(
+    (store, { threadId, title }) => {
+      store.setQueryData(api.threads.list, undefined, old =>
+        old ? old.map(t => (t._id === threadId ? { ...t, title } : t)) : old
+      );
+    }
+  );
 
   if (threads === undefined) {
     return (
@@ -87,10 +100,10 @@ export default function ChatHistoryDrawer({ children, isOpen, setIsOpen }: ChatH
   }, []);
 
   const handleSaveEdit = useCallback(async (threadId: Id<'threads'>) => {
-    // TODO: implement rename via Convex
+    await renameThread({ threadId, title: editingTitle });
     setEditingThreadId(null);
     setEditingTitle('');
-  }, [editingTitle]);
+  }, [editingTitle, renameThread]);
 
   const handleCancelEdit = useCallback(() => {
     setEditingThreadId(null);

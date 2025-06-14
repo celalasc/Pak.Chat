@@ -35,7 +35,16 @@ export const useAuthStore = create<AuthState>((set) => {
 
   // 2. Слушатель состояния Firebase
   if (typeof window !== 'undefined') {
-    onAuthStateChanged(auth, (user) => set({ user, loading: false }));
+    onAuthStateChanged(auth, async (user) => {
+      set({ user, loading: false });
+      if (user) {
+        try {
+          await fetch('/syncUser', { method: 'POST' });
+        } catch (error) {
+          console.error('Failed to sync user', error);
+        }
+      }
+    });
   }
 
   // 3. Начальное состояние + действия

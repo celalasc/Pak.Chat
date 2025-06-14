@@ -1,72 +1,97 @@
-import { query, mutation } from "./_generated/server";
+// convex/threads.ts
+import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { Id } from "./_generated/dataModel";
 
-/**
- * Return all threads owned by the authenticated user.
- */
+/** List threads for the authenticated user ordered by creation time */
 export const list = query({
   args: {},
   async handler(ctx) {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("User is not authenticated.");
-    }
-
-    // Look up threads by indexed userId field.
+    if (!identity) throw new Error("Unauthenticated");
     return ctx.db
       .query("threads")
-      .withIndex("by_user", q => q.eq("userId", identity.subject))
+      .withIndex("by_user_and_time", (q) => q.eq("userId", identity.subject))
       .order("desc")
       .collect();
   },
 });
 
-/**
- * Create a new chat thread for the authenticated user.
- */
+/** Create a new thread */
 export const create = mutation({
   args: { title: v.string() },
   async handler(ctx, args) {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("User is not authenticated.");
-    }
-
-    // identity.subject is the provider user ID (Firebase UID).
+    if (!identity) throw new Error("Unauthenticated");
     return ctx.db.insert("threads", {
-      userId: identity.subject,
+      userId: identity.subject as Id<"users">,
       title: args.title,
+      createdAt: Date.now(),
     });
   },
 });
 
-/**
- * Delete a thread along with all of its messages. Only the owner can do this.
- */
+/** Rename a thread */
+export const rename = mutation({
+  args: { threadId: v.id("threads"), title: v.string() },
+  async handler(ctx, args) {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthenticated");
+    const thread = await ctx.db.get(args.threadId);
+    if (!thread || thread.userId !== identity.subject)
+      throw new Error("Thread not found or permission denied");
+    await ctx.db.patch(args.threadId, { title: args.title });
+  },
+});
+
+/** Remove a thread and all its messages */
 export const remove = mutation({
   args: { threadId: v.id("threads") },
   async handler(ctx, args) {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("User is not authenticated.");
-    }
-
+    if (!identity) throw new Error("Unauthenticated");
     const thread = await ctx.db.get(args.threadId);
-
-    // Ensure the thread exists and belongs to the current user.
-    if (!thread || thread.userId !== identity.subject) {
-      throw new Error("Thread not found or user does not have permission.");
-    }
-
-    // Fetch and delete all messages associated with this thread.
+    if (!thread || thread.userId !== identity.subject)
+      throw new Error("Thread not found or permission denied");
     const messages = await ctx.db
       .query("messages")
-      .withIndex("by_thread", q => q.eq("threadId", args.threadId))
+      .withIndex("by_thread_and_time", (q) => q.eq("threadId", args.threadId))
       .collect();
-
-    await Promise.all(messages.map(msg => ctx.db.delete(msg._id)));
-
-    // Finally, remove the thread itself.
+    await Promise.all(messages.map((m) => ctx.db.delete(m._id)));
     await ctx.db.delete(args.threadId);
+  },
+});
+
+/** Clone a thread by copying its messages */
+export const clone = mutation({
+  args: { threadId: v.id("threads"), title: v.string() },
+  async handler(ctx, args) {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthenticated");
+    const thread = await ctx.db.get(args.threadId);
+    if (!thread || thread.userId !== identity.subject)
+      throw new Error("Thread not found or permission denied");
+    const newThreadId = await ctx.db.insert("threads", {
+      userId: identity.subject as Id<"users">,
+      title: args.title,
+      createdAt: Date.now(),
+      parentThreadId: args.threadId,
+    });
+    const messages = await ctx.db
+      .query("messages")
+      .withIndex("by_thread_and_time", (q) => q.eq("threadId", args.threadId))
+      .collect();
+    await Promise.all(
+      messages.map((m) =>
+        ctx.db.insert("messages", {
+          threadId: newThreadId,
+          authorId: m.authorId,
+          role: m.role,
+          content: m.content,
+          createdAt: m.createdAt,
+        })
+      )
+    );
+    return newThreadId;
   },
 });
