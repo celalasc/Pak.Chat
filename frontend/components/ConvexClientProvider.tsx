@@ -35,17 +35,17 @@ export default function ConvexClientProvider({ children }: { children: ReactNode
       isLoading: idToken === undefined || loading,
       isAuthenticated: !!idToken,
       fetchAccessToken: async ({ forceRefreshToken }) => {
-        if (!user) return null;
+        if (!user) return "";
         
         try {
           const newToken = await user.getIdToken(forceRefreshToken);
           if (forceRefreshToken) {
             setIdToken(newToken);
           }
-          return newToken || null;
+          return newToken || "";
         } catch (error) {
           console.error("Failed to get access token:", error);
-          return null;
+          return "";
         }
       }
     }))}>

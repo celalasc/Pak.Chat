@@ -2,16 +2,16 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
+import { currentUserId } from "./utils";
 
 /** Get encrypted API keys for the current user */
 export const get = query({
   args: {},
   async handler(ctx) {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
+    const uid = await currentUserId(ctx);
     return ctx.db
       .query("userSettings")
-      .withIndex("by_user", (q) => q.eq("userId", identity.subject))
+      .withIndex("by_user", (q) => q.eq("userId", uid))
       .unique();
   },
 });
@@ -20,11 +20,10 @@ export const get = query({
 export const saveApiKeys = mutation({
   args: { encryptedApiKeys: v.string() },
   async handler(ctx, args) {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
+    const uid = await currentUserId(ctx);
     const existing = await ctx.db
       .query("userSettings")
-      .withIndex("by_user", (q) => q.eq("userId", identity.subject))
+      .withIndex("by_user", (q) => q.eq("userId", uid))
       .unique();
     if (existing) {
       await ctx.db.patch(existing._id, {
@@ -32,7 +31,7 @@ export const saveApiKeys = mutation({
       });
     } else {
       await ctx.db.insert("userSettings", {
-        userId: identity.subject as Id<"users">,
+        userId: uid,
         encryptedApiKeys: args.encryptedApiKeys,
       });
     }

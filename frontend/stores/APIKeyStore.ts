@@ -11,11 +11,13 @@ export type APIKeys = Record<Provider, string>;
 
 type APIKeyState = {
   keys: APIKeys;
+  keysLoading: boolean;
   setLocal: (keys: Partial<APIKeys>) => void;
 };
 
 const store = create<APIKeyState>(() => ({
   keys: { google: '', openrouter: '', openai: '' },
+  keysLoading: true,
   setLocal: () => {},
 }));
 
@@ -23,14 +25,16 @@ export function useAPIKeyStore() {
   const { user } = useAuthStore();
   const settings = useQuery(api.userSettings.get);
   const saveApiKeys = useMutation(api.userSettings.saveApiKeys);
-  const { keys } = store();
+  const { keys, keysLoading } = store();
   const setLocal = (updates: Partial<APIKeys>) =>
     store.setState(state => ({ keys: { ...state.keys, ...updates } }));
 
   useEffect(() => {
     if (settings && user) {
       const decrypted = decryptData<APIKeys>(settings.encryptedApiKeys, user.uid);
-      store.setState({ keys: decrypted });
+      store.setState({ keys: decrypted, keysLoading: false });
+    } else if (settings === null) {
+      store.setState({ keysLoading: false });
     }
   }, [settings, user]);
 
@@ -39,12 +43,19 @@ export function useAPIKeyStore() {
     store.setState({ keys: newKeys });
     if (user) {
       const encrypted = encryptData(newKeys, user.uid);
-      await saveApiKeys({ encryptedApiKeys: encrypted });
+      try {
+        await saveApiKeys({ encryptedApiKeys: encrypted });
+      } catch (error) {
+        console.error('Failed to save API keys', error);
+        const { toast } = await import('sonner');
+        toast.error('Failed to save keys');
+      }
     }
   };
 
-  const hasRequiredKeys = () => !!store.getState().keys.google;
+  const hasRequiredKeys = () =>
+    !store.getState().keysLoading && !!store.getState().keys.google;
   const getKey = (provider: Provider) => store.getState().keys[provider] || null;
 
-  return { keys, setKeys, hasRequiredKeys, getKey, setLocal };
+  return { keys, setKeys, hasRequiredKeys, getKey, setLocal, keysLoading };
 }

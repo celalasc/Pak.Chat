@@ -2,6 +2,7 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
+import { currentUserId } from "./utils";
 
 /** Get messages for a thread */
 export const get = query({
@@ -11,10 +12,9 @@ export const get = query({
     limit: v.optional(v.number()),
   },
   async handler(ctx, args) {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
+    const uid = await currentUserId(ctx);
     const thread = await ctx.db.get(args.threadId);
-    if (!thread || thread.userId !== identity.subject)
+    if (!thread || thread.userId !== uid)
       throw new Error("Thread not found or permission denied");
     const q = ctx.db
       .query("messages")
@@ -35,14 +35,13 @@ export const send = mutation({
     content: v.string(),
   },
   async handler(ctx, args) {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
+    const uid = await currentUserId(ctx);
     const thread = await ctx.db.get(args.threadId);
-    if (!thread || thread.userId !== identity.subject)
+    if (!thread || thread.userId !== uid)
       throw new Error("Thread not found or permission denied");
     await ctx.db.insert("messages", {
       threadId: args.threadId,
-      authorId: identity.subject as Id<"users">,
+      authorId: uid,
       role: args.role,
       content: args.content,
       createdAt: Date.now(),
@@ -54,12 +53,11 @@ export const send = mutation({
 export const edit = mutation({
   args: { messageId: v.id("messages"), content: v.string() },
   async handler(ctx, args) {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
+    const uid = await currentUserId(ctx);
     const message = await ctx.db.get(args.messageId);
     if (!message) throw new Error("Message not found");
     const thread = await ctx.db.get(message.threadId);
-    if (!thread || thread.userId !== identity.subject)
+    if (!thread || thread.userId !== uid)
       throw new Error("Permission denied");
     await ctx.db.insert("messageVersions", {
       messageId: args.messageId,
@@ -74,12 +72,11 @@ export const edit = mutation({
 export const remove = mutation({
   args: { messageId: v.id("messages") },
   async handler(ctx, args) {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
+    const uid = await currentUserId(ctx);
     const msg = await ctx.db.get(args.messageId);
     if (!msg) return;
     const thread = await ctx.db.get(msg.threadId);
-    if (!thread || thread.userId !== identity.subject)
+    if (!thread || thread.userId !== uid)
       throw new Error("Permission denied");
     await ctx.db.delete(args.messageId);
   },
@@ -89,10 +86,9 @@ export const remove = mutation({
 export const removeAfter = mutation({
   args: { threadId: v.id("threads"), afterMessageId: v.id("messages") },
   async handler(ctx, args) {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
+    const uid = await currentUserId(ctx);
     const thread = await ctx.db.get(args.threadId);
-    if (!thread || thread.userId !== identity.subject)
+    if (!thread || thread.userId !== uid)
       throw new Error("Permission denied");
     const after = await ctx.db.get(args.afterMessageId);
     if (!after || after.threadId !== args.threadId)

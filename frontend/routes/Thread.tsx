@@ -10,11 +10,27 @@ export default function Thread() {
   if (!id) throw new Error('Thread ID is required');
 
   const threadId = id as Id<'threads'>;
-  const { results, status, loadMore } = usePaginatedQuery(
-    api.messages.get,
-    { threadId },
-    { initialNumItems: 50 }
-  );
+  let paginated;
+  let queryError: unknown = null;
+  try {
+    paginated = usePaginatedQuery(
+      api.messages.get,
+      { threadId },
+      { initialNumItems: 50 }
+    );
+  } catch (err) {
+    queryError = err;
+  }
+
+  if (queryError) {
+    return (
+      <div className="flex justify-center items-center h-full">
+        <p className="text-red-500">Failed to load thread</p>
+      </div>
+    );
+  }
+
+  const { results, status, loadMore } = paginated!;
 
   const uiMessages: UIMessage[] =
     results?.map(msg => ({

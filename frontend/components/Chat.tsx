@@ -33,7 +33,8 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
   const isHeaderVisible = useScrollHide({ threshold: 15 });
   const { id } = useParams();
   const sendMessage = useMutation(api.messages.send);
-  const hasKeys = useAPIKeyStore(state => state.hasRequiredKeys());
+  const { hasRequiredKeys, keysLoading } = useAPIKeyStore();
+  const hasKeys = hasRequiredKeys();
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
   useQuoteShortcuts();
@@ -152,7 +153,9 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
         "fixed right-4 top-4 z-20 flex gap-2 p-1 bg-background/60 backdrop-blur-md rounded-lg border border-border/20 transition-transform duration-300 ease-in-out",
         isMobile && (!isHeaderVisible || isKeyboardVisible) && "translate-x-full opacity-0"
       )}>
-        {hasKeys && <NewChatButton className="backdrop-blur-sm" />}
+        {!keysLoading && hasKeys && (
+          <NewChatButton className="backdrop-blur-sm" />
+        )}
         <ChatHistoryButton className="backdrop-blur-sm" />
         <SettingsButton className="backdrop-blur-sm" />
       </div>
