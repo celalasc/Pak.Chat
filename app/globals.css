@@ -5,7 +5,8 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Font faces */
+/* Font faces - temporarily disabled due to corrupted font files */
+/*
 @font-face {
   font-family: 'Proxima Vara';
   src: url('/fonts/ProximaVara-Regular.woff2') format('woff2'),
@@ -59,6 +60,7 @@
   font-style: normal;
   font-display: swap;
 }
+*/
 
 :root {
   --background: oklch(1 0 0);

@@ -37,13 +37,6 @@ export const useAuthStore = create<AuthState>((set) => {
   if (typeof window !== 'undefined') {
     onAuthStateChanged(auth, async (user) => {
       set({ user, loading: false });
-      if (user) {
-        try {
-          await fetch('/syncUser', { method: 'POST' });
-        } catch (error) {
-          console.error('Failed to sync user', error);
-        }
-      }
     });
   }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown, Check, ArrowUpIcon } from 'lucide-react';
-import { memo, useCallback, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Textarea } from '@/frontend/components/ui/textarea';
 import ScrollToBottomButton from './ScrollToBottomButton';
 import { cn } from '@/lib/utils';
@@ -69,11 +69,20 @@ function PureChatInput({
   stop,
   messageCount,
 }: ChatInputProps) {
-  const canChat = useAPIKeyStore((state) => state.hasRequiredKeys());
+  const { hasRequiredKeys, keys, setKeys } = useAPIKeyStore();
+  const canChat = hasRequiredKeys();
   const { currentQuote, clearQuote } = useQuoteStore();
-  const { keys, setKeys } = useAPIKeyStore();
   const [localKeys, setLocalKeys] = useState(keys);
-  const saveKeys = () => { setKeys(localKeys); toast.success('API keys saved'); };
+  
+  // Синхронизируем localKeys с основным состоянием
+  useEffect(() => {
+    setLocalKeys(keys);
+  }, [keys]);
+  
+  const saveKeys = async () => { 
+    await setKeys(localKeys); 
+    toast.success('API keys saved'); 
+  };
 
   if (error) {
     return (
@@ -271,8 +280,7 @@ const ChatInput = memo(PureChatInput, (prevProps, nextProps) => {
 });
 
 const PureChatModelDropdown = () => {
-  const getKey = useAPIKeyStore((state) => state.getKey);
-  const keys = useAPIKeyStore((state) => state.keys);
+  const { getKey } = useAPIKeyStore();
   const { selectedModel, setModel } = useModelStore();
 
   const isModelEnabled = useCallback(
@@ -281,7 +289,7 @@ const PureChatModelDropdown = () => {
       const apiKey = getKey(modelConfig.provider);
       return !!apiKey;
     },
-    [getKey, keys]
+    [getKey]
   );
 
   return (

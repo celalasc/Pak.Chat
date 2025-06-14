@@ -6,6 +6,7 @@ import { Toaster } from '@/frontend/components/ui/sonner';
 import Providers from '@/frontend/components/Providers';
 import AuthListener from '@/frontend/components/AuthListener';
 import ConvexClientProvider from '@/frontend/components/ConvexClientProvider';
+import UserSync from '@/frontend/components/UserSync';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -36,6 +37,7 @@ export default function RootLayout({
         <Providers>
           <AuthListener />
           <ConvexClientProvider>
+            <UserSync />
             {children}
           </ConvexClientProvider>
           <Toaster richColors position="top-right" />

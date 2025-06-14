@@ -11,7 +11,7 @@ export const list = query({
     if (!identity) throw new Error("Unauthenticated");
     return ctx.db
       .query("threads")
-      .withIndex("by_user_and_time", (q) => q.eq("userId", identity.subject))
+      .withIndex("by_user_and_time", (q) => q.eq("userId", identity.subject as Id<"users">))
       .order("desc")
       .collect();
   },
@@ -95,3 +95,5 @@ export const clone = mutation({
     return newThreadId;
   },
 });
+
+

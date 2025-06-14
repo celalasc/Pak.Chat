@@ -7,17 +7,20 @@ import { auth } from "@/firebase";
 const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export default function ConvexClientProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuthStore();
-  const [idToken, setIdToken] = useState<string | null>(null);
+  const { user, loading } = useAuthStore();
+  const [idToken, setIdToken] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
+    if (loading) return;
+    
     if (!user) {
       setIdToken(null);
       return;
     }
+    
     const getIdToken = async () => {
       try {
-        const token = await auth.currentUser?.getIdToken();
+        const token = await user.getIdToken();
         setIdToken(token || null);
       } catch (error) {
         console.error("Failed to get id token:", error);
@@ -25,18 +28,25 @@ export default function ConvexClientProvider({ children }: { children: ReactNode
       }
     };
     getIdToken();
-  }, [user]);
+  }, [user, loading]);
 
   return (
     <ConvexProviderWithAuth client={convex} useAuth={(() => ({
-      isLoading: idToken === undefined,
+      isLoading: idToken === undefined || loading,
       isAuthenticated: !!idToken,
       fetchAccessToken: async ({ forceRefreshToken }) => {
-        if (forceRefreshToken) {
-          const newToken = await auth.currentUser?.getIdToken(true);
+        if (!user) return null;
+        
+        try {
+          const newToken = await user.getIdToken(forceRefreshToken);
+          if (forceRefreshToken) {
+            setIdToken(newToken);
+          }
           return newToken || null;
+        } catch (error) {
+          console.error("Failed to get access token:", error);
+          return null;
         }
-        return idToken;
       }
     }))}>
       {children}

@@ -1,5 +1,5 @@
 // convex/users.ts
-import { internalMutation, internalQuery } from "./_generated/server";
+import { internalMutation, internalQuery, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
 export const findByToken = internalQuery({
@@ -35,5 +35,39 @@ export const update = internalMutation({
       name: args.name,
       avatarUrl: args.avatarUrl,
     });
+  },
+});
+
+/** Sync user data from Firebase Auth */
+export const sync = mutation({
+  args: {},
+  async handler(ctx) {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthenticated");
+
+    const existingUser = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
+      .unique();
+
+    if (existingUser) {
+      if (
+        existingUser.name !== identity.name ||
+        existingUser.avatarUrl !== identity.pictureUrl
+      ) {
+        await ctx.db.patch(existingUser._id, {
+          name: identity.name!,
+          avatarUrl: identity.pictureUrl,
+        });
+      }
+      return existingUser._id;
+    } else {
+      return await ctx.db.insert("users", {
+        name: identity.name!,
+        email: identity.email,
+        avatarUrl: identity.pictureUrl,
+        tokenIdentifier: identity.subject,
+      });
+    }
   },
 });
