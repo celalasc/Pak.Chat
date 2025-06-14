@@ -35,7 +35,13 @@ export default function ChatHistoryDrawer({ children, isOpen, setIsOpen }: ChatH
   const { pinnedThreads, togglePin } = usePinnedThreads();
   const { id } = useParams();
   const navigate = useNavigate();
-  const threads = useQuery(api.threads.list);
+  let threads: Thread[] | undefined;
+  let threadsError: unknown = null;
+  try {
+    threads = useQuery(api.threads.list);
+  } catch (err) {
+    threadsError = err;
+  }
   const createThread = useMutation(api.threads.create);
   const removeThread = useMutation(api.threads.remove).withOptimisticUpdate(
     (store, { threadId }) => {
@@ -52,6 +58,13 @@ export default function ChatHistoryDrawer({ children, isOpen, setIsOpen }: ChatH
     }
   );
 
+  if (threadsError) {
+    return (
+      <div className="flex justify-center items-center h-full">
+        <p className="text-red-500">Failed to load chat history</p>
+      </div>
+    );
+  }
   if (threads === undefined) {
     return (
       <div className="flex justify-center items-center h-full">

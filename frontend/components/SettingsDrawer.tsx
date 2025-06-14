@@ -405,7 +405,7 @@ const ProfileTab = () => {
 };
 
 const APIKeysTab = () => {
-  const { keys, setKeys } = useAPIKeyStore();
+  const { keys, setKeys, keysLoading } = useAPIKeyStore();
 
   const {
     register,
@@ -418,8 +418,10 @@ const APIKeysTab = () => {
   });
 
   useEffect(() => {
-    reset(keys);
-  }, [keys, reset]);
+    if (!keysLoading) {
+      reset(keys);
+    }
+  }, [keys, reset, keysLoading]);
 
   const onSubmit = useCallback(
     (values: FormValues) => {
@@ -474,7 +476,7 @@ const APIKeysTab = () => {
               error={errors.openai}
             />
 
-            <Button type="submit" className="w-full" disabled={!isDirty} size="sm">
+            <Button type="submit" className="w-full" disabled={!isDirty || keysLoading} size="sm">
               Save API Keys
             </Button>
           </form>
