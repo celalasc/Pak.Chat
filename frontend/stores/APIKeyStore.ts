@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { useEffect } from 'react';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation, useQuery, useConvexAuth } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { encryptData, decryptData } from '@/frontend/lib/crypto';
 import { useAuthStore } from './AuthStore';
@@ -22,12 +22,25 @@ const store = create<APIKeyState>(() => ({
 }));
 
 export function useAPIKeyStore() {
+  const { isAuthenticated } = useConvexAuth();
   const { user } = useAuthStore();
-  const settings = useQuery(api.userSettings.get);
+
+  // Fetch the Convex user to ensure sync is complete
+  const convexUser = useQuery(
+    api.users.getCurrent,
+    isAuthenticated ? {} : 'skip'
+  );
+
+  // Only query settings once the user exists in Convex
+  const settings = useQuery(
+    api.userSettings.get,
+    convexUser ? {} : 'skip'
+  );
   const saveApiKeys = useMutation(api.userSettings.saveApiKeys);
-  const { keys, keysLoading } = store();
+  const { keys } = store();
+  const keysLoading = convexUser === undefined;
   const setLocal = (updates: Partial<APIKeys>) =>
-    store.setState(state => ({ keys: { ...state.keys, ...updates } }));
+    store.setState((state) => ({ keys: { ...state.keys, ...updates } }));
 
   useEffect(() => {
     if (settings && user) {

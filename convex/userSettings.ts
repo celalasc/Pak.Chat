@@ -9,6 +9,10 @@ export const get = query({
   args: {},
   async handler(ctx) {
     const uid = await currentUserId(ctx);
+    if (uid === null) {
+      // User record not yet created
+      return null;
+    }
     return ctx.db
       .query("userSettings")
       .withIndex("by_user", (q) => q.eq("userId", uid))
@@ -21,6 +25,7 @@ export const saveApiKeys = mutation({
   args: { encryptedApiKeys: v.string() },
   async handler(ctx, args) {
     const uid = await currentUserId(ctx);
+    if (!uid) throw new Error("Unauthenticated");
     const existing = await ctx.db
       .query("userSettings")
       .withIndex("by_user", (q) => q.eq("userId", uid))

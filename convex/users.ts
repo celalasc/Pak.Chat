@@ -1,5 +1,5 @@
 // convex/users.ts
-import { internalMutation, internalQuery, mutation } from "./_generated/server";
+import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
 export const findByToken = internalQuery({
@@ -35,6 +35,21 @@ export const update = internalMutation({
       name: args.name,
       avatarUrl: args.avatarUrl,
     });
+  },
+});
+
+/** Fetch the currently authenticated user if present. */
+export const getCurrent = query({
+  args: {},
+  async handler(ctx) {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null;
+    }
+    return await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
+      .unique();
   },
 });
 

@@ -9,6 +9,10 @@ export const list = query({
   args: {},
   async handler(ctx) {
     const uid = await currentUserId(ctx);
+    if (uid === null) {
+      // No user record yet means no threads to return
+      return [];
+    }
     return ctx.db
       .query("threads")
       .withIndex("by_user_and_time", (q) => q.eq("userId", uid))
@@ -22,6 +26,7 @@ export const create = mutation({
   args: { title: v.string() },
   async handler(ctx, args) {
     const uid = await currentUserId(ctx);
+    if (!uid) throw new Error("Unauthenticated");
     return ctx.db.insert("threads", {
       userId: uid,
       title: args.title,
@@ -35,6 +40,7 @@ export const rename = mutation({
   args: { threadId: v.id("threads"), title: v.string() },
   async handler(ctx, args) {
     const uid = await currentUserId(ctx);
+    if (!uid) throw new Error("Unauthenticated");
     const thread = await ctx.db.get(args.threadId);
     if (!thread || thread.userId !== uid)
       throw new Error("Thread not found or permission denied");
@@ -47,6 +53,7 @@ export const remove = mutation({
   args: { threadId: v.id("threads") },
   async handler(ctx, args) {
     const uid = await currentUserId(ctx);
+    if (!uid) throw new Error("Unauthenticated");
     const thread = await ctx.db.get(args.threadId);
     if (!thread || thread.userId !== uid)
       throw new Error("Thread not found or permission denied");
@@ -64,6 +71,7 @@ export const clone = mutation({
   args: { threadId: v.id("threads"), title: v.string() },
   async handler(ctx, args) {
     const uid = await currentUserId(ctx);
+    if (!uid) throw new Error("Unauthenticated");
     const thread = await ctx.db.get(args.threadId);
     if (!thread || thread.userId !== uid)
       throw new Error("Thread not found or permission denied");
