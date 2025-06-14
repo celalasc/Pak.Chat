@@ -394,7 +394,13 @@ const ProfileTab = () => {
               </Button>
             </>
           ) : (
-            <Button size="sm" variant="outline" className="w-full" onClick={handleLogin}>
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full"
+              onClick={handleLogin}
+              disabled={loading}
+            >
               Sign In with Google
             </Button>
           )}

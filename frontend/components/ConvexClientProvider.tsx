@@ -66,8 +66,10 @@ export default function ConvexClientProvider({ children }: { children: ReactNode
     [idToken, loading, getFreshToken]
   );
 
+  const useAuth = useCallback(() => authState, [authState]);
+
   return (
-    <ConvexProviderWithAuth client={convex} useAuth={() => authState}>
+    <ConvexProviderWithAuth client={convex} useAuth={useAuth}>
       {children}
     </ConvexProviderWithAuth>
   );

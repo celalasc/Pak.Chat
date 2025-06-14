@@ -30,6 +30,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Allow Firebase auth popup to close when COOP is set */}
+        <meta
+          httpEquiv="Cross-Origin-Opener-Policy"
+          content="same-origin-allow-popups"
+        />
+      </head>
       <body
         suppressHydrationWarning={true}
         className={`${geistSans.variable} ${geistMono.variable} antialiased font-sans`}
