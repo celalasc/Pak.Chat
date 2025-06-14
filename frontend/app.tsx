@@ -2,7 +2,6 @@ import { BrowserRouter, Route, Routes } from 'react-router';
 import ChatLayout from './ChatLayout';
 import Home from './routes/Home';
 import Index from './routes/Index';
-import Thread from './routes/Thread';
 import Settings from './routes/Settings';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -20,7 +19,6 @@ export default function App() {
           }
         >
           <Route index element={<Home />} />
-          <Route path=":id" element={<Thread />} />
         </Route>
         <Route 
             path="settings" 
