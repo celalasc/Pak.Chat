@@ -8,7 +8,7 @@ def create_project_snapshot(output_filename="project_snapshot.txt", prd_content=
         "open-next.config.ts", "postcss.config.mjs", "tsconfig.json", "wrangler.jsonc",
         "LICENSE", "next-env.d.ts"
     ]
-    exclude_extensions = [".ico", ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".svg", ".webp", ".pdf", ".zip", ".tar", ".gz", ".mp3", ".mp4", ".avi", ".mov", ".woff", ".woff2", ".ttf", ".otf"]
+    exclude_extensions = [".ico", ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".svg", ".webp", ".pdf", ".zip", ".tar", ".gz", ".mp3", ".mp4", ".avi", ".mov", ".woff", ".woff2", ".ttf", ".otf", ".avif"]
 
     with open(output_filename, "w", encoding="utf-8") as outfile:
         if prd_content:

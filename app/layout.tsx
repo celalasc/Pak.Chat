@@ -4,6 +4,8 @@ import './globals.css';
 import 'katex/dist/katex.min.css';
 import { Toaster } from '@/frontend/components/ui/sonner';
 import Providers from '@/frontend/components/Providers';
+import AuthListener from '@/frontend/components/AuthListener';
+import ConvexClientProvider from '@/frontend/components/ConvexClientProvider';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -32,7 +34,10 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased font-sans`}
       >
         <Providers>
-          {children}
+          <AuthListener />
+          <ConvexClientProvider>
+            {children}
+          </ConvexClientProvider>
           <Toaster richColors position="top-right" />
         </Providers>
       </body>

@@ -380,3 +380,12 @@
 .shiki {
   @apply !rounded-none;
 }
+
+/* Добавить в конец файла app/globals.css */
+
+.blur-sm {
+    filter: blur(4px);
+}
+.blur-md {
+    filter: blur(8px);
+}

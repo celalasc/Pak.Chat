@@ -22,6 +22,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useSettingsStore, GENERAL_FONTS, CODE_FONTS, THEMES, GeneralFont, CodeFont, Theme } from '@/frontend/stores/SettingsStore';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
+import { useAuthStore } from '@/frontend/stores/AuthStore';
 import { useTheme } from 'next-themes';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -333,6 +334,17 @@ const CustomizationTab = () => {
 };
 
 const ProfileTab = () => {
+  const { user, login, logout, blurPersonalData, toggleBlur, loading } = useAuthStore();
+
+  const handleLogout = async () => {
+    await logout();
+    toast.success("You have been signed out.");
+  };
+
+  const handleLogin = async () => {
+    await login();
+  };
+
   return (
     <div className="space-y-6 pb-4">
       <Card>
@@ -342,42 +354,50 @@ const ProfileTab = () => {
             Profile
           </CardTitle>
           <CardDescription className="text-sm">
-            Manage your profile and account settings
+            Manage your profile and account settings.
           </CardDescription>
         </CardHeader>
+
         <CardContent className="space-y-4">
-          <div className="flex items-center space-x-4">
-            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center">
-              <User className="h-8 w-8 text-muted-foreground" />
-            </div>
-            <div className="space-y-1">
-              <p className="text-sm font-medium">Guest User</p>
-              <p className="text-xs text-muted-foreground">Not signed in</p>
-            </div>
-          </div>
-          
-          <div className="space-y-3">
-            <div>
-              <Label htmlFor="blur-data" className="text-sm font-medium">
-                Privacy Settings
-              </Label>
-              <p className="text-xs text-muted-foreground mt-1">
-                Control how your personal data is displayed
-              </p>
-            </div>
-            
-            <Button variant="outline" size="sm" className="w-full">
-              Sign in with Google
+          {loading ? (
+             <p className="text-sm text-muted-foreground text-center">Loading profile...</p>
+          ) : user ? (
+            <>
+              <div className="flex items-center gap-4">
+                {user.photoURL && (
+                   <img
+                      src={user.photoURL}
+                      alt="User Avatar"
+                      width={64}
+                      height={64}
+                      className={cn(
+                        "size-16 rounded-full object-cover transition-all",
+                        blurPersonalData && "blur-md"
+                      )}
+                   />
+                )}
+                <div className="flex-1 space-y-1">
+                  <p className={cn("text-sm font-medium transition-all", blurPersonalData && "blur-sm")}>
+                    {user.displayName || 'No Name'}
+                  </p>
+                  <p className={cn("text-xs text-muted-foreground transition-all", blurPersonalData && "blur-sm")}>
+                    {user.email || 'No Email'}
+                  </p>
+                </div>
+              </div>
+
+              <Button size="sm" variant="outline" className="w-full" onClick={toggleBlur}>
+                {blurPersonalData ? 'Show Personal Data' : 'Hide Personal Data'}
+              </Button>
+              <Button size="sm" variant="destructive" className="w-full" onClick={handleLogout}>
+                Sign Out
+              </Button>
+            </>
+          ) : (
+            <Button size="sm" variant="outline" className="w-full" onClick={handleLogin}>
+              Sign In with Google
             </Button>
-            
-            <Button variant="outline" size="sm" className="w-full" disabled>
-              Blur Personal Data
-            </Button>
-            
-            <Button variant="outline" size="sm" className="w-full text-red-600 hover:text-red-700" disabled>
-              Sign Out
-            </Button>
-          </div>
+          )}
         </CardContent>
       </Card>
     </div>
