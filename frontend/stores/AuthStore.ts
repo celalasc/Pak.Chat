@@ -1,6 +1,7 @@
 import { User, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 import { create } from 'zustand';
 import { auth } from '@/firebase';
+import { useSettingsStore } from './SettingsStore';
 
 interface AuthState {
   user: User | null;
@@ -33,7 +34,11 @@ export const useAuthStore = create<AuthState>((set) => {
       }
     },
     toggleBlur: () => {
-      set((s) => ({ blurPersonalData: !s.blurPersonalData }));
+      set((s) => {
+        const newValue = !s.blurPersonalData;
+        useSettingsStore.getState().setSettings({ hidePersonal: newValue });
+        return { blurPersonalData: newValue };
+      });
     },
   };
 
@@ -52,7 +57,7 @@ export const useAuthStore = create<AuthState>((set) => {
   return {
     user: null,
     loading: true,
-    blurPersonalData: false,
+    blurPersonalData: useSettingsStore.getState().settings.hidePersonal,
     ...actions,
     init,
   };

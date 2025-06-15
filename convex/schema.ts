@@ -15,6 +15,9 @@ export default defineSchema({
   userSettings: defineTable({
     userId: v.id("users"),
     encryptedApiKeys: v.string(),
+    uiFont: v.optional(v.string()),
+    codeFont: v.optional(v.string()),
+    hidePersonal: v.optional(v.boolean()),
   }).index("by_user", ["userId"]),
 
   // Chat threads
@@ -22,7 +25,8 @@ export default defineSchema({
     userId: v.id("users"),
     title: v.string(),
     createdAt: v.number(),
-    parentThreadId: v.optional(v.id("threads")),
+    pinned: v.optional(v.boolean()),
+    clonedFrom: v.optional(v.id("threads")),
     forkedFromMessageId: v.optional(v.id("messages")),
   }).index("by_user_and_time", ["userId", "createdAt"]),
 

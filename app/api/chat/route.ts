@@ -50,7 +50,8 @@ export async function POST(req: NextRequest) {
     }
 
     const netType = (net ?? '4g') as string;
-    const chunking = netType.includes('2g') || netType.includes('3g') ? 'sentence' : 'word';
+    const chunking: 'line' | 'word' =
+      netType.includes('2g') || netType.includes('3g') ? 'line' : 'word';
 
     const result = streamText({
       model: aiModel,

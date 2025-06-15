@@ -6,7 +6,6 @@ import ChatInput from './ChatInput';
 import ChatHistoryButton from './ChatHistoryButton';
 import NewChatButton from './NewChatButton';
 import { UIMessage } from 'ai';
-import { v4 as uuidv4 } from 'uuid';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 import { useModelStore } from '@/frontend/stores/ModelStore';
 import SettingsButton from './SettingsButton';
@@ -34,24 +33,13 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
   const isHeaderVisible = useScrollHide({ threshold: 15 });
   const { id } = useParams();
   const navigate = useNavigate();
-  const createThread = useMutation(api.threads.create);
   const [effectiveThreadId, setEffectiveThreadId] = useState(threadId);
-  const sendMessage = useMutation(api.messages.send);
+  const sendMessage = useMutation<typeof api.messages.send>(api.messages.send);
   const hasKeys = useMemo(() => hasRequiredKeys(), [hasRequiredKeys]);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
   useQuoteShortcuts();
 
-  // Если тред ещё не создан (пустая строка) — создаём его один раз
-  useEffect(() => {
-    (async () => {
-      if (!isConvexId(effectiveThreadId)) {
-        const newId = await createThread({ title: 'New Chat' });
-        setEffectiveThreadId(newId);
-        navigate(`/chat/${newId}`, { replace: true });
-      }
-    })();
-  }, [effectiveThreadId, createThread, navigate]);
 
   // Отслеживание видимости клавиатуры на мобильных устройствах
   useEffect(() => {
@@ -94,33 +82,24 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
       net: (navigator as any).connection?.effectiveType ?? '4g',
     },
     onFinish: async (message) => {
-      const aiMessage: UIMessage = {
-        id: uuidv4(),
-        role: message.role,
-        content: message.content,
-        createdAt: new Date(),
-        parts: [
-          {
-            type: 'text',
-            text: message.content,
-          }
-        ],
-      };
       if (!isConvexId(effectiveThreadId)) {
         toast.error('Thread not yet created');
         return;
       }
-      await sendMessage({
+      const dbId = await sendMessage({
         threadId: effectiveThreadId as Id<'threads'>,
         role: 'assistant',
         content: message.content,
       });
+      // Replace last message id with real database id
+      setMessages(prev =>
+        prev.map((m, i) =>
+          i === prev.length - 1 ? { ...m, id: dbId } : m
+        )
+      );
     },
   });
 
-  useEffect(() => {
-    // TODO: migrate initial thread creation to Convex
-  }, [id, initialMessages, threadId]);
 
   return (
     <div className="relative w-full">
@@ -142,6 +121,7 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
           status={status}
           append={append}
           setInput={setInput}
+          setMessages={setMessages}
           stop={stop}
           messageCount={messages.length}
           error={error}

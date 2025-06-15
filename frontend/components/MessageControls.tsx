@@ -37,11 +37,16 @@ export default function MessageControls({
   onToggleVisibility,
 }: MessageControlsProps) {
   const [copied, setCopied] = useState(false);
-  const hasRequiredKeys = useAPIKeyStore((state) => state.hasRequiredKeys());
+  const { hasRequiredKeys } = useAPIKeyStore();
+  const canChat = hasRequiredKeys();
   const { isMobile } = useIsMobile();
-  const removeAfter = useMutation(api.messages.removeAfter);
-  const removeMessage = useMutation(api.messages.remove);
-  const cloneThread = useMutation(api.threads.clone);
+  const removeAfter = useMutation<typeof api.messages.removeAfter>(
+    api.messages.removeAfter
+  );
+  const removeMessage = useMutation<typeof api.messages.remove>(
+    api.messages.remove
+  );
+  const cloneThread = useMutation<typeof api.threads.clone>(api.threads.clone);
   const navigate = useNavigate();
 
   const handleCopy = () => {
@@ -117,12 +122,12 @@ export default function MessageControls({
       <Button variant="ghost" size="icon" onClick={handleCopy}>
         {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
       </Button>
-      {setMode && hasRequiredKeys && (
+      {setMode && canChat && (
         <Button variant="ghost" size="icon" onClick={() => setMode('edit')}>
           <SquarePen className="w-4 h-4" />
         </Button>
       )}
-      {hasRequiredKeys && (
+      {canChat && (
         <Button
           variant="ghost"
           size="icon"
@@ -142,7 +147,7 @@ export default function MessageControls({
           <GitBranch className="w-4 h-4" />
         </Button>
       )}
-      {hasRequiredKeys && (
+      {canChat && (
         <Button variant="ghost" size="icon" onClick={handleRegenerate}>
           <RefreshCcw className="w-4 h-4" />
         </Button>

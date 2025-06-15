@@ -47,6 +47,7 @@ export const create = mutation({
       userId: uid,
       title: args.title,
       createdAt: Date.now(),
+      pinned: false,
     });
   },
 });
@@ -95,7 +96,8 @@ export const clone = mutation({
       userId: uid,
       title: args.title,
       createdAt: Date.now(),
-      parentThreadId: args.threadId,
+      clonedFrom: args.threadId,
+      pinned: false,
     });
     const messages = await ctx.db
       .query("messages")
@@ -113,6 +115,32 @@ export const clone = mutation({
       )
     );
     return newThreadId;
+  },
+});
+
+/** Toggle the pinned status of a thread */
+export const togglePin = mutation({
+  args: { threadId: v.id("threads"), pinned: v.boolean() },
+  async handler(ctx, args) {
+    const uid = await currentUserId(ctx);
+    if (!uid) throw new Error("Unauthenticated");
+    const thread = await ctx.db.get(args.threadId);
+    if (!thread || thread.userId !== uid)
+      throw new Error("Thread not found or permission denied");
+    await ctx.db.patch(args.threadId, { pinned: args.pinned });
+  },
+});
+
+/** Set the parent thread of an existing thread (used for clones) */
+export const setParent = mutation({
+  args: { threadId: v.id("threads"), parentId: v.id("threads") },
+  async handler(ctx, args) {
+    const uid = await currentUserId(ctx);
+    if (!uid) throw new Error("Unauthenticated");
+    const thread = await ctx.db.get(args.threadId);
+    if (!thread || thread.userId !== uid)
+      throw new Error("Thread not found or permission denied");
+    await ctx.db.patch(args.threadId, { clonedFrom: args.parentId });
   },
 });
 

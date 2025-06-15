@@ -24,10 +24,10 @@ export const get = query({
       .query("messages")
       .withIndex("by_thread_and_time", (q) => q.eq("threadId", args.threadId))
       .order("asc");
-    return await q.paginate({
-      cursor: args.cursor,
-      numItems: args.limit ?? 50,
-    });
+      return await q.paginate({
+        cursor: args.cursor ?? null,
+        numItems: args.limit ?? 50,
+      });
   },
 });
 
@@ -44,13 +44,14 @@ export const send = mutation({
     const thread = await ctx.db.get(args.threadId);
     if (!thread || thread.userId !== uid)
       throw new Error("Thread not found or permission denied");
-    await ctx.db.insert("messages", {
+    const id = await ctx.db.insert("messages", {
       threadId: args.threadId,
       authorId: uid,
       role: args.role,
       content: args.content,
       createdAt: Date.now(),
     });
+    return id as Id<"messages">;
   },
 });
 

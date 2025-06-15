@@ -13,7 +13,10 @@ export default function Home() {
     createdAt: eightDaysAgo,
   };
   const { hasRequiredKeys, keysLoading } = useAPIKeyStore();
-  if (keysLoading) return null;
+  if (keysLoading) {
+    const PageSkeleton = require('../components/PageSkeleton').default;
+    return <PageSkeleton />;
+  }
   const hasKeys = hasRequiredKeys();
   const initialMessages = hasKeys ? [] : [welcomeMessage];
   

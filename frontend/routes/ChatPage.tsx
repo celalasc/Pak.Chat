@@ -6,8 +6,9 @@ import { api } from '@/convex/_generated/api';
 import { isConvexId } from '@/lib/ids';
 import { useEffect } from 'react';
 import Chat from '@/frontend/components/Chat';
-import { Id } from '@/convex/_generated/dataModel';
+import { Id, Doc } from '@/convex/_generated/dataModel';
 import MessageLoading from '@/frontend/components/ui/MessageLoading';
+import { UIMessage } from 'ai';
 
 export default function ChatPage() {
   const { id } = useParams();
@@ -23,29 +24,41 @@ export default function ChatPage() {
 
   // Получаем данные треда
   const thread = useQuery(api.threads.get, id && isConvexId(id) ? { threadId: id as Id<'threads'> } : 'skip');
-  const messagesResult = useQuery(api.messages.get, id && isConvexId(id) ? { threadId: id as Id<'threads'> } : 'skip');
+  const messagesResult = useQuery(
+    api.messages.get,
+    id && isConvexId(id) ? { threadId: id as Id<'threads'> } : 'skip'
+  );
 
   // Показываем загрузку пока данные не загружены
   if (!id || !isConvexId(id)) {
-    return null; // Перенаправление уже происходит в useEffect
+    const PageSkeleton = require('../components/PageSkeleton').default;
+    return <PageSkeleton />; // Перенаправление уже происходит в useEffect
   }
 
   if (thread === undefined || messagesResult === undefined) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <MessageLoading />
-      </div>
-    );
+    const PageSkeleton = require('../components/PageSkeleton').default;
+    return <PageSkeleton />;
   }
 
   // Если тред не найден, перенаправляем на главную
   if (thread === null) {
     navigate('/chat');
-    return null;
+    const PageSkeleton = require('../components/PageSkeleton').default;
+    return <PageSkeleton />;
   }
 
   // Извлекаем сообщения из пагинированного результата
-  const messages = Array.isArray(messagesResult) ? messagesResult : (messagesResult?.page || []);
+  const rawMessages: Doc<'messages'>[] = Array.isArray(messagesResult)
+    ? messagesResult
+    : messagesResult?.page || [];
+
+  const messages: UIMessage[] = rawMessages.map((m) => ({
+    id: m._id,
+    role: m.role,
+    content: m.content,
+    createdAt: new Date(m.createdAt),
+    parts: [{ type: 'text', text: m.content }],
+  }));
 
   return <Chat threadId={id} initialMessages={messages} />;
 } 

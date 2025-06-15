@@ -10,7 +10,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { useNavigate, useParams } from 'react-router';
 import { X, Pin, PinOff, Search, MessageSquare, Plus, Edit2, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { usePinnedThreads } from '@/frontend/hooks/usePinnedThreads';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { useQuery, useMutation, useConvexAuth } from 'convex/react';
 import { api } from '@/convex/_generated/api';
@@ -33,7 +32,6 @@ function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistory
   const [deletingThreadId, setDeletingThreadId] = useState<Id<'threads'> | null>(null);
   
   const { isMobile, mounted } = useIsMobile(600);
-  const { pinnedThreads, togglePin } = usePinnedThreads();
   const { id } = useParams();
   const navigate = useNavigate();
   const { isAuthenticated } = useConvexAuth();
@@ -42,9 +40,9 @@ function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistory
     api.threads.list,
     isAuthenticated ? undefined : "skip"
   );
-  const createThread = useMutation(api.threads.create);
   const removeThread = useMutation(api.threads.remove);
   const renameThread = useMutation(api.threads.rename);
+  const togglePin = useMutation(api.threads.togglePin);
 
   const handleOpenChange = useCallback((open: boolean) => {
     setIsOpen(open);
@@ -58,19 +56,18 @@ function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistory
 
   const filteredThreads = useMemo(() => {
     if (!threads) return [];
-    
-    const filtered = searchQuery.trim() 
-      ? threads.filter(thread => 
+
+    const filtered = searchQuery.trim()
+      ? threads.filter(thread =>
           thread.title.toLowerCase().includes(searchQuery.toLowerCase())
         )
       : threads;
 
-    // Separate pinned and unpinned threads
-    const pinned = filtered.filter(thread => pinnedThreads.has(thread._id));
-    const unpinned = filtered.filter(thread => !pinnedThreads.has(thread._id));
+    const pinned = filtered.filter(t => t.pinned);
+    const unpinned = filtered.filter(t => !t.pinned);
 
     return [...pinned, ...unpinned];
-  }, [threads, searchQuery, pinnedThreads]);
+  }, [threads, searchQuery]);
 
   const handleThreadClick = useCallback((threadId: Id<'threads'>) => {
     if (id === threadId) {
@@ -113,17 +110,21 @@ function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistory
     setDeletingThreadId(null);
   }, []);
 
-  const handlePinToggle = useCallback((threadId: Id<'threads'>, event: React.MouseEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-    togglePin(threadId);
-  }, [togglePin]);
+  const handlePinToggle = useCallback(
+    async (threadId: Id<'threads'>, event: React.MouseEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const thread = threads?.find(t => t._id === threadId);
+      if (!thread) return;
+      await togglePin({ threadId, pinned: !thread.pinned });
+    },
+    [togglePin, threads]
+  );
 
-  const handleNewChat = useCallback(async () => {
-    const newThreadId = await createThread({ title: 'New Chat' });
-    navigate(`/chat/${newThreadId}`);
+  const handleNewChat = useCallback(() => {
+    navigate('/chat');
     handleOpenChange(false);
-  }, [createThread, navigate, handleOpenChange]);
+  }, [navigate, handleOpenChange]);
 
   const formatDate = (date: Date) => {
     const now = new Date();
@@ -233,7 +234,7 @@ function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistory
           >
             <div className="flex-1 min-w-0 pr-2">
               <div className="flex items-center gap-2">
-                {pinnedThreads.has(thread._id) && (
+                {thread.pinned && (
                   <Pin className="h-3 w-3 text-primary shrink-0" />
                 )}
                 <span className="line-clamp-1 text-sm font-medium">{thread.title}</span>
@@ -266,14 +267,14 @@ function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistory
                     className="h-6 w-6 sm:h-7 sm:w-7"
                     onClick={(e) => handlePinToggle(thread._id, e)}
                   >
-                    {pinnedThreads.has(thread._id) ? (
+                    {thread.pinned ? (
                       <PinOff className="size-2.5 sm:size-3" />
                     ) : (
                       <Pin className="size-2.5 sm:size-3" />
                     )}
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>{pinnedThreads.has(thread._id) ? 'Unpin' : 'Pin'}</TooltipContent>
+                <TooltipContent>{thread.pinned ? 'Unpin' : 'Pin'}</TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -297,14 +298,13 @@ function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistory
         )}
       </div>
     </div>
-  ), [editingThreadId, deletingThreadId, id, editingTitle, pinnedThreads, handleThreadClick, handleEdit, handleSaveEdit, handleCancelEdit, handleConfirmDelete, handleCancelDelete, handlePinToggle, handleDelete]);
+  ), [editingThreadId, deletingThreadId, id, editingTitle, handleThreadClick, handleEdit, handleSaveEdit, handleCancelEdit, handleConfirmDelete, handleCancelDelete, handlePinToggle, handleDelete]);
 
   // Early returns after all hooks
-  if (!isAuthenticated) {
-    return null;
+  if (!isAuthenticated || threads === undefined) {
+    const PageSkeleton = require('./PageSkeleton').default;
+    return <PageSkeleton />;
   }
-  
-  if (threads === undefined) return null;
 
   const ContentComponent = () => (
     <div className="flex h-full flex-col">

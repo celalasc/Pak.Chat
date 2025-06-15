@@ -1,8 +1,11 @@
 import { useEffect } from 'react';
 import { useSettingsStore } from '@/frontend/stores/SettingsStore';
+import { useAuthStore } from '@/frontend/stores/AuthStore';
 
 export function useSettings() {
   const { settings } = useSettingsStore();
+  const setBlur = useAuthStore((s) => s.toggleBlur);
+  const blurPersonalData = useAuthStore((s) => s.blurPersonalData);
 
   useEffect(() => {
     const applyFontSettings = () => {
@@ -24,7 +27,10 @@ export function useSettings() {
     };
 
     applyFontSettings();
-  }, [settings.generalFont, settings.codeFont]);
+    if (blurPersonalData !== settings.hidePersonal) {
+      setBlur();
+    }
+  }, [settings.generalFont, settings.codeFont, settings.hidePersonal]);
 
   return settings;
 } 

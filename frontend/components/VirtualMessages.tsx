@@ -24,7 +24,13 @@ export default function VirtualMessages({ messages, ...rest }: Props) {
     >
       {({ index, style }) => (
         <div style={style}>
-          <PreviewMessage {...rest} message={messages[index]} />
+          <PreviewMessage
+            {...rest}
+            message={messages[index]}
+            isStreaming={
+              rest.status === 'streaming' && index === messages.length - 1
+            }
+          />
         </div>
       )}
     </List>
