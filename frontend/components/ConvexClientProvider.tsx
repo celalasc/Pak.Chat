@@ -10,7 +10,7 @@ const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 export default function ConvexClientProvider({ children }: { children: ReactNode }) {
   const { user, loading } = useAuthStore();
   const [idToken, setIdToken] = useState<string | null | undefined>(undefined);
-  const cachedToken = useRef<string>();
+  const cachedToken = useRef<string | undefined>(undefined);
   const cachedExp = useRef<number>(0); // ms timestamp when cached token expires
 
   useEffect(() => {
@@ -33,7 +33,8 @@ export default function ConvexClientProvider({ children }: { children: ReactNode
       const token = await u.getIdToken();
       setIdToken(token);
       cachedToken.current = token;
-      cachedExp.current = u.stsTokenManager.expirationTime!;
+      const res = await u.getIdTokenResult();
+      cachedExp.current = Date.parse(res.expirationTime);
     });
 
     return unsub;
@@ -50,7 +51,8 @@ export default function ConvexClientProvider({ children }: { children: ReactNode
 
       const t = await user.getIdToken(force);
       cachedToken.current = t;
-      cachedExp.current = user.stsTokenManager.expirationTime!;
+      const res = await user.getIdTokenResult();
+      cachedExp.current = Date.parse(res.expirationTime);
       return t;
     },
     [user]

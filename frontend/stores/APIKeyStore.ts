@@ -24,12 +24,14 @@ const deepEqual = (a: APIKeys, b: APIKeys): boolean => {
   return JSON.stringify(a) === JSON.stringify(b);
 };
 
-const store = create<APIKeyState>(() => ({
+// Zustand store for managing API keys
+const store = create<APIKeyState>((set, get) => ({
   keys: { google: '', openrouter: '', openai: '' },
   keysLoading: true,
-  setLocal: () => {},
-  getKey: (provider: Provider) => store.getState().keys[provider],
-  hasRequiredKeys: () => !!store.getState().keys.google,
+  setLocal: (updates) =>
+    set((state) => ({ keys: { ...state.keys, ...updates } })),
+  getKey: (provider: Provider) => get().keys[provider],
+  hasRequiredKeys: () => !!get().keys.google,
 }));
 
 export function useAPIKeyStore() {

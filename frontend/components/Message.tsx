@@ -15,12 +15,9 @@ import { Input } from '@/frontend/components/ui/input';
 import { Button } from '@/frontend/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/frontend/components/ui/badge';
-import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
+import { useAPIKeyStore, type APIKeys } from '@/frontend/stores/APIKeyStore';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router';
-import { v4 as uuidv4 } from 'uuid';
-import { useMutation } from 'convex/react';
-import { api } from '@/convex/_generated/api';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 
 function PureMessage({
@@ -42,19 +39,20 @@ function PureMessage({
   const [mobileControlsVisible, setMobileControlsVisible] = useState(false);
   const isWelcome = message.id === 'welcome';
   const { keys, setKeys } = useAPIKeyStore();
-  const [localKeys, setLocalKeys] = useState(keys);
+  // Keep editable copy of API keys for the inline prompt
+  const [localKeys, setLocalKeys] = useState<APIKeys>(keys);
   const { isMobile } = useIsMobile();
   
   useEffect(() => { setLocalKeys(keys); }, [keys]);
   
   const saveKeys = () => { setKeys(localKeys); toast.success('API keys saved'); };
   const navigate = useNavigate();
-  const createThread = useMutation(api.threads.create);
-  const canChat = useAPIKeyStore(state => state.hasRequiredKeys());
+  const { hasRequiredKeys } = useAPIKeyStore();
+  const canChat = hasRequiredKeys();
 
-  const handleNewChat = async () => {
-    const newId = await createThread({ title: 'New Chat' });
-    navigate(`/chat/${newId}`);
+  const handleNewChat = () => {
+    // Start a fresh chat without creating a thread upfront
+    navigate('/chat');
   };
 
   const handleMobileMessageClick = () => {
@@ -103,7 +101,12 @@ function PureMessage({
                       <Input id={provider}
                         placeholder={provider === 'google' ? 'AIza...' : provider === 'openrouter' ? 'sk-or-...' : 'sk-...'}
                         value={localKeys[provider]||''}
-                        onChange={e => setLocalKeys(prev => ({ ...prev, [provider]: e.target.value }))}
+          onChange={e =>
+            setLocalKeys((prev: APIKeys) => ({
+              ...prev,
+              [provider]: e.target.value,
+            }))
+          }
                       />
                       <a href={provider === 'google' ? 'https://aistudio.google.com/apikey' : provider === 'openrouter' ? 'https://openrouter.ai/settings/keys' : 'https://platform.openai.com/settings/organization/api-keys'}
                          target="_blank" rel="noopener noreferrer"

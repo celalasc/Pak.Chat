@@ -39,6 +39,7 @@ interface ChatInputProps {
   error: UseChatHelpers['error'];
   setInput: UseChatHelpers['setInput'];
   append: UseChatHelpers['append'];
+  setMessages: UseChatHelpers['setMessages'];
   stop: UseChatHelpers['stop'];
   messageCount: number;
 }
@@ -67,6 +68,7 @@ function PureChatInput({
   error,
   setInput,
   append,
+  setMessages,
   stop,
   messageCount,
 }: ChatInputProps) {
@@ -83,7 +85,7 @@ function PureChatInput({
   const navigate = useNavigate();
   const { id } = useParams();
   const createThread = useMutation(api.threads.create);
-  const sendMessage = useMutation(api.messages.send);
+  const sendMessage = useMutation<typeof api.messages.send>(api.messages.send);
   const { complete } = useMessageSummary();
 
   const isDisabled = useMemo(
@@ -138,11 +140,15 @@ function PureChatInput({
     clearQuote(); // Очищаем цитату после отправки
     adjustHeight(true);
 
-    await sendMessage({
+    const newId = await sendMessage({
       threadId: currentThreadId as Id<'threads'>,
       content: finalMessage,
       role: 'user',
     });
+    // Replace the temporary UUID with the real database ID
+    setMessages(prev =>
+      prev.map(m => (m.id === messageId ? { ...m, id: newId } : m))
+    );
   }, [
     canChat,
     input,
@@ -158,6 +164,7 @@ function PureChatInput({
     clearQuote,
     createThread,
     sendMessage,
+    setMessages,
     navigate,
     isConvexId,
   ]);
@@ -382,8 +389,9 @@ const SendButton = memo(PureSendButton, (prevProps, nextProps) => {
 function ChatInputWrapper(props: ChatInputProps) {
   const { keysLoading } = useAPIKeyStore();
   if (keysLoading) {
-    // Возвращаем скелетон вместо null для сохранения места в макете
-    return <div className="h-24" />;
+    // Показать скелетон, чтобы сохранить высоту и не дёргать разметку
+    const ChatInputSkeleton = require('./ChatInputSkeleton').default;
+    return <ChatInputSkeleton />;
   }
   return <ChatInput {...props} />;
 }

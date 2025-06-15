@@ -10,7 +10,7 @@ export function useConvexMessages(threadId: Id<"threads"> | null) {
   );
 
   // Мутации
-  const addMessage = useMutation(api.messages.send);
+  const addMessage = useMutation<typeof api.messages.send>(api.messages.send);
   const updateMessage = useMutation(api.messages.edit);
   const deleteMessage = useMutation(api.messages.remove);
   const deleteMessagesAfter = useMutation(api.messages.removeAfter);

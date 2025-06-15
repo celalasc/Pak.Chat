@@ -42,3 +42,35 @@ export const saveApiKeys = mutation({
     }
   },
 });
+
+/** Save UI settings such as fonts and personal data flag */
+export const saveSettings = mutation({
+  args: {
+    uiFont: v.string(),
+    codeFont: v.string(),
+    hidePersonal: v.boolean(),
+  },
+  async handler(ctx, args) {
+    const uid = await currentUserId(ctx);
+    if (!uid) throw new Error('Unauthenticated');
+    const existing = await ctx.db
+      .query('userSettings')
+      .withIndex('by_user', (q) => q.eq('userId', uid))
+      .unique();
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        uiFont: args.uiFont,
+        codeFont: args.codeFont,
+        hidePersonal: args.hidePersonal,
+      });
+    } else {
+      await ctx.db.insert('userSettings', {
+        userId: uid,
+        encryptedApiKeys: '',
+        uiFont: args.uiFont,
+        codeFont: args.codeFont,
+        hidePersonal: args.hidePersonal,
+      });
+    }
+  },
+});

@@ -52,7 +52,7 @@ export default function RootLayout({
       </head>
       <body
         suppressHydrationWarning={true}
-        className={`${geistSans.variable} ${geistMono.variable} antialiased font-sans`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased font-sans font-mono`}
       >
         <Suspense fallback={<AppShellSkeleton />}>
           <Providers>
