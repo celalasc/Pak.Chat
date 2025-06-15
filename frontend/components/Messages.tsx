@@ -31,12 +31,14 @@ function PureMessages({
 
   return (
     <section className="flex flex-col space-y-12">
-      {messages.map((message, index) => (
+      {messages.map((message) => (
         <PreviewMessage
-          key={`${message.id}-${index}`}
+          key={message.id}
           threadId={threadId}
           message={message}
-          isStreaming={status === 'streaming' && messages.length - 1 === index}
+          isStreaming={
+            status === 'streaming' && messages[messages.length - 1]?.id === message.id
+          }
           setMessages={setMessages}
           reload={reload}
           stop={stop}
@@ -58,7 +60,8 @@ const PureMessagesMemo = memo(PureMessages, (prevProps, nextProps) => {
 
 PureMessagesMemo.displayName = 'Messages';
 
-const LargeListBoundary = 50;
+// Enable virtualization once the chat grows to 20 messages.
+const LargeListBoundary = 20;
 
 export default function Messages(props: React.ComponentProps<typeof PureMessages>) {
   return props.messages.length > LargeListBoundary ? (

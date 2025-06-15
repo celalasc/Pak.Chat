@@ -20,7 +20,7 @@ export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, model, apiKeys, net, threadId } = await req.json();
+    const { messages, model, apiKeys, threadId } = await req.json();
 
     const modelConfig = getModelConfig(model as AIModel);
     
@@ -126,9 +126,6 @@ export async function POST(req: NextRequest) {
       return result;
     });
 
-    const netType = (net ?? '4g') as string;
-    const chunking: 'line' | 'word' =
-      netType.includes('2g') || netType.includes('3g') ? 'line' : 'word';
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const options: any = {
