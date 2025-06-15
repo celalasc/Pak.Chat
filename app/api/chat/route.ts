@@ -20,7 +20,7 @@ export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
-    // Убираем 'net' из деструктуризации, так как он больше не используется
+    // Убираем 'net' из деструктуризации, так как он больше не используется.
     const { messages, model, apiKeys, threadId } = await req.json();
 
     const modelConfig = getModelConfig(model as AIModel);
