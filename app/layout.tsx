@@ -45,14 +45,14 @@ export default function RootLayout({
       </head>
       <body suppressHydrationWarning className="antialiased font-sans font-mono">
         <Suspense fallback={<AppShellSkeleton />}>
-          <Providers>
-            <AuthListener />
-            <ConvexClientProvider>
+          <ConvexClientProvider>
+            <Providers>
+              <AuthListener />
               <UserSync />
               {children}
-            </ConvexClientProvider>
+            </Providers>
             <Toaster richColors position="top-right" />
-          </Providers>
+          </ConvexClientProvider>
         </Suspense>
       </body>
     </html>
