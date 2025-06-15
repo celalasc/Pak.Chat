@@ -6,10 +6,9 @@ import { UIMessage } from 'ai';
 import { UseChatHelpers } from '@ai-sdk/react';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
-import { useMutation } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { isConvexId } from '@/lib/ids';
-import { toast } from 'sonner';
 import type { Id } from '@/convex/_generated/dataModel';
 import { useNavigate } from 'react-router';
 
@@ -47,6 +46,10 @@ export default function MessageControls({
     api.messages.remove
   );
   const cloneThread = useMutation<typeof api.threads.clone>(api.threads.clone);
+  const thread = useQuery(
+    api.threads.get,
+    isConvexId(threadId) ? { threadId: threadId as Id<'threads'> } : 'skip'
+  );
   const navigate = useNavigate();
 
   const handleCopy = () => {
@@ -62,7 +65,6 @@ export default function MessageControls({
     stop();
 
     if (!isConvexId(threadId)) {
-      toast.error('Thread not yet created');
       return;
     }
 
@@ -132,13 +134,11 @@ export default function MessageControls({
           variant="ghost"
           size="icon"
           onClick={async () => {
-            if (!isConvexId(threadId)) {
-              toast.error('Thread not yet created');
-              return;
-            }
+            if (!isConvexId(threadId)) return;
+            const title = thread?.title ?? message.content.slice(0, 30);
             const newId = await cloneThread({
               threadId: threadId as Id<'threads'>,
-              title: 'New Branch',
+              title,
             });
             navigate(`/chat/${newId}`);
             onToggleVisibility?.();

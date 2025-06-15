@@ -13,8 +13,8 @@ import { useQuoteShortcuts } from '@/frontend/hooks/useQuoteShortcuts';
 import { useScrollHide } from '@/frontend/hooks/useScrollHide';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { cn } from '@/lib/utils';
-import { useEffect, useState, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router';
+import { useEffect, useState, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { isConvexId } from '@/lib/ids';
@@ -30,10 +30,16 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
   const { keys, hasRequiredKeys, keysLoading } = useAPIKeyStore();
   const { selectedModel } = useModelStore();
   const { isMobile } = useIsMobile();
-  const isHeaderVisible = useScrollHide({ threshold: 15 });
-  const { id } = useParams();
+  const panelRef = useRef<HTMLDivElement>(null);
+  const isHeaderVisible = useScrollHide({ threshold: 15, panelRef });
   const navigate = useNavigate();
-  const [effectiveThreadId, setEffectiveThreadId] = useState(threadId);
+  // Track the current thread ID locally to ensure it exists before sending messages
+  const [currentThreadId, setCurrentThreadId] = useState(threadId);
+
+  // Sync local thread ID with route changes
+  useEffect(() => {
+    setCurrentThreadId(threadId);
+  }, [threadId]);
   const sendMessage = useMutation<typeof api.messages.send>(api.messages.send);
   const hasKeys = useMemo(() => hasRequiredKeys(), [hasRequiredKeys]);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
@@ -74,7 +80,7 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
     status,
     error,
   } = useChat({
-    id: effectiveThreadId,
+    id: currentThreadId,
     initialMessages,
     body: {
       apiKeys: keys,
@@ -82,12 +88,11 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
       net: (navigator as any).connection?.effectiveType ?? '4g',
     },
     onFinish: async (message) => {
-      if (!isConvexId(effectiveThreadId)) {
-        toast.error('Thread not yet created');
+      if (!isConvexId(currentThreadId)) {
         return;
       }
       const dbId = await sendMessage({
-        threadId: effectiveThreadId as Id<'threads'>,
+        threadId: currentThreadId as Id<'threads'>,
         role: 'assistant',
         content: message.content,
       });
@@ -107,7 +112,7 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
         className={`flex flex-col w-full max-w-3xl pt-10 pb-44 mx-auto transition-all duration-300 ease-in-out relative`}
       >
         <Messages
-          threadId={effectiveThreadId}
+          threadId={currentThreadId}
           messages={messages}
           status={status}
           setMessages={setMessages}
@@ -116,7 +121,7 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
           stop={stop}
         />
         <ChatInput
-          threadId={effectiveThreadId}
+          threadId={currentThreadId}
           input={input}
           status={status}
           append={append}
@@ -125,6 +130,7 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
           stop={stop}
           messageCount={messages.length}
           error={error}
+          onThreadCreated={setCurrentThreadId}
         />
       </main>
       
@@ -148,10 +154,13 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
       </div>
 
       {/* Top buttons */}
-      <div className={cn(
-        "fixed right-4 top-4 z-20 flex gap-2 p-1 bg-background/60 backdrop-blur-md rounded-lg border border-border/20 transition-transform duration-300 ease-in-out",
-        isMobile && (!isHeaderVisible || isKeyboardVisible) && "transform translate-x-[calc(100%-3rem)]"
-      )}>
+      <div
+        ref={panelRef}
+        className={cn(
+          "fixed right-4 top-4 z-20 flex gap-2 p-1 bg-background/60 backdrop-blur-md rounded-lg border border-border/20 transition-transform duration-300 ease-in-out",
+          isMobile && (!isHeaderVisible || isKeyboardVisible) && "transform translate-x-[calc(100%-3rem)]"
+        )}
+      >
         {!keysLoading && hasKeys && (
           <NewChatButton className="backdrop-blur-sm" />
         )}

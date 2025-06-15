@@ -400,3 +400,13 @@
 .fade-in {
   animation: fade .2s ease-in;
 }
+
+@media (max-width: 768px) {
+  .bg-background\/80 {
+    backdrop-filter: none !important;
+  }
+  .shadow-lg,
+  .ring-1 {
+    box-shadow: none !important;
+  }
+}

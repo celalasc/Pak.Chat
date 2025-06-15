@@ -59,10 +59,7 @@ export default function MessageEditor({
   const editMessage = useMutation(api.messages.edit);
 
   const handleSave = async () => {
-    if (!isConvexId(threadId)) {
-      toast.error('Thread not yet created');
-      return;
-    }
+    if (!isConvexId(threadId)) return;
     try {
       await removeAfter({
         threadId: threadId as Id<'threads'>,

@@ -14,7 +14,6 @@ import {
 } from '@/frontend/components/ui/dropdown-menu';
 import useAutoResizeTextarea from '@/hooks/useAutoResizeTextArea';
 import { UseChatHelpers, useCompletion } from '@ai-sdk/react';
-import { useParams } from 'react-router';
 import { useNavigate } from 'react-router';
 import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
@@ -42,6 +41,7 @@ interface ChatInputProps {
   setMessages: UseChatHelpers['setMessages'];
   stop: UseChatHelpers['stop'];
   messageCount: number;
+  onThreadCreated?: (id: Id<'threads'>) => void;
 }
 
 interface StopButtonProps {
@@ -71,6 +71,7 @@ function PureChatInput({
   setMessages,
   stop,
   messageCount,
+  onThreadCreated,
 }: ChatInputProps) {
   // Все хуки должны быть вызваны до любых условных возвратов
   const { hasRequiredKeys, keys, setKeys } = useAPIKeyStore();
@@ -83,7 +84,6 @@ function PureChatInput({
     maxHeight: 200,
   });
   const navigate = useNavigate();
-  const { id } = useParams();
   const createThread = useMutation(api.threads.create);
   const sendMessage = useMutation<typeof api.messages.send>(api.messages.send);
   const { complete } = useMessageSummary();
@@ -120,16 +120,16 @@ function PureChatInput({
     }
 
     let currentThreadId: Id<'threads'>;
-    const valid = isConvexId(id);
-    if (!id || !valid) {
+    if (!isConvexId(threadId)) {
       const newThreadId = await createThread({ title: 'New Chat' });
+      onThreadCreated?.(newThreadId);
       navigate(`/chat/${newThreadId}`);
       currentThreadId = newThreadId;
       complete(finalMessage, {
         body: { threadId: newThreadId, messageId, isTitle: true },
       });
     } else {
-      currentThreadId = id as Id<'threads'>;
+      currentThreadId = threadId as Id<'threads'>;
       complete(finalMessage, { body: { messageId, threadId: currentThreadId } });
     }
 
@@ -156,8 +156,6 @@ function PureChatInput({
     setInput,
     adjustHeight,
     append,
-    id,
-    textareaRef,
     threadId,
     complete,
     currentQuote,
@@ -167,6 +165,7 @@ function PureChatInput({
     setMessages,
     navigate,
     isConvexId,
+    onThreadCreated,
   ]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
