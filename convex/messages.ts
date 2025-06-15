@@ -50,6 +50,8 @@ export const send = mutation({
       role: args.role,
       content: args.content,
       createdAt: Date.now(),
+      // Initialize versioning for concurrency control
+      version: 0,
     });
     return id as Id<"messages">;
   },
@@ -111,5 +113,36 @@ export const removeAfter = mutation({
       )
       .collect();
     await Promise.all(msgs.map((m) => ctx.db.delete(m._id)));
+  },
+});
+
+/** Partially update message content with version check */
+export const patchContent = mutation({
+  args: {
+    messageId: v.id("messages"),
+    content: v.string(),
+    // Client-provided version number for optimistic concurrency
+    version: v.number(),
+  },
+  async handler(ctx, args) {
+    const uid = await currentUserId(ctx);
+    if (!uid) throw new Error("Unauthenticated");
+
+    const message = await ctx.db.get(args.messageId);
+    if (!message) throw new Error("Message not found");
+
+    const thread = await ctx.db.get(message.threadId);
+    if (!thread || thread.userId !== uid)
+      throw new Error("Permission denied");
+
+    const currentVersion = message.version ?? 0;
+
+    // Avoid overwriting newer content from another tab
+    if (args.version >= currentVersion) {
+      await ctx.db.patch(args.messageId, {
+        content: args.content,
+        version: args.version,
+      });
+    }
   },
 });
