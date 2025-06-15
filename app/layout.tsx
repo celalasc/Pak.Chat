@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
-// import localFont from 'next/font/local';
+// Using generic system fonts to avoid network font downloads during the build
+// process. Google-hosted fonts were removed because the build environment
+// doesn't allow external network requests.
 import './globals.css';
 import 'katex/dist/katex.min.css';
 import { Toaster } from '@/frontend/components/ui/sonner';
@@ -11,15 +12,8 @@ import AuthListener from '@/frontend/components/AuthListener';
 import ConvexClientProvider from '@/frontend/components/ConvexClientProvider';
 import UserSync from '@/frontend/components/UserSync';
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-});
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
-});
+// Use standard web-safe fonts instead of downloading fonts during build
+export const dynamic = 'force-dynamic';
 
 // Temporarily commented out due to empty font files
 // const proxima = localFont({
@@ -43,17 +37,13 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <link rel="preconnect" href="https://fonts.gstatic.com" />
         {/* Allow Firebase auth popup to close when COOP is set */}
         <meta
           httpEquiv="Cross-Origin-Opener-Policy"
           content="same-origin-allow-popups"
         />
       </head>
-      <body
-        suppressHydrationWarning={true}
-        className={`${geistSans.variable} ${geistMono.variable} antialiased font-sans font-mono`}
-      >
+      <body suppressHydrationWarning className="antialiased font-sans font-mono">
         <Suspense fallback={<AppShellSkeleton />}>
           <Providers>
             <AuthListener />

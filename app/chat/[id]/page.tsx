@@ -8,12 +8,13 @@ import type { Id } from '@/convex/_generated/dataModel';
 
 export const dynamic = 'force-dynamic';
 
-export default async function ChatPage({ params }: { params: { id: string } }) {
-  if (!isConvexId(params.id)) redirect('/chat');
-  const thread = await fetchQuery(api.threads.list).then(ts => ts.find(t => t._id === params.id as Id<'threads'>));
+export default async function ChatPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  if (!isConvexId(id)) redirect('/chat');
+  const thread = await fetchQuery(api.threads.list).then(ts => ts.find(t => t._id === id as Id<'threads'>));
   if (!thread) notFound();
   const messagesResult = await fetchQuery(api.messages.get, {
-    threadId: params.id as Id<'threads'>,
+    threadId: id as Id<'threads'>,
   });
   const rawMessages = Array.isArray(messagesResult)
     ? messagesResult
@@ -25,5 +26,5 @@ export default async function ChatPage({ params }: { params: { id: string } }) {
     parts: [{ type: 'text', text: m.content }],
     createdAt: new Date(m.createdAt),
   }));
-  return <Chat threadId={params.id} initialMessages={messages} />;
+  return <Chat threadId={id} initialMessages={messages} />;
 }
