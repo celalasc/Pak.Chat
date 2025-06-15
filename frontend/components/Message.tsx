@@ -38,6 +38,8 @@ function PureMessage({
   const [mode, setMode] = useState<'view' | 'edit'>('view');
   const [mobileControlsVisible, setMobileControlsVisible] = useState(false);
   const isWelcome = message.id === 'welcome';
+  const attachments = (message as any).attachments as { id: string; url: string; name: string; type: string; ext?: string }[] | undefined;
+  const [lightbox, setLightbox] = useState<string | null>(null);
   const { keys, setKeys } = useAPIKeyStore();
   // Keep editable copy of API keys for the inline prompt
   const [localKeys, setLocalKeys] = useState<APIKeys>(keys);
@@ -62,6 +64,7 @@ function PureMessage({
   };
 
   return (
+    <>
     <div
       role="article"
       className={cn(
@@ -179,6 +182,30 @@ function PureMessage({
               <SelectableText messageId={message.id} disabled={isStreaming}>
                 <MarkdownRenderer content={part.text} id={message.id} />
               </SelectableText>
+              {attachments && attachments.length > 0 && (
+                <div className="flex gap-2 flex-wrap mt-2">
+                  {attachments.map((a) =>
+                    a.type.startsWith('image') ? (
+                      <img
+                        key={a.id}
+                        src={a.url}
+                        className="h-24 w-24 rounded cursor-pointer hover:scale-105 transition"
+                        onClick={() => setLightbox(a.url)}
+                      />
+                    ) : (
+                      <a
+                        key={a.id}
+                        href={a.url}
+                        target="_blank"
+                        className="h-10 w-28 bg-muted rounded flex flex-col items-center justify-center text-[10px] px-1 hover:bg-accent"
+                      >
+                        <span className="line-clamp-1">{a.name}</span>
+                        <span className="text-muted-foreground">{a.ext}</span>
+                      </a>
+                    )
+                  )}
+                </div>
+              )}
               {!isStreaming && (
                 <MessageControls
                   threadId={threadId}
@@ -196,6 +223,15 @@ function PureMessage({
         }
       })}
     </div>
+    {lightbox && (
+      <div
+        className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center"
+        onClick={() => setLightbox(null)}
+      >
+        <img src={lightbox} className="max-h-full max-w-full" />
+      </div>
+    )}
+    </>
   );
 }
 

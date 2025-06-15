@@ -5,8 +5,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import rehypeSanitize from 'rehype-sanitize';
 import { marked } from 'marked';
-import dynamic from 'next/dynamic';
-const ShikiHighlighter = dynamic(() => import('react-shiki'), { ssr: false, loading: () => null });
+import { useEffect, useRef } from 'react';
 import type { ComponentProps } from 'react';
 import type { ExtraProps } from 'react-markdown';
 import { Check, Copy } from 'lucide-react';
@@ -59,20 +58,22 @@ function CodeBlock({ children, className, ...props }: CodeComponentProps) {
 
   if (match) {
     const lang = match[1];
-    // Выбираем тему в зависимости от текущей темы приложения
     const shikiTheme = theme === 'light' ? 'github-light' : 'material-theme-darker';
-    
+
+    const [html, setHtml] = useState<string | null>(null);
+    const codeRef = useRef(String(children));
+
+    useEffect(() => {
+      const worker = new Worker(new URL('../worker/shikiWorker.ts', import.meta.url), { type: 'module' });
+      worker.postMessage({ code: codeRef.current, lang, theme: shikiTheme });
+      worker.onmessage = (e) => setHtml(e.data as string);
+      return () => worker.terminate();
+    }, [lang, shikiTheme]);
+
     return (
       <div className="rounded-none">
-        <Codebar lang={lang} codeString={String(children)} />
-        <ShikiHighlighter
-          language={lang}
-          theme={shikiTheme}
-          className="text-sm font-mono rounded-full"
-          showLanguage={false}
-        >
-          {String(children)}
-        </ShikiHighlighter>
+        <Codebar lang={lang} codeString={codeRef.current} />
+        <pre className="shiki text-sm font-mono" dangerouslySetInnerHTML={{ __html: html || '' }} />
       </div>
     );
   }

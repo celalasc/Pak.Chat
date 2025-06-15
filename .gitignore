@@ -44,3 +44,8 @@ next-env.d.ts
 .open-next
 
 
+
+# PWA build files
+public/sw.js
+public/workbox-*.js
+

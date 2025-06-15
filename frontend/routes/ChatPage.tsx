@@ -28,13 +28,17 @@ export default function ChatPage() {
     api.messages.get,
     id && isConvexId(id) ? { threadId: id as Id<'threads'> } : 'skip'
   );
+  const attachments = useQuery(
+    api.attachments.byThread,
+    id && isConvexId(id) ? { threadId: id as Id<'threads'> } : 'skip'
+  );
 
   // Показываем загрузку пока данные не загружены
   if (!id || !isConvexId(id)) {
     return null; // Перенаправление уже происходит в useEffect
   }
 
-  if (thread === undefined || messagesResult === undefined) {
+  if (thread === undefined || messagesResult === undefined || attachments === undefined) {
     return null;
   }
 
@@ -49,12 +53,20 @@ export default function ChatPage() {
     ? messagesResult
     : messagesResult?.page || [];
 
+  const attachmentsMap: Record<string, any[]> = {};
+  attachments?.forEach((a) => {
+    if (!a.messageId) return;
+    if (!attachmentsMap[a.messageId]) attachmentsMap[a.messageId] = [];
+    attachmentsMap[a.messageId].push(a);
+  });
+
   const messages: UIMessage[] = rawMessages.map((m) => ({
     id: m._id,
     role: m.role,
     content: m.content,
     createdAt: new Date(m.createdAt),
     parts: [{ type: 'text', text: m.content }],
+    attachments: attachmentsMap[m._id] ?? [],
   }));
 
   return <Chat key={id ?? 'new'} threadId={id ?? ''} initialMessages={messages} />;

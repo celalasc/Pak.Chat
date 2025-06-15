@@ -42,6 +42,9 @@ export default function RootLayout({
           httpEquiv="Cross-Origin-Opener-Policy"
           content="same-origin-allow-popups"
         />
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       </head>
       <body suppressHydrationWarning className="antialiased font-sans font-mono">
         <Suspense fallback={<AppShellSkeleton />}>
