@@ -108,10 +108,10 @@ function PureChatInput({
     setLocalKeys(keys);
   }, [keys]);
   
-  const saveKeys = async () => { 
-    await setKeys(localKeys); 
-    toast.success('API keys saved'); 
-  };
+  const saveKeys = useCallback(async () => {
+    await setKeys(localKeys);
+    toast.success('API keys saved');
+  }, [setKeys, localKeys]);
 
   const handleSubmit = useCallback(async () => {
     if (!canChat) {
@@ -261,17 +261,34 @@ function PureChatInput({
     onThreadCreated,
   ]);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit();
-    }
-  };
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleSubmit();
+      }
+    },
+    [handleSubmit]
+  );
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInput(e.target.value);
-    adjustHeight();
-  };
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      setInput(e.target.value);
+      adjustHeight();
+    },
+    [setInput, adjustHeight]
+  );
+
+  const handleFocus = useCallback(() => {
+    if (window.innerWidth <= 768) {
+      setTimeout(() => {
+        textareaRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        });
+      }, 300);
+    }
+  }, []);
 
   // Если есть ошибка и нельзя отправлять сообщения, показываем форму для ввода API ключей
   if (error && !canChat) {
@@ -350,14 +367,7 @@ function PureChatInput({
                   ref={textareaRef}
                   onKeyDown={handleKeyDown}
                   onChange={handleInputChange}
-                  onFocus={() => {
-                    // На мобильных устройствах прокручиваем к полю ввода при фокусе
-                    if (window.innerWidth <= 768) {
-                      setTimeout(() => {
-                        textareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                      }, 300);
-                    }
-                  }}
+                  onFocus={handleFocus}
                   aria-label="Chat message input"
                   aria-describedby="chat-input-description"
                   disabled={!canChat}
