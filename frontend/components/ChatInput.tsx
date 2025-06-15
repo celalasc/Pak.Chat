@@ -165,6 +165,8 @@ function PureChatInput({
               throw new Error(`Failed to upload ${attachment.name}`);
             }
             const { storageId } = await result.json();
+            // Link the uploaded file to the temporary client-side
+            // message ID until we receive the real database ID.
             return {
               storageId,
               name: attachment.name,

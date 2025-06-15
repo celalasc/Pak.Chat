@@ -1,4 +1,5 @@
 import { mutation, query } from './_generated/server';
+import { Id } from './_generated/dataModel';
 import { v } from 'convex/values';
 
 export const generateUploadUrl = mutation(async (ctx) => {
@@ -8,12 +9,14 @@ export const generateUploadUrl = mutation(async (ctx) => {
 export const save = mutation({
   args: {
     threadId: v.id('threads'),
-    attachments: v.array(v.object({
-      storageId: v.string(),
-      name: v.string(),
-      type: v.string(),
-      messageId: v.union(v.id('messages'), v.null()),
-    })),
+    attachments: v.array(
+      v.object({
+        storageId: v.string(),
+        name: v.string(),
+        type: v.string(),
+        messageId: v.union(v.string(), v.null()),
+      })
+    ),
   },
   async handler(ctx, args) {
     const saved = await Promise.all(
@@ -23,7 +26,9 @@ export const save = mutation({
           fileId: a.storageId,
           name: a.name,
           type: a.type,
-          messageId: a.messageId ?? undefined,
+          // Temporary IDs come from the client as plain strings. Cast them to
+          // satisfy the schema; they will be replaced with a real ID later.
+          messageId: (a.messageId ?? undefined) as Id<'messages'> | undefined,
         });
         
         // Возвращаем URL для немедленного использования
