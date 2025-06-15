@@ -335,18 +335,19 @@ function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistory
     return (
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
         <DialogTrigger asChild>{children}</DialogTrigger>
-        <DialogContent className="max-w-md h-[80vh] flex flex-col p-0">
+        <DialogContent className="max-w-md h-[80vh] flex flex-col p-0 [&>button]:top-2 [&>button]:right-2">
           <DialogHeader className="px-4 pt-4 pb-2 flex flex-col gap-2">
             <DialogTitle className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5" />
               Chat History
               <Button
                 variant="ghost"
-                size="icon"
+                size="sm"
                 onClick={handleNewChat}
-                className="ml-auto"
+                className="ml-auto flex items-center gap-2 text-sm"
               >
                 <Plus className="size-4" />
+                New chat
               </Button>
             </DialogTitle>
             <DialogDescription className="sr-only">
@@ -389,11 +390,12 @@ function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistory
                   Chat History
                   <Button
                     variant="ghost"
-                    size="icon"
+                    size="sm"
                     onClick={handleNewChat}
-                    className="ml-auto"
+                    className="ml-auto flex items-center gap-2 text-sm"
                   >
                     <Plus className="size-4" />
+                    New chat
                   </Button>
                 </DrawerTitle>
                 <div className="relative">
@@ -420,18 +422,19 @@ function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistory
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="max-w-md h-[80vh] flex flex-col p-0">
+      <DialogContent className="max-w-md h-[80vh] flex flex-col p-0 [&>button]:top-2 [&>button]:right-2">
         <DialogHeader className="px-4 pt-4 pb-2 flex flex-col gap-2">
           <DialogTitle className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5" />
             Chat History
             <Button
               variant="ghost"
-              size="icon"
+              size="sm"
               onClick={handleNewChat}
-              className="ml-auto"
+              className="ml-auto flex items-center gap-2 text-sm"
             >
               <Plus className="size-4" />
+              New chat
             </Button>
           </DialogTitle>
           <DialogDescription className="sr-only">

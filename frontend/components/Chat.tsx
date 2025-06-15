@@ -150,13 +150,16 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
       {/* Top buttons */}
       <div className={cn(
         "fixed right-4 top-4 z-20 flex gap-2 p-1 bg-background/60 backdrop-blur-md rounded-lg border border-border/20 transition-transform duration-300 ease-in-out",
-        isMobile && (!isHeaderVisible || isKeyboardVisible) && "translate-x-full opacity-0"
+        isMobile && (!isHeaderVisible || isKeyboardVisible) && "transform translate-x-[calc(100%-3rem)]"
       )}>
         {!keysLoading && hasKeys && (
           <NewChatButton className="backdrop-blur-sm" />
         )}
         <ChatHistoryButton className="backdrop-blur-sm" />
-        <SettingsButton className="backdrop-blur-sm" />
+        <SettingsButton className={cn(
+          "backdrop-blur-sm transition-opacity duration-300",
+          isMobile && (!isHeaderVisible || isKeyboardVisible) && "opacity-0 pointer-events-none"
+        )} />
       </div>
     </div>
   );
