@@ -1,7 +1,7 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
-import { streamText, smoothStream } from 'ai';
+import { streamText } from 'ai';
 import { getModelConfig, AIModel } from '@/lib/models';
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchQuery } from 'convex/nextjs';
@@ -103,14 +103,19 @@ export async function POST(req: NextRequest) {
       messageAttachments.forEach((attachment) => {
         if (attachment.type.startsWith('image/')) {
           content.push({
-            type: 'image_url',
-            image_url: {
-              url: attachment.url!,
-              detail: 'high', // Используем высокое качество для лучшего анализа
-            },
+            type: 'image',
+            image: attachment.url!,
           });
         }
       });
+
+      // Если есть изображения, но нет текста, добавляем пустой текст
+      if (content.length > 0 && !content.some(c => c.type === 'text')) {
+        content.unshift({
+          type: 'text',
+          text: '',
+        });
+      }
 
       const result = {
         role: message.role,
@@ -149,8 +154,6 @@ export async function POST(req: NextRequest) {
       
       When analyzing images, be descriptive and helpful. Explain what you see in detail and answer any questions about the image content.
       `,
-      experimental_transform: [smoothStream({ chunking })],
-      experimental_stream_frequency: 20,
       abortSignal: req.signal,
     };
     const result = streamText(options);
@@ -161,7 +164,8 @@ export async function POST(req: NextRequest) {
         return (error as { message: string }).message;
       },
     });
-  } catch {
+  } catch (error) {
+    console.error('Chat API Error:', error);
     return new NextResponse(
       JSON.stringify({ error: 'Internal Server Error' }),
       {

@@ -24,6 +24,11 @@ function PureMessages({
   error: UseChatHelpers['error'];
   stop: UseChatHelpers['stop'];
 }) {
+  // Проверяем, есть ли последнее сообщение от пользователя без ответа ассистента
+  const lastMessage = messages[messages.length - 1];
+  const shouldShowLoading = status === 'submitted' || 
+    (lastMessage?.role === 'user' && (status === 'streaming' || status === 'ready'));
+
   return (
     <section className="flex flex-col space-y-12">
       {messages.map((message, index) => (
@@ -37,7 +42,7 @@ function PureMessages({
           stop={stop}
         />
       ))}
-      {status === 'submitted' && <MessageLoading />}
+      {shouldShowLoading && <MessageLoading />}
       {error && <Error message={error.message} />}
     </section>
   );

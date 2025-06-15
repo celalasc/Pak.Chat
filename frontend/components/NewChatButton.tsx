@@ -1,10 +1,10 @@
 "use client"
 
-import { useNavigate } from 'react-router';
 import { Button } from './ui/button';
 import { Plus } from 'lucide-react';
 import { WithTooltip } from './WithTooltip';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router';
 
 interface NewChatButtonProps {
   className?: string;

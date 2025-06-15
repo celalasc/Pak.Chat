@@ -41,10 +41,14 @@ export function useScrollHide<T extends HTMLElement = HTMLElement>({
       return;
     }
 
+    // Проверяем, мобильное ли устройство
+    const isMobile = window.innerWidth <= 768;
+
     if (currentScrollY > lastScrollY && hideOnScrollDown) {
       // Прокрутка вниз - скрываем
       setIsVisible(false);
-      if (panelRef?.current) {
+      // Применяем трансформацию только на мобильных устройствах
+      if (panelRef?.current && isMobile) {
         const max = panelRef.current.offsetWidth - 48;
         const delta = Math.min(currentScrollY - lastScrollY, max);
         panelRef.current.style.transform = `translateX(${delta}px)`;
@@ -52,7 +56,7 @@ export function useScrollHide<T extends HTMLElement = HTMLElement>({
     } else if (currentScrollY < lastScrollY && showOnScrollUp) {
       // Прокрутка вверх - показываем
       setIsVisible(true);
-      if (panelRef?.current) {
+      if (panelRef?.current && isMobile) {
         panelRef.current.style.transform = 'translateX(0)';
       }
     }

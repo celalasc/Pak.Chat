@@ -11,6 +11,7 @@ import ErrorBoundary from './ErrorBoundary';
 import MessageReasoning from './MessageReasoning';
 import SelectableText from './SelectableText';
 import QuotedMessage from './QuotedMessage';
+import ImageModal from './ImageModal';
 import { Input } from '@/frontend/components/ui/input';
 import { Button } from '@/frontend/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -38,8 +39,13 @@ function PureMessage({
   const [mode, setMode] = useState<'view' | 'edit'>('view');
   const [mobileControlsVisible, setMobileControlsVisible] = useState(false);
   const isWelcome = message.id === 'welcome';
-  const attachments = (message as any).attachments as { id: string; url: string; name: string; type: string; ext?: string }[] | undefined;
-  const [lightbox, setLightbox] = useState<string | null>(null);
+  const attachments = (message as any).attachments as { id: string; url: string; name: string; type: string; ext?: string; size?: number }[] | undefined;
+  const [lightbox, setLightbox] = useState<{
+    url: string;
+    name: string;
+    type: string;
+    size?: number;
+  } | null>(null);
   const { keys, setKeys } = useAPIKeyStore();
   // Keep editable copy of API keys for the inline prompt
   const [localKeys, setLocalKeys] = useState<APIKeys>(keys);
@@ -66,6 +72,7 @@ function PureMessage({
   return (
     <>
     <div
+      id={`message-${message.id}`}
       role="article"
       className={cn(
         'flex flex-col',
@@ -149,8 +156,15 @@ function PureMessage({
                         key={a.id}
                         src={a.url}
                         className="h-32 w-32 rounded cursor-pointer hover:scale-105 transition object-cover"
-                        onClick={() => setLightbox(a.url)}
+                        onClick={() => setLightbox({
+                          url: a.url,
+                          name: a.name,
+                          type: a.type,
+                          size: a.size,
+                        })}
                         alt={a.name}
+                        loading="eager"
+                        decoding="async"
                       />
                     ) : (
                       <a
@@ -216,7 +230,15 @@ function PureMessage({
                         key={a.id}
                         src={a.url}
                         className="h-24 w-24 rounded cursor-pointer hover:scale-105 transition"
-                        onClick={() => setLightbox(a.url)}
+                        onClick={() => setLightbox({
+                          url: a.url,
+                          name: a.name,
+                          type: a.type,
+                          size: a.size,
+                        })}
+                        loading="eager"
+                        decoding="async"
+                        alt={a.name}
                       />
                     ) : (
                       <a
@@ -250,12 +272,14 @@ function PureMessage({
       })}
     </div>
     {lightbox && (
-      <div
-        className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center"
-        onClick={() => setLightbox(null)}
-      >
-        <img src={lightbox} className="max-h-full max-w-full" />
-      </div>
+      <ImageModal
+        isOpen={Boolean(lightbox)}
+        onClose={() => setLightbox(null)}
+        imageUrl={lightbox.url}
+        fileName={lightbox.name}
+        fileType={lightbox.type}
+        fileSize={lightbox.size}
+      />
     )}
     </>
   );

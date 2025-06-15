@@ -46,8 +46,9 @@ export default function ScrollToBottomButton({
       size="icon"
       className={cn(
         'z-50 h-10 w-10 rounded-full transition-all duration-150 ease-out',
-        'backdrop-blur-md bg-background/60 hover:bg-background/80 border border-foreground/20',
-        'flex items-center justify-center shadow-lg',
+        'backdrop-blur-md border border-foreground/20 shadow-lg',
+        'flex items-center justify-center',
+        'bg-white/70 hover:bg-white/80 border-gray-200/60',
         'dark:bg-background/90 dark:hover:bg-background',
         isVisible
           ? 'translate-y-0 scale-100 opacity-100'

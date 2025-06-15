@@ -5,6 +5,7 @@ import Messages from './Messages';
 import ChatInput from './ChatInput';
 import ChatHistoryButton from './ChatHistoryButton';
 import NewChatButton from './NewChatButton';
+import ChatNavigationBars from './ChatNavigationBars';
 import { UIMessage } from 'ai';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 import { useModelStore } from '@/frontend/stores/ModelStore';
@@ -15,13 +16,14 @@ import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { useKeyboardInsets } from '../hooks/useKeyboardInsets';
 import { cn } from '@/lib/utils';
 import { useEffect, useState, useMemo, useRef } from 'react';
-import { useStreamBuffer } from '../hooks/useStreamBuffer';
 import { useNavigate } from 'react-router';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { isConvexId } from '@/lib/ids';
 import { toast } from 'sonner';
 import { Id } from '@/convex/_generated/dataModel';
+import { useQuoteStore } from '@/frontend/stores/QuoteStore';
+import { useAttachmentsStore } from '@/frontend/stores/AttachmentsStore';
 
 interface ChatProps {
   threadId: string;
@@ -34,34 +36,40 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
   const { isMobile } = useIsMobile();
   const panelRef = useRef<HTMLDivElement>(null);
   const isHeaderVisible = useScrollHide<HTMLDivElement>({ threshold: 15, panelRef });
-  const [renderMessages, setRenderMessages] = useState<UIMessage[]>(initialMessages);
-  const lastContentRef = useRef(initialMessages.at(-1)?.content || '');
-  const bufferMessages = useStreamBuffer((delta: string) => {
-    setRenderMessages(prev => {
-      if (prev.length === 0) return prev;
-      const last = prev[prev.length - 1];
-      if (last.role !== 'assistant') return prev;
-      const updated = { ...last, content: (last.content || '') + delta, parts: [{ type: 'text', text: (last.content || '') + delta }] } as UIMessage;
-      return [...prev.slice(0, -1), updated];
-    });
-  });
   const navigate = useNavigate();
+  const { clearQuote } = useQuoteStore();
+  const { clear: clearAttachments } = useAttachmentsStore();
+  
   useKeyboardInsets((h) => {
     document.documentElement.style.setProperty('--keyboard-inset-height', `${h}px`);
   });
   // Track the current thread ID locally to ensure it exists before sending messages
   const [currentThreadId, setCurrentThreadId] = useState(threadId);
+  const [hasInitialized, setHasInitialized] = useState(false);
 
   // Sync local thread ID with route changes
   useEffect(() => {
     setCurrentThreadId(threadId);
-  }, [threadId]);
+    // Сбрасываем состояние сохраненных сообщений при смене треда
+    setSavedAssistantMessages(new Set());
+    
+    // Отмечаем все сообщения из initialMessages как уже сохраненные
+    const initialAssistantIds = initialMessages
+      .filter(m => m.role === 'assistant')
+      .map(m => m.id);
+    setSavedAssistantMessages(new Set(initialAssistantIds));
+    
+    // Отмечаем что компонент инициализирован
+    setHasInitialized(true);
+  }, [threadId, initialMessages]);
+
   const sendMessage = useMutation<typeof api.messages.send>(api.messages.send);
   const hasKeys = useMemo(() => hasRequiredKeys(), [hasRequiredKeys]);
+
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const [savedAssistantMessages, setSavedAssistantMessages] = useState<Set<string>>(new Set());
 
   useQuoteShortcuts();
-
 
   // Отслеживание видимости клавиатуры на мобильных устройствах
   useEffect(() => {
@@ -85,6 +93,14 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
     }
   }, [isMobile]);
 
+  // Функция для скролла к сообщению
+  const scrollToMessage = (messageId: string) => {
+    const element = document.getElementById(`message-${messageId}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
+
   const {
     messages,
     input,
@@ -103,7 +119,6 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
       net: (navigator as any).connection?.effectiveType ?? '4g',
       threadId: currentThreadId,
     },
-    experimental_throttle: 20,
     experimental_prepareRequestBody: ({ messages }) => {
       // Подготавливаем сообщения с правильными ID для API
       const messagesWithIds = messages.map(msg => ({
@@ -121,43 +136,66 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
       };
     },
     onFinish: async (message) => {
-      if (!isConvexId(currentThreadId)) {
-        return;
-      }
-      const dbId = await sendMessage({
-        threadId: currentThreadId as Id<'threads'>,
-        role: 'assistant',
-        content: message.content,
-      });
-      // Replace last message id with real database id
-      setMessages(prev =>
-        prev.map((m, i) =>
-          i === prev.length - 1 ? { ...m, id: dbId } : m
-        )
-      );
+      // onFinish больше не используется для сохранения - это делается в useEffect
     },
   });
 
+  // Очищаем поле ввода, цитаты и вложения при смене треда
   useEffect(() => {
-    if (status === 'streaming') {
-      const latest = messages[messages.length - 1];
-      // Проверяем, что последнее сообщение действительно от ассистента
-      if (latest && latest.role === 'assistant') {
-        const prev = lastContentRef.current;
-        const diff = latest?.content.slice(prev.length) || '';
-        if (diff) bufferMessages(diff);
-        lastContentRef.current = latest?.content || prev;
-      }
-    } else {
-      setRenderMessages(messages);
-      lastContentRef.current = messages[messages.length - 1]?.content || '';
-    }
-  }, [messages, status, bufferMessages]);
+    setInput('');
+    clearQuote();
+    clearAttachments();
+  }, [threadId, setInput, clearQuote, clearAttachments]);
 
+  // При первом открытии пустого чата (`/chat`) сбрасываем возможные старые сообщения из предыдущих сессий
+  useEffect(() => {
+    if (!isConvexId(threadId) && hasInitialized && initialMessages.length === 0) {
+      // Сбрасываем сообщения только при первом заходе на пустой чат
+      setMessages([]);
+      setSavedAssistantMessages(new Set());
+    }
+  }, [threadId, hasInitialized, initialMessages.length, setMessages]);
+
+  // Отслеживаем и сохраняем новые сообщения от ИИ
+  useEffect(() => {
+    if (!isConvexId(currentThreadId) || status === 'streaming') return;
+
+    const assistantMessages = messages.filter(m => m.role === 'assistant');
+    
+    assistantMessages.forEach(async (message) => {
+      // Проверяем, что сообщение еще не сохранено и имеет временный ID
+      // Также проверяем, что это не сообщение из initialMessages (которое уже в БД)
+      if (!savedAssistantMessages.has(message.id) && 
+          !isConvexId(message.id) && 
+          message.content.trim() &&
+          !initialMessages.some(initial => initial.id === message.id)) {
+        
+        try {
+          const dbId = await sendMessage({
+            threadId: currentThreadId as Id<'threads'>,
+            role: 'assistant',
+            content: message.content,
+          });
+
+          // Отмечаем сообщение как сохраненное
+          setSavedAssistantMessages(prev => new Set(prev).add(message.id));
+
+          // Обновляем ID сообщения на реальный ID из базы данных
+          setMessages(prev =>
+            prev.map(m =>
+              m.id === message.id ? { ...m, id: dbId } : m
+            )
+          );
+        } catch (error) {
+          console.error('Failed to save assistant message:', error);
+        }
+      }
+    });
+  }, [messages, currentThreadId, savedAssistantMessages, sendMessage, setMessages, status, initialMessages]);
 
   return (
     <div className="relative w-full min-h-screen flex flex-col">
-      {renderMessages.length === 0 ? (
+      {messages.length === 0 ? (
         // Когда нет сообщений - поле ввода по центру
         <main className="flex-1 flex flex-col justify-center items-center w-full max-w-3xl mx-auto px-4">
           <ChatInput
@@ -168,7 +206,7 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
             setInput={setInput}
             setMessages={setMessages}
             stop={stop}
-            messageCount={renderMessages.length}
+            messageCount={messages.length}
             error={error}
             onThreadCreated={setCurrentThreadId}
           />
@@ -179,7 +217,7 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
           <main className="flex-1 w-full max-w-3xl mx-auto pt-10 pb-4">
             <Messages
               threadId={currentThreadId}
-              messages={renderMessages}
+              messages={messages}
               status={status}
               setMessages={setMessages}
               reload={reload}
@@ -196,12 +234,17 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
               setInput={setInput}
               setMessages={setMessages}
               stop={stop}
-              messageCount={renderMessages.length}
+              messageCount={messages.length}
               error={error}
               onThreadCreated={setCurrentThreadId}
             />
           </div>
         </>
+      )}
+      
+      {/* Chat Navigation Bars */}
+      {messages.length > 0 && (
+        <ChatNavigationBars messages={messages} scrollToMessage={scrollToMessage} />
       )}
       
       {/* Logo in top left with blur background */}
@@ -216,7 +259,11 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
           )}
           <span 
             className="relative text-xl font-bold text-foreground hover:text-primary transition-colors cursor-pointer"
-            onClick={() => window.location.href = '/chat'}
+            onClick={() => {
+              if (window.location.pathname !== '/chat') {
+                window.location.replace('/chat');
+              }
+            }}
           >
             Pak.Chat
           </span>

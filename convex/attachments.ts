@@ -26,9 +26,8 @@ export const save = mutation({
           fileId: a.storageId,
           name: a.name,
           type: a.type,
-          // Temporary IDs come from the client as plain strings. Cast them to
-          // satisfy the schema; they will be replaced with a real ID later.
-          messageId: (a.messageId ?? undefined) as Id<'messages'> | undefined,
+          // Временные ID от клиента игнорируем, messageId будет обновлен позже
+          messageId: undefined,
         });
         
         // Возвращаем URL для немедленного использования
@@ -52,15 +51,22 @@ export const byThread = query({
       .query('attachments')
       .withIndex('by_thread', (q) => q.eq('threadId', threadId))
       .collect();
-    return Promise.all(
-      attachments.map(async (a) => ({
-        id: a._id,
-        messageId: a.messageId,
-        name: a.name,
-        type: a.type,
-        url: await ctx.storage.getUrl(a.fileId),
-      }))
+    
+    // Получаем URL параллельно для ускорения
+    const attachmentsWithUrls = await Promise.all(
+      attachments.map(async (a) => {
+        const url = await ctx.storage.getUrl(a.fileId);
+        return {
+          id: a._id,
+          messageId: a.messageId,
+          name: a.name,
+          type: a.type,
+          url,
+        };
+      })
     );
+    
+    return attachmentsWithUrls;
   },
 });
 

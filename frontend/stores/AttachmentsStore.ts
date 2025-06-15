@@ -8,6 +8,7 @@ interface Attachment {
   name: string;
   ext: string;
   type: string;
+  size: number;
 }
 
 interface AttachmentState {
@@ -30,9 +31,20 @@ export const useAttachmentsStore = create<AttachmentState>((set) => ({
           name: file.name.length > 24 ? file.name.slice(0, 21) + '...' : file.name,
           ext: file.name.split('.').pop() ?? '',
           type: file.type,
+          size: file.size,
         },
       ],
     })),
-  remove: (id) => set((state) => ({ attachments: state.attachments.filter((a) => a.id !== id) })),
-  clear: () => set({ attachments: [] }),
+  remove: (id) => set((state) => {
+    const attachment = state.attachments.find(a => a.id === id);
+    if (attachment) {
+      URL.revokeObjectURL(attachment.preview);
+    }
+    return { attachments: state.attachments.filter((a) => a.id !== id) };
+  }),
+  clear: () => set((state) => {
+    // Очищаем все preview URL
+    state.attachments.forEach(a => URL.revokeObjectURL(a.preview));
+    return { attachments: [] };
+  }),
 }));

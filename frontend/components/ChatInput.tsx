@@ -121,6 +121,10 @@ function PureChatInput({
 
     const currentInput = textareaRef.current?.value || input;
 
+    // Очищаем поле ввода сразу после начала отправки
+    setInput('');
+    adjustHeight(true);
+
     // Temporary ID used for optimistic UI and initial attachment save
     const clientMsgId = uuidv4();
 
@@ -146,15 +150,32 @@ function PureChatInput({
 
     const userMessage = createUserMessage(clientMsgId, finalMessage);
 
+    // Сохраняем ссылку на attachments для загрузки
+    const attachmentsToUpload = [...attachments];
+    
+    // Добавляем изображения с preview URL для немедленного отображения
+    if (attachments.length > 0) {
+      userMessage.attachments = attachments.map(att => ({
+        id: att.id,
+        url: att.preview, // Используем preview для немедленного показа
+        name: att.name,
+        type: att.type,
+        size: att.size,
+      }));
+    }
+
+    // Очищаем attachments сразу после создания сообщения
+    clear();
+
     // Optimistically show the message
     setMessages(prev => [...prev, userMessage]);
 
     // Upload attachments linked to the temporary ID
     let savedAttachments: any[] = [];
-    if (attachments.length > 0) {
+    if (attachmentsToUpload.length > 0) {
       try {
         const uploadedFiles = await Promise.all(
-          attachments.map(async (attachment) => {
+          attachmentsToUpload.map(async (attachment) => {
             const uploadUrl = await generateUploadUrl();
             const result = await fetch(uploadUrl, {
               method: 'POST',
@@ -179,7 +200,6 @@ function PureChatInput({
           threadId: currentThreadId as Id<'threads'>,
           attachments: uploadedFiles,
         });
-        clear();
       } catch (error) {
         toast.error('Failed to upload attachments');
       }
@@ -203,7 +223,12 @@ function PureChatInput({
     setMessages(prev =>
       prev.map(m =>
         m.id === clientMsgId
-          ? { ...m, id: dbMsgId, attachments: savedAttachments.length > 0 ? savedAttachments : undefined }
+          ? { 
+              ...m, 
+              id: dbMsgId, 
+              // Сохраняем существующие attachments с preview URL до получения реальных URL
+              attachments: (m as any).attachments
+            }
           : m
       )
     );
@@ -211,9 +236,7 @@ function PureChatInput({
     // Trigger assistant response generation
     await reload();
 
-    setInput('');
     clearQuote();
-    adjustHeight(true);
   }, [
     canChat,
     input,
@@ -296,11 +319,21 @@ function PureChatInput({
             )}
 
             <div className="flex flex-col">
+              {/* Attachments at the top */}
+              {attachments.length > 0 && (
+                <div className="bg-secondary px-4 pt-3">
+                  <AttachmentsBar mode="full" />
+                </div>
+              )}
+              
+              {/* Quote display */}
               {currentQuote && (
                 <div className="bg-secondary px-4 pt-3">
                   <QuoteDisplay quote={currentQuote} onRemove={clearQuote} />
                 </div>
               )}
+              
+              {/* Text input */}
               <div className="bg-secondary overflow-y-auto max-h-[300px]">
                 <Textarea
                   id="chat-input"
@@ -334,16 +367,26 @@ function PureChatInput({
                 </span>
               </div>
             </div>
+            
+            {/* Bottom controls */}
             <div className="h-14 flex items-center px-2">
               <div className="flex items-center justify-between w-full gap-2 overflow-x-auto">
-                <AttachmentsBar />
-                <ChatModelDropdown />
-
-                {status === 'submitted' || status === 'streaming' ? (
-                  <StopButton stop={stop} />
-                ) : (
-                  <SendButton onSubmit={handleSubmit} disabled={isDisabled || !canChat} />
+                {/* Add file button only when no attachments */}
+                {attachments.length === 0 && (
+                  <div className="flex items-center">
+                    <AttachmentsBar mode="compact" />
+                  </div>
                 )}
+                
+                <div className="flex items-center gap-2 ml-auto">
+                  <ChatModelDropdown />
+
+                  {status === 'submitted' || status === 'streaming' ? (
+                    <StopButton stop={stop} />
+                  ) : (
+                    <SendButton onSubmit={handleSubmit} disabled={isDisabled || !canChat} />
+                  )}
+                </div>
               </div>
             </div>
           </div>
