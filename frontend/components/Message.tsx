@@ -141,6 +141,32 @@ function PureMessage({
               )}
               onClick={handleMobileMessageClick}
             >
+              {attachments && attachments.length > 0 && (
+                <div className="flex gap-2 flex-wrap mb-3">
+                  {attachments.map((a) =>
+                    a.type.startsWith('image') ? (
+                      <img
+                        key={a.id}
+                        src={a.url}
+                        className="h-32 w-32 rounded cursor-pointer hover:scale-105 transition object-cover"
+                        onClick={() => setLightbox(a.url)}
+                        alt={a.name}
+                      />
+                    ) : (
+                      <a
+                        key={a.id}
+                        href={a.url}
+                        target="_blank"
+                        className="h-10 w-28 bg-muted rounded flex flex-col items-center justify-center text-[10px] px-1 hover:bg-accent"
+                      >
+                        <span className="line-clamp-1">{a.name}</span>
+                        <span className="text-muted-foreground">{a.ext}</span>
+                      </a>
+                    )
+                  )}
+                </div>
+              )}
+
               {mode === 'edit' && (
                 <ErrorBoundary>
                   <MessageEditor

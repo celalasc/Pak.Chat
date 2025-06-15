@@ -4,12 +4,14 @@ import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { streamText, smoothStream } from 'ai';
 import { getModelConfig, AIModel } from '@/lib/models';
 import { NextRequest, NextResponse } from 'next/server';
+import { fetchQuery } from 'convex/nextjs';
+import { api } from '@/convex/_generated/api';
 
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, model, apiKeys, net } = await req.json();
+    const { messages, model, apiKeys, net, threadId } = await req.json();
 
     const modelConfig = getModelConfig(model as AIModel);
     
@@ -49,6 +51,84 @@ export async function POST(req: NextRequest) {
         );
     }
 
+    // Получаем вложения из базы данных, если есть threadId
+    let attachments: any[] = [];
+    if (threadId) {
+      try {
+        attachments = await fetchQuery(api.attachments.byThread, { threadId });
+        console.log('Fetched attachments from DB:', attachments.map(a => ({ 
+          id: a.id, 
+          messageId: a.messageId, 
+          name: a.name, 
+          type: a.type 
+        })));
+      } catch (error) {
+        console.log('Failed to fetch attachments:', error);
+      }
+    }
+
+    // Преобразуем сообщения для поддержки изображений
+    const processedMessages = messages.map((message: any, index: number) => {
+      const messageId = message.id;
+      
+      // Находим вложения для этого сообщения
+      const messageAttachments = attachments.filter(a => a.messageId === messageId);
+      
+      console.log(`Processing message ${index}:`, { 
+        role: message.role, 
+        id: messageId,
+        hasAttachments: messageAttachments.length > 0, 
+        attachmentsCount: messageAttachments.length,
+        availableAttachments: attachments.length,
+        content: message.content?.substring(0, 50) + '...'
+      });
+      
+      if (messageAttachments.length === 0) {
+        return {
+          role: message.role,
+          content: message.content,
+        };
+      }
+
+      // Если есть вложения, создаем multimodal content
+      const content = [];
+      
+      // Добавляем текст сообщения
+      if (message.content && message.content.trim()) {
+        content.push({
+          type: 'text',
+          text: message.content,
+        });
+      }
+
+      // Добавляем изображения
+      messageAttachments.forEach((attachment: any) => {
+        console.log('Processing attachment:', { type: attachment.type, url: attachment.url });
+        if (attachment.type.startsWith('image/')) {
+          content.push({
+            type: 'image_url',
+            image_url: {
+              url: attachment.url,
+              detail: 'high', // Используем высокое качество для лучшего анализа
+            },
+          });
+        }
+      });
+
+      const result = {
+        role: message.role,
+        content: content.length > 0 ? content : message.content,
+      };
+      
+      console.log('Processed message result:', { 
+        role: result.role, 
+        contentType: Array.isArray(result.content) ? 'multimodal' : 'text',
+        contentLength: Array.isArray(result.content) ? result.content.length : result.content.length
+      });
+      
+      return result;
+    });
+
     const netType = (net ?? '4g') as string;
     const chunking: 'line' | 'word' =
       netType.includes('2g') || netType.includes('3g') ? 'line' : 'word';
@@ -56,7 +136,7 @@ export async function POST(req: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const options: any = {
       model: aiModel,
-      messages,
+      messages: processedMessages,
       onError: (error: unknown) => {
         console.log('error', error);
       },
@@ -74,6 +154,8 @@ export async function POST(req: NextRequest) {
       - Inline: The equation $E = mc^2$ shows mass-energy equivalence.
       - Display: 
       $$\\frac{d}{dx}\\sin(x) = \\cos(x)$$
+      
+      When analyzing images, be descriptive and helpful. Explain what you see in detail and answer any questions about the image content.
       `,
       experimental_transform: [smoothStream({ chunking })],
       experimental_stream_frequency: 20,

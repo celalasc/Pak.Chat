@@ -55,13 +55,17 @@ interface SendButtonProps {
   disabled: boolean;
 }
 
-const createUserMessage = (id: string, text: string): UIMessage => ({
-  id,
-  parts: [{ type: 'text', text }],
-  role: 'user',
-  content: text,
-  createdAt: new Date(),
-});
+const createUserMessage = (id: string, text: string, attachments?: any[]): UIMessage & { attachments?: any[] } => {
+  console.log('Creating user message:', { id, hasAttachments: !!attachments?.length, attachmentsCount: attachments?.length || 0 });
+  return {
+    id,
+    parts: [{ type: 'text', text }],
+    role: 'user',
+    content: text,
+    createdAt: new Date(),
+    attachments,
+  };
+};
 
 function PureChatInput({
   threadId,
@@ -88,7 +92,9 @@ function PureChatInput({
   const navigate = useNavigate();
   const createThread = useMutation(api.threads.create);
   const sendMessage = useMutation<typeof api.messages.send>(api.messages.send);
+  const generateUploadUrl = useMutation(api.attachments.generateUploadUrl);
   const saveAttachments = useMutation(api.attachments.save as any);
+  const updateAttachmentMessageId = useMutation(api.attachments.updateMessageId);
   const { complete } = useMessageSummary();
   const { attachments, clear } = useAttachmentsStore();
 
@@ -137,36 +143,82 @@ function PureChatInput({
       complete(finalMessage, { body: { messageId, threadId: currentThreadId } });
     }
 
-    const userMessage = createUserMessage(messageId, finalMessage);
+    // Загружаем файлы в Convex storage
+    let messageAttachments: any[] = [];
+    if (attachments.length > 0) {
+      try {
+        // Загружаем каждый файл
+        const uploadedFiles = await Promise.all(
+          attachments.map(async (attachment) => {
+            // Получаем URL для загрузки
+            const uploadUrl = await generateUploadUrl();
+            
+            // Загружаем файл
+            const result = await fetch(uploadUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': attachment.file.type },
+              body: attachment.file,
+            });
+            
+            if (!result.ok) {
+              throw new Error(`Failed to upload ${attachment.name}`);
+            }
+            
+            const { storageId } = await result.json();
+            
+            return {
+              storageId,
+              name: attachment.name,
+              type: attachment.type,
+              messageId: null,
+            };
+          })
+        );
 
-    append(userMessage);
-    setInput('');
-    clearQuote(); // Очищаем цитату после отправки
-    adjustHeight(true);
+        // Сохраняем метаданные вложений в базе данных
+        const savedAttachments = await saveAttachments({
+          threadId: currentThreadId as Id<'threads'>,
+          attachments: uploadedFiles,
+        });
+        
+        messageAttachments = savedAttachments;
+        clear();
+      } catch (error) {
+        console.error('Error uploading attachments:', error);
+        toast.error('Failed to upload attachments');
+        return;
+      }
+    }
 
+    const userMessage = createUserMessage(messageId, finalMessage, messageAttachments.length > 0 ? messageAttachments : undefined);
+
+    // Сначала сохраняем сообщение в БД и получаем реальный ID
     const newId = await sendMessage({
       threadId: currentThreadId as Id<'threads'>,
       content: finalMessage,
       role: 'user',
     });
-    if (attachments.length > 0) {
-      await saveAttachments({
-        threadId: currentThreadId as Id<'threads'>,
-        attachments: attachments.map((a) => ({
-          file: a.file,
-          name: a.name,
-          type: a.type,
-          messageId: newId,
-        })),
+    
+    // Обновляем messageId у вложений
+    if (messageAttachments.length > 0) {
+      console.log('Updating attachment messageIds:', {
+        attachmentIds: messageAttachments.map(a => a.id),
+        newMessageId: newId,
       });
-      clear();
+      await updateAttachmentMessageId({
+        attachmentIds: messageAttachments.map(a => a.id),
+        messageId: newId,
+      });
     }
-    // Replace the temporary UUID with the real database ID
-    document.body.classList.add('no-transition');
-    setTimeout(() => document.body.classList.remove('no-transition'), 50);
-    setMessages(prev =>
-      prev.map(m => (m.id === messageId ? { ...m, id: newId } : m))
-    );
+
+    // Теперь добавляем сообщение в UI с правильным ID из БД
+    const userMessageWithRealId = { ...userMessage, id: newId };
+    console.log('Adding message to UI with real ID:', { oldId: messageId, newId, hasAttachments: !!messageAttachments.length });
+    
+    append(userMessageWithRealId);
+    setInput('');
+    clearQuote(); // Очищаем цитату после отправки
+    adjustHeight(true);
   }, [
     canChat,
     input,
@@ -180,6 +232,11 @@ function PureChatInput({
     clearQuote,
     createThread,
     sendMessage,
+    generateUploadUrl,
+    saveAttachments,
+    updateAttachmentMessageId,
+    attachments,
+    clear,
     setMessages,
     navigate,
     isConvexId,
@@ -201,7 +258,7 @@ function PureChatInput({
   // Если есть ошибка и нельзя отправлять сообщения, показываем форму для ввода API ключей
   if (error && !canChat) {
     return (
-      <div className="sticky bottom-0 inset-x-0 flex justify-center pb-safe mobile-keyboard-fix w-full">
+      <div className="w-full flex justify-center pb-safe mobile-keyboard-fix">
         <div className={cn('backdrop-blur-md bg-secondary p-4 pb-2 border-t border-border/50 max-w-3xl w-full', messageCount === 0 ? 'rounded-[20px]' : 'rounded-t-[20px]')}>
           <div className="space-y-2">
             {(['google','openrouter','openai'] as const).map(provider => (
@@ -219,12 +276,14 @@ function PureChatInput({
 
   return (
     <>
-      <div className="sticky bottom-0 inset-x-0 flex justify-center pb-safe mobile-keyboard-fix w-full">
+      <div className="w-full flex justify-center pb-safe mobile-keyboard-fix">
         <div ref={containerRef} className={cn('backdrop-blur-md bg-secondary p-2 pb-0 border-t border-border/50 max-w-3xl w-full', messageCount === 0 ? 'rounded-[20px]' : 'rounded-t-[20px]')}>
           {/* Scroll to bottom button */}
-          <div className="absolute right-4 -top-12 z-50">
-            <ScrollToBottomButton />
-          </div>
+          {messageCount > 0 && (
+            <div className="absolute right-4 -top-12 z-50">
+              <ScrollToBottomButton />
+            </div>
+          )}
           <div className="relative">
             {/* Provider links when no API keys */}
             {!canChat && messageCount > 1 && (

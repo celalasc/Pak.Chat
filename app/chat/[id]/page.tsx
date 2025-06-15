@@ -19,12 +19,24 @@ export default async function ChatPage({ params }: { params: Promise<{ id: strin
   const rawMessages = Array.isArray(messagesResult)
     ? messagesResult
     : messagesResult.page;
-  const messages: UIMessage[] = rawMessages.map((m) => ({
-    id: m._id,
-    role: m.role,
-    content: m.content,
-    parts: [{ type: 'text', text: m.content }],
-    createdAt: new Date(m.createdAt),
-  }));
+  
+  // Загружаем вложения для треда
+  const attachments = await fetchQuery(api.attachments.byThread, {
+    threadId: id as Id<'threads'>,
+  });
+  
+  const messages: UIMessage[] = rawMessages.map((m) => {
+    // Находим вложения для этого сообщения
+    const messageAttachments = attachments.filter(a => a.messageId === m._id);
+    
+    return {
+      id: m._id,
+      role: m.role,
+      content: m.content,
+      parts: [{ type: 'text', text: m.content }],
+      createdAt: new Date(m.createdAt),
+      attachments: messageAttachments.length > 0 ? messageAttachments : undefined,
+    } as UIMessage & { attachments?: typeof messageAttachments };
+  });
   return <Chat threadId={id} initialMessages={messages} />;
 }

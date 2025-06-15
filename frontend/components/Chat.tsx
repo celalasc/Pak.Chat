@@ -9,7 +9,6 @@ import { UIMessage } from 'ai';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 import { useModelStore } from '@/frontend/stores/ModelStore';
 import SettingsButton from './SettingsButton';
-import BottomBar from './BottomBar';
 import { useQuoteShortcuts } from '@/frontend/hooks/useQuoteShortcuts';
 import { useScrollHide } from '@/frontend/hooks/useScrollHide';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
@@ -41,6 +40,7 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
     setRenderMessages(prev => {
       if (prev.length === 0) return prev;
       const last = prev[prev.length - 1];
+      if (last.role !== 'assistant') return prev;
       const updated = { ...last, content: (last.content || '') + delta, parts: [{ type: 'text', text: (last.content || '') + delta }] } as UIMessage;
       return [...prev.slice(0, -1), updated];
     });
@@ -102,8 +102,30 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
       apiKeys: keys,
       model: selectedModel,
       net: (navigator as any).connection?.effectiveType ?? '4g',
+      threadId: currentThreadId,
     },
     experimental_throttle: 20,
+    experimental_prepareRequestBody: ({ messages }) => {
+      // Подготавливаем сообщения с правильными ID для API
+      const messagesWithIds = messages.map(msg => ({
+        ...msg,
+        id: msg.id, // Убеждаемся, что ID передается
+      }));
+      
+      console.log('Preparing request body with messages:', messagesWithIds.map(m => ({
+        role: m.role,
+        id: m.id,
+        content: m.content?.substring(0, 50) + '...'
+      })));
+      
+      return {
+        messages: messagesWithIds,
+        model: selectedModel,
+        apiKeys: keys,
+        net: (navigator as any).connection?.effectiveType ?? '4g',
+        threadId: currentThreadId,
+      };
+    },
     onFinish: async (message) => {
       if (!isConvexId(currentThreadId)) {
         return;
@@ -125,10 +147,13 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
   useEffect(() => {
     if (status === 'streaming') {
       const latest = messages[messages.length - 1];
-      const prev = lastContentRef.current;
-      const diff = latest?.content.slice(prev.length) || '';
-      if (diff) bufferMessages(diff);
-      lastContentRef.current = latest?.content || prev;
+      // Проверяем, что последнее сообщение действительно от ассистента
+      if (latest && latest.role === 'assistant') {
+        const prev = lastContentRef.current;
+        const diff = latest?.content.slice(prev.length) || '';
+        if (diff) bufferMessages(diff);
+        lastContentRef.current = latest?.content || prev;
+      }
     } else {
       setRenderMessages(messages);
       lastContentRef.current = messages[messages.length - 1]?.content || '';
@@ -137,33 +162,53 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
 
 
   return (
-    <div className="relative w-full">
-      <main
-        className={`flex flex-col w-full max-w-3xl pt-10 pb-44 mx-auto transition-all duration-300 ease-in-out relative`}
-      >
-        <Messages
-          threadId={currentThreadId}
-          messages={renderMessages}
-          status={status}
-          setMessages={setMessages}
-          reload={reload}
-          error={error}
-          stop={stop}
-        />
-        <ChatInput
-          threadId={currentThreadId}
-          input={input}
-          status={status}
-          append={append}
-          setInput={setInput}
-          setMessages={setMessages}
-          stop={stop}
-          messageCount={renderMessages.length}
-          error={error}
-        onThreadCreated={setCurrentThreadId}
-      />
-      </main>
-      <BottomBar />
+    <div className="relative w-full min-h-screen flex flex-col">
+      {renderMessages.length === 0 ? (
+        // Когда нет сообщений - поле ввода по центру
+        <main className="flex-1 flex flex-col justify-center items-center w-full max-w-3xl mx-auto px-4">
+          <ChatInput
+            threadId={currentThreadId}
+            input={input}
+            status={status}
+            append={append}
+            setInput={setInput}
+            setMessages={setMessages}
+            stop={stop}
+            messageCount={renderMessages.length}
+            error={error}
+            onThreadCreated={setCurrentThreadId}
+          />
+        </main>
+      ) : (
+        // Когда есть сообщения - обычная разметка
+        <>
+          <main className="flex-1 w-full max-w-3xl mx-auto pt-10 pb-4">
+            <Messages
+              threadId={currentThreadId}
+              messages={renderMessages}
+              status={status}
+              setMessages={setMessages}
+              reload={reload}
+              error={error}
+              stop={stop}
+            />
+          </main>
+          <div className="sticky bottom-0 w-full">
+            <ChatInput
+              threadId={currentThreadId}
+              input={input}
+              status={status}
+              append={append}
+              setInput={setInput}
+              setMessages={setMessages}
+              stop={stop}
+              messageCount={renderMessages.length}
+              error={error}
+              onThreadCreated={setCurrentThreadId}
+            />
+          </div>
+        </>
+      )}
       
       {/* Logo in top left with blur background */}
       <div className={cn(
