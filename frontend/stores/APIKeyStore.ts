@@ -92,31 +92,22 @@ export function useAPIKeyStore() {
     const currentKeys = store.getState().keys;
     const newKeys = { ...currentKeys, ...updates };
     
-    console.log('setKeys called with updates:', updates);
-    console.log('Current keys:', currentKeys);
-    console.log('New keys:', newKeys);
     
     // Защита от пустых вызовов - проверяем, действительно ли изменились ключи
     if (!deepEqual(currentKeys, newKeys)) {
-      console.log('Keys changed, updating store');
       store.setState({ keys: newKeys });
       
       if (user) {
-        console.log('User exists, encrypting and saving to Convex');
         const encrypted = encryptData(newKeys, user.uid);
         try {
           await saveApiKeys({ encryptedApiKeys: encrypted });
-          console.log('Keys saved successfully to Convex');
         } catch (error) {
-          console.error('Failed to save API keys', error);
           const { toast } = await import('sonner');
           toast.error('Failed to save keys');
         }
       } else {
-        console.log('No user, keys saved only locally');
       }
     } else {
-      console.log('Keys unchanged, skipping update');
     }
   };
 

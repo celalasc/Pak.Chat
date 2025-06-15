@@ -100,8 +100,8 @@ function Codebar({ lang, codeString }: { lang: string; codeString: string }) {
       setTimeout(() => {
         setCopied(false);
       }, 2000);
-    } catch (error) {
-      console.error('Failed to copy code to clipboard:', error);
+    } catch {
+      /* ignore clipboard failures */
     }
   };
 

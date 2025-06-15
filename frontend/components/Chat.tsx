@@ -112,11 +112,6 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
         id: msg.id, // Убеждаемся, что ID передается
       }));
       
-      console.log('Preparing request body with messages:', messagesWithIds.map(m => ({
-        role: m.role,
-        id: m.id,
-        content: m.content?.substring(0, 50) + '...'
-      })));
       
       return {
         messages: messagesWithIds,

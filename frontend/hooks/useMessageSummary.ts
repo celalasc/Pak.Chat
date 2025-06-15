@@ -35,8 +35,8 @@ export const useMessageSummary = () => {
         } else {
           toast.error('Failed to generate a summary for the message');
         }
-      } catch (error) {
-        console.error(error);
+      } catch {
+        /* ignore errors */
       }
     },
   });

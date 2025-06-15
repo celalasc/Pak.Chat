@@ -8,8 +8,8 @@ export function useUserSync() {
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      syncUser().catch(error => {
-        console.error('Failed to sync user:', error);
+      syncUser().catch(() => {
+        /* error ignored */
       });
     }
   }, [isAuthenticated, isLoading, syncUser]);

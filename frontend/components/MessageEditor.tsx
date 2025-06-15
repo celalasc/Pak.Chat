@@ -49,8 +49,8 @@ export default function MessageEditor({
             payload.error || 'Failed to generate a summary for the message'
           );
         }
-      } catch (error) {
-        console.error(error);
+      } catch {
+        /* ignore errors */
       }
     },
   });
@@ -107,8 +107,7 @@ export default function MessageEditor({
       setTimeout(() => {
         reload();
       }, 0);
-    } catch (err) {
-      console.error(err);
+    } catch {
       toast.error('Failed to save changes');
     }
   };
