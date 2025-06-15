@@ -8,7 +8,7 @@ import { Input } from './ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 // Dexie imports removed as Convex is now the data source
 import { useNavigate, useParams } from 'react-router';
-import { X, Pin, PinOff, Search, MessageSquare, Plus, Edit2, Check } from 'lucide-react';
+import { X, Pin, PinOff, Search, MessageSquare, Plus, Edit2, Check, GitBranch } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { useQuery, useMutation, useConvexAuth } from 'convex/react';
@@ -122,7 +122,7 @@ function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistory
   );
 
   const handleNewChat = useCallback(() => {
-    navigate('/chat');
+    navigate('/chat', { replace: true });
     handleOpenChange(false);
   }, [navigate, handleOpenChange]);
 
@@ -237,6 +237,9 @@ function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistory
                 {thread.pinned && (
                   <Pin className="h-3 w-3 text-primary shrink-0" />
                 )}
+                {thread.clonedFrom && (
+                  <GitBranch className="h-3 w-3 text-primary shrink-0" />
+                )}
                 <span className="line-clamp-1 text-sm font-medium">{thread.title}</span>
               </div>
               <span className="text-xs text-muted-foreground">{formatDate(new Date(thread._creationTime))}</span>
@@ -302,8 +305,7 @@ function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistory
 
   // Early returns after all hooks
   if (!isAuthenticated || threads === undefined) {
-    const PageSkeleton = require('./PageSkeleton').default;
-    return <PageSkeleton />;
+    return null;
   }
 
   const ContentComponent = () => (

@@ -1,15 +1,17 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, RefObject } from 'react';
 
 interface UseScrollHideOptions {
   threshold?: number;
   hideOnScrollDown?: boolean;
   showOnScrollUp?: boolean;
+  panelRef?: RefObject<HTMLElement>;
 }
 
 export function useScrollHide({
   threshold = 10,
   hideOnScrollDown = true,
   showOnScrollUp = true,
+  panelRef,
 }: UseScrollHideOptions = {}) {
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
@@ -33,13 +35,21 @@ export function useScrollHide({
     if (currentScrollY > lastScrollY && hideOnScrollDown) {
       // Прокрутка вниз - скрываем
       setIsVisible(false);
+      if (panelRef?.current) {
+        const max = panelRef.current.offsetWidth - 48;
+        const delta = Math.min(currentScrollY - lastScrollY, max);
+        panelRef.current.style.transform = `translateX(${delta}px)`;
+      }
     } else if (currentScrollY < lastScrollY && showOnScrollUp) {
       // Прокрутка вверх - показываем
       setIsVisible(true);
+      if (panelRef?.current) {
+        panelRef.current.style.transform = 'translateX(0)';
+      }
     }
 
     setLastScrollY(currentScrollY);
-  }, [lastScrollY, threshold, hideOnScrollDown, showOnScrollUp]);
+  }, [lastScrollY, threshold, hideOnScrollDown, showOnScrollUp, panelRef]);
 
   useEffect(() => {
     // Инициализируем начальную позицию

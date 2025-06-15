@@ -31,20 +31,17 @@ export default function ChatPage() {
 
   // Показываем загрузку пока данные не загружены
   if (!id || !isConvexId(id)) {
-    const PageSkeleton = require('../components/PageSkeleton').default;
-    return <PageSkeleton />; // Перенаправление уже происходит в useEffect
+    return null; // Перенаправление уже происходит в useEffect
   }
 
   if (thread === undefined || messagesResult === undefined) {
-    const PageSkeleton = require('../components/PageSkeleton').default;
-    return <PageSkeleton />;
+    return null;
   }
 
   // Если тред не найден, перенаправляем на главную
   if (thread === null) {
     navigate('/chat');
-    const PageSkeleton = require('../components/PageSkeleton').default;
-    return <PageSkeleton />;
+    return null;
   }
 
   // Извлекаем сообщения из пагинированного результата
@@ -60,5 +57,5 @@ export default function ChatPage() {
     parts: [{ type: 'text', text: m.content }],
   }));
 
-  return <Chat threadId={id} initialMessages={messages} />;
-} 
+  return <Chat key={id ?? 'new'} threadId={id ?? ''} initialMessages={messages} />;
+}

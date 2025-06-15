@@ -1,6 +1,5 @@
 import { UIMessage } from 'ai';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
-import KeyPrompt from '@/frontend/components/KeyPrompt';
 import Chat from '@/frontend/components/Chat';
 
 export default function Home() {
@@ -14,17 +13,11 @@ export default function Home() {
   };
   const { hasRequiredKeys, keysLoading } = useAPIKeyStore();
   if (keysLoading) {
-    const PageSkeleton = require('../components/PageSkeleton').default;
-    return <PageSkeleton />;
+    return null;
   }
   const hasKeys = hasRequiredKeys();
   const initialMessages = hasKeys ? [] : [welcomeMessage];
   
   // Используем Chat компонент с пустым threadId для новой беседы
-  return (
-    <>
-      {!hasKeys && <KeyPrompt />}
-      <Chat threadId="" initialMessages={initialMessages} />
-    </>
-  );
+  return <Chat threadId="" initialMessages={initialMessages} />;
 }
