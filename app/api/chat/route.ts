@@ -20,6 +20,7 @@ export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
+    // Убираем 'net' из деструктуризации, так как он больше не используется
     const { messages, model, apiKeys, threadId } = await req.json();
 
     const modelConfig = getModelConfig(model as AIModel);
@@ -80,7 +81,6 @@ export async function POST(req: NextRequest) {
         a => a.messageId === messageId && a.url
       );
       
-      
       if (messageAttachments.length === 0) {
         return {
           role: message.role,
@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Если есть вложения, создаем multimodal content
-      const content = [];
+      const content: ({ type: string; text?: string; image?: string })[] = [];
       
       // Добавляем текст сообщения
       if (message.content && message.content.trim()) {
@@ -122,10 +122,8 @@ export async function POST(req: NextRequest) {
         content: content.length > 0 ? content : message.content,
       };
       
-      
       return result;
     });
-
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const options: any = {
