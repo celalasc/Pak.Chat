@@ -19,7 +19,7 @@ import { useNavigate } from 'react-router';
 import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
-import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
+import { useAPIKeyStore, APIKeys } from '@/frontend/stores/APIKeyStore';
 import { useModelStore } from '@/frontend/stores/ModelStore';
 import { useQuoteStore } from '@/frontend/stores/QuoteStore';
 import { AI_MODELS, AIModel, getModelConfig } from '@/lib/models';
@@ -71,8 +71,7 @@ function PureChatInput({
   messageCount,
 }: ChatInputProps) {
   // Все хуки должны быть вызваны до любых условных возвратов
-  const { hasRequiredKeys, keys, setKeys, keysLoading } = useAPIKeyStore();
-  if (keysLoading) return null; // hide input until keys are loaded
+  const { hasRequiredKeys, keys, setKeys } = useAPIKeyStore();
   const canChat = hasRequiredKeys();
   const { currentQuote, clearQuote } = useQuoteStore();
   const [localKeys, setLocalKeys] = useState(keys);
@@ -184,7 +183,7 @@ function PureChatInput({
             {(['google','openrouter','openai'] as const).map(provider => (
               <Input key={provider}
                 value={localKeys[provider]||''}
-                onChange={e => setLocalKeys(prev => ({ ...prev, [provider]: e.target.value }))}
+                onChange={e => setLocalKeys((prev: APIKeys) => ({ ...prev, [provider]: e.target.value }))}
                 placeholder={`${provider.charAt(0).toUpperCase()+provider.slice(1)} API Key`} />
             ))}
           </div>
@@ -379,4 +378,14 @@ const SendButton = memo(PureSendButton, (prevProps, nextProps) => {
   return prevProps.disabled === nextProps.disabled;
 });
 
-export default ChatInput;
+// Обёртка для решения проблемы с Rules of Hooks
+function ChatInputWrapper(props: ChatInputProps) {
+  const { keysLoading } = useAPIKeyStore();
+  if (keysLoading) {
+    // Возвращаем скелетон вместо null для сохранения места в макете
+    return <div className="h-24" />;
+  }
+  return <ChatInput {...props} />;
+}
+
+export default ChatInputWrapper;

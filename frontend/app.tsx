@@ -3,6 +3,7 @@ import ChatLayout from './ChatLayout';
 import Home from './routes/Home';
 import Index from './routes/Index';
 import Settings from './routes/Settings';
+import ChatPage from './routes/ChatPage';
 import ProtectedRoute from './components/ProtectedRoute';
 
 export default function App() {
@@ -19,6 +20,7 @@ export default function App() {
           }
         >
           <Route index element={<Home />} />
+          <Route path=":id" element={<ChatPage />} />
         </Route>
         <Route 
             path="settings" 

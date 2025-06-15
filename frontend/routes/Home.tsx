@@ -1,6 +1,7 @@
 import { UIMessage } from 'ai';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 import KeyPrompt from '@/frontend/components/KeyPrompt';
+import Chat from '@/frontend/components/Chat';
 
 export default function Home() {
   const eightDaysAgo = new Date(Date.now() - 1000 * 60 * 60 * 24 * 8);
@@ -15,12 +16,12 @@ export default function Home() {
   if (keysLoading) return null;
   const hasKeys = hasRequiredKeys();
   const initialMessages = hasKeys ? [] : [welcomeMessage];
+  
+  // Используем Chat компонент с пустым threadId для новой беседы
   return (
     <>
       {!hasKeys && <KeyPrompt />}
-      <div className="fade-in p-4 text-muted-foreground text-center">
-        Select a chat on the left or press +
-      </div>
+      <Chat threadId="" initialMessages={initialMessages} />
     </>
   );
 }

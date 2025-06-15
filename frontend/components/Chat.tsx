@@ -15,7 +15,7 @@ import { useScrollHide } from '@/frontend/hooks/useScrollHide';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { cn } from '@/lib/utils';
 import { useEffect, useState, useMemo } from 'react';
-import { useParams } from 'react-router';
+import { useParams, useNavigate } from 'react-router';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { isConvexId } from '@/lib/ids';
@@ -33,25 +33,25 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
   const { isMobile } = useIsMobile();
   const isHeaderVisible = useScrollHide({ threshold: 15 });
   const { id } = useParams();
-  const sendMessage = useMutation(api.messages.send, {
-    optimisticUpdate: (ctx, args) => {
-      ctx.setQueryData(api.messages.get, { threadId: args.threadId }, prev => ([
-        ...(prev as any[]),
-        {
-          _id: 'optimistic-' + Date.now(),
-          threadId: args.threadId,
-          role: args.role,
-          content: args.content,
-          createdAt: Date.now(),
-          authorId: 'me',
-        },
-      ]));
-    },
-  });
+  const navigate = useNavigate();
+  const createThread = useMutation(api.threads.create);
+  const [effectiveThreadId, setEffectiveThreadId] = useState(threadId);
+  const sendMessage = useMutation(api.messages.send);
   const hasKeys = useMemo(() => hasRequiredKeys(), [hasRequiredKeys]);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
   useQuoteShortcuts();
+
+  // Если тред ещё не создан (пустая строка) — создаём его один раз
+  useEffect(() => {
+    (async () => {
+      if (!isConvexId(effectiveThreadId)) {
+        const newId = await createThread({ title: 'New Chat' });
+        setEffectiveThreadId(newId);
+        navigate(`/chat/${newId}`, { replace: true });
+      }
+    })();
+  }, [effectiveThreadId, createThread, navigate]);
 
   // Отслеживание видимости клавиатуры на мобильных устройствах
   useEffect(() => {
@@ -86,12 +86,12 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
     status,
     error,
   } = useChat({
-    id: threadId,
+    id: effectiveThreadId,
     initialMessages,
     body: {
       apiKeys: keys,
       model: selectedModel,
-      net: navigator.connection?.effectiveType ?? '4g',
+      net: (navigator as any).connection?.effectiveType ?? '4g',
     },
     onFinish: async (message) => {
       const aiMessage: UIMessage = {
@@ -106,12 +106,12 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
           }
         ],
       };
-      if (!isConvexId(threadId)) {
+      if (!isConvexId(effectiveThreadId)) {
         toast.error('Thread not yet created');
         return;
       }
       await sendMessage({
-        threadId: threadId as Id<'threads'>,
+        threadId: effectiveThreadId as Id<'threads'>,
         role: 'assistant',
         content: message.content,
       });
@@ -128,7 +128,7 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
         className={`flex flex-col w-full max-w-3xl pt-10 pb-44 mx-auto transition-all duration-300 ease-in-out relative`}
       >
         <Messages
-          threadId={threadId}
+          threadId={effectiveThreadId}
           messages={messages}
           status={status}
           setMessages={setMessages}
@@ -137,7 +137,7 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
           stop={stop}
         />
         <ChatInput
-          threadId={threadId}
+          threadId={effectiveThreadId}
           input={input}
           status={status}
           append={append}

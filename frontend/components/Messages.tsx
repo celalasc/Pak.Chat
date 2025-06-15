@@ -28,7 +28,7 @@ function PureMessages({
     <section className="flex flex-col space-y-12">
       {messages.map((message, index) => (
         <PreviewMessage
-          key={message.id}
+          key={`${message.id}-${index}`}
           threadId={threadId}
           message={message}
           isStreaming={status === 'streaming' && messages.length - 1 === index}

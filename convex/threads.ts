@@ -4,6 +4,22 @@ import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { currentUserId } from "./utils";
 
+/** Get a single thread by ID */
+export const get = query({
+  args: { threadId: v.id("threads") },
+  async handler(ctx, args) {
+    const uid = await currentUserId(ctx);
+    if (uid === null) {
+      return null;
+    }
+    const thread = await ctx.db.get(args.threadId);
+    if (!thread || thread.userId !== uid) {
+      return null;
+    }
+    return thread;
+  },
+});
+
 /** List threads for the authenticated user ordered by creation time */
 export const list = query({
   args: {},
