@@ -39,7 +39,8 @@ interface ChatInputProps {
   status: UseChatHelpers['status'];
   error: UseChatHelpers['error'];
   setInput: UseChatHelpers['setInput'];
-  append: UseChatHelpers['append'];
+  /** Reload chat with current messages without appending */
+  reload: UseChatHelpers['reload'];
   setMessages: UseChatHelpers['setMessages'];
   stop: UseChatHelpers['stop'];
   messageCount: number;
@@ -72,7 +73,7 @@ function PureChatInput({
   status,
   error,
   setInput,
-  append,
+  reload,
   setMessages,
   stop,
   messageCount,
@@ -120,7 +121,8 @@ function PureChatInput({
 
     const currentInput = textareaRef.current?.value || input;
 
-    const messageId = uuidv4();
+    // Temporary ID used for optimistic UI and initial attachment save
+    const clientMsgId = uuidv4();
 
     // Формируем финальный текст сообщения с цитатой
     let finalMessage = currentInput.trim();
@@ -135,82 +137,80 @@ function PureChatInput({
       navigate(`/chat/${newThreadId}`);
       currentThreadId = newThreadId;
       complete(finalMessage, {
-        body: { threadId: newThreadId, messageId, isTitle: true },
+        body: { threadId: newThreadId, messageId: clientMsgId, isTitle: true },
       });
     } else {
       currentThreadId = threadId as Id<'threads'>;
-      complete(finalMessage, { body: { messageId, threadId: currentThreadId } });
+      complete(finalMessage, { body: { messageId: clientMsgId, threadId: currentThreadId } });
     }
 
-    // Загружаем файлы в Convex storage
-    let messageAttachments: any[] = [];
+    const userMessage = createUserMessage(clientMsgId, finalMessage);
+
+    // Optimistically show the message
+    setMessages(prev => [...prev, userMessage]);
+
+    // Upload attachments linked to the temporary ID
+    let savedAttachments: any[] = [];
     if (attachments.length > 0) {
       try {
-        // Загружаем каждый файл
         const uploadedFiles = await Promise.all(
           attachments.map(async (attachment) => {
-            // Получаем URL для загрузки
             const uploadUrl = await generateUploadUrl();
-            
-            // Загружаем файл
             const result = await fetch(uploadUrl, {
               method: 'POST',
               headers: { 'Content-Type': attachment.file.type },
               body: attachment.file,
             });
-            
             if (!result.ok) {
               throw new Error(`Failed to upload ${attachment.name}`);
             }
-            
             const { storageId } = await result.json();
-            
             return {
               storageId,
               name: attachment.name,
               type: attachment.type,
-              messageId: null,
+              messageId: clientMsgId,
             };
           })
         );
-
-        // Сохраняем метаданные вложений в базе данных
-        const savedAttachments = await saveAttachments({
+        savedAttachments = await saveAttachments({
           threadId: currentThreadId as Id<'threads'>,
           attachments: uploadedFiles,
         });
-        
-        messageAttachments = savedAttachments;
         clear();
       } catch (error) {
         toast.error('Failed to upload attachments');
-        return;
       }
     }
 
-    const userMessage = createUserMessage(messageId, finalMessage, messageAttachments.length > 0 ? messageAttachments : undefined);
-
-    // Сначала сохраняем сообщение в БД и получаем реальный ID
-    const newId = await sendMessage({
+    // Persist the message and get the real database ID
+    const dbMsgId = await sendMessage({
       threadId: currentThreadId as Id<'threads'>,
       content: finalMessage,
       role: 'user',
     });
-    
-    // Обновляем messageId у вложений
-    if (messageAttachments.length > 0) {
+
+    if (savedAttachments.length > 0) {
       await updateAttachmentMessageId({
-        attachmentIds: messageAttachments.map(a => a.id),
-        messageId: newId,
+        attachmentIds: savedAttachments.map((a) => a.id),
+        messageId: dbMsgId,
       });
     }
 
-    // Теперь добавляем сообщение в UI с правильным ID из БД
-    const userMessageWithRealId = { ...userMessage, id: newId };
-    
-    append(userMessageWithRealId);
+    // Replace temporary ID and add attachment metadata
+    setMessages(prev =>
+      prev.map(m =>
+        m.id === clientMsgId
+          ? { ...m, id: dbMsgId, attachments: savedAttachments.length > 0 ? savedAttachments : undefined }
+          : m
+      )
+    );
+
+    // Trigger assistant response generation
+    await reload();
+
     setInput('');
-    clearQuote(); // Очищаем цитату после отправки
+    clearQuote();
     adjustHeight(true);
   }, [
     canChat,
@@ -218,7 +218,7 @@ function PureChatInput({
     status,
     setInput,
     adjustHeight,
-    append,
+    reload,
     threadId,
     complete,
     currentQuote,

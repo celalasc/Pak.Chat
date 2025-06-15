@@ -89,7 +89,6 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
     messages,
     input,
     setInput,
-    append,
     setMessages,
     reload,
     stop,
@@ -165,7 +164,7 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
             threadId={currentThreadId}
             input={input}
             status={status}
-            append={append}
+            reload={reload}
             setInput={setInput}
             setMessages={setMessages}
             stop={stop}
@@ -193,7 +192,7 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
               threadId={currentThreadId}
               input={input}
               status={status}
-              append={append}
+              reload={reload}
               setInput={setInput}
               setMessages={setMessages}
               stop={stop}

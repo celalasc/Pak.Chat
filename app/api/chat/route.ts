@@ -6,6 +6,15 @@ import { getModelConfig, AIModel } from '@/lib/models';
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchQuery } from 'convex/nextjs';
 import { api } from '@/convex/_generated/api';
+import type { Id } from '@/convex/_generated/dataModel';
+
+interface Attachment {
+  id: Id<'attachments'>;
+  messageId: Id<'messages'> | undefined;
+  name: string;
+  type: string;
+  url: string | null;
+}
 
 export const maxDuration = 60;
 
@@ -52,13 +61,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Получаем вложения из базы данных, если есть threadId
-    let attachments: {
-      id: string;
-      messageId: string | undefined;
-      name: string;
-      type: string;
-      url: string;
-    }[] = [];
+    let attachments: Attachment[] = [];
     if (threadId) {
       try {
         attachments = await fetchQuery(api.attachments.byThread, { threadId });
@@ -73,7 +76,9 @@ export async function POST(req: NextRequest) {
       const messageId = message.id;
       
       // Находим вложения для этого сообщения
-      const messageAttachments = attachments.filter(a => a.messageId === messageId);
+      const messageAttachments = attachments.filter(
+        a => a.messageId === messageId && a.url
+      );
       
       
       if (messageAttachments.length === 0) {
@@ -100,7 +105,7 @@ export async function POST(req: NextRequest) {
           content.push({
             type: 'image_url',
             image_url: {
-              url: attachment.url,
+              url: attachment.url!,
               detail: 'high', // Используем высокое качество для лучшего анализа
             },
           });
