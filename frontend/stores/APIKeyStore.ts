@@ -51,7 +51,8 @@ export function useAPIKeyStore() {
   
   // Получаем состояние из store
   const storeState = store();
-  const keysLoading = convexUser === undefined;
+  // Loading is finished only after both user and settings are fetched
+  const keysLoading = convexUser === undefined || settings === undefined;
 
   // Возвращаем keys и утилиты из состояния
   const { keys, getKey, hasRequiredKeys } = storeState;
@@ -70,14 +71,17 @@ export function useAPIKeyStore() {
     if (settings && user) {
       const decrypted = decryptData<APIKeys>(settings.encryptedApiKeys, user.uid);
       const currentKeys = store.getState().keys;
-      
-      // Защита от пустых вызовов - обновляем только если ключи действительно изменились
+
+      // Update keys only when they differ to avoid unnecessary renders
       if (!deepEqual(currentKeys, decrypted)) {
-        store.setState({ keys: decrypted, keysLoading: false });
-      } else if (store.getState().keysLoading) {
+        store.setState({ keys: decrypted });
+      }
+      // Mark loading complete once keys have been processed
+      if (store.getState().keysLoading) {
         store.setState({ keysLoading: false });
       }
-    } else if (settings === null) {
+    } else if (settings === null && store.getState().keysLoading) {
+      // No settings stored for this user
       store.setState({ keysLoading: false });
     }
   }, [settings, user]);

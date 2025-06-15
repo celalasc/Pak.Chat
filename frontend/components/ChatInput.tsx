@@ -71,7 +71,8 @@ function PureChatInput({
   messageCount,
 }: ChatInputProps) {
   // Все хуки должны быть вызваны до любых условных возвратов
-  const { hasRequiredKeys, keys, setKeys } = useAPIKeyStore();
+  const { hasRequiredKeys, keys, setKeys, keysLoading } = useAPIKeyStore();
+  if (keysLoading) return null; // hide input until keys are loaded
   const canChat = hasRequiredKeys();
   const { currentQuote, clearQuote } = useQuoteStore();
   const [localKeys, setLocalKeys] = useState(keys);
