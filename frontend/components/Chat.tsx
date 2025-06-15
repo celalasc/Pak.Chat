@@ -9,11 +9,14 @@ import { UIMessage } from 'ai';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 import { useModelStore } from '@/frontend/stores/ModelStore';
 import SettingsButton from './SettingsButton';
+import BottomBar from './BottomBar';
 import { useQuoteShortcuts } from '@/frontend/hooks/useQuoteShortcuts';
 import { useScrollHide } from '@/frontend/hooks/useScrollHide';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
+import { useKeyboardInsets } from '../hooks/useKeyboardInsets';
 import { cn } from '@/lib/utils';
 import { useEffect, useState, useMemo, useRef } from 'react';
+import { useStreamBuffer } from '../hooks/useStreamBuffer';
 import { useNavigate } from 'react-router';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
@@ -32,7 +35,20 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
   const { isMobile } = useIsMobile();
   const panelRef = useRef<HTMLDivElement>(null);
   const isHeaderVisible = useScrollHide<HTMLDivElement>({ threshold: 15, panelRef });
+  const [renderMessages, setRenderMessages] = useState<UIMessage[]>(initialMessages);
+  const lastContentRef = useRef(initialMessages.at(-1)?.content || '');
+  const bufferMessages = useStreamBuffer((delta: string) => {
+    setRenderMessages(prev => {
+      if (prev.length === 0) return prev;
+      const last = prev[prev.length - 1];
+      const updated = { ...last, content: (last.content || '') + delta, parts: [{ type: 'text', text: (last.content || '') + delta }] } as UIMessage;
+      return [...prev.slice(0, -1), updated];
+    });
+  });
   const navigate = useNavigate();
+  useKeyboardInsets((h) => {
+    document.documentElement.style.setProperty('--keyboard-inset-height', `${h}px`);
+  });
   // Track the current thread ID locally to ensure it exists before sending messages
   const [currentThreadId, setCurrentThreadId] = useState(threadId);
 
@@ -87,6 +103,7 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
       model: selectedModel,
       net: (navigator as any).connection?.effectiveType ?? '4g',
     },
+    experimental_throttle: 20,
     onFinish: async (message) => {
       if (!isConvexId(currentThreadId)) {
         return;
@@ -105,6 +122,19 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
     },
   });
 
+  useEffect(() => {
+    if (status === 'streaming') {
+      const latest = messages[messages.length - 1];
+      const prev = lastContentRef.current;
+      const diff = latest?.content.slice(prev.length) || '';
+      if (diff) bufferMessages(diff);
+      lastContentRef.current = latest?.content || prev;
+    } else {
+      setRenderMessages(messages);
+      lastContentRef.current = messages[messages.length - 1]?.content || '';
+    }
+  }, [messages, status, bufferMessages]);
+
 
   return (
     <div className="relative w-full">
@@ -113,7 +143,7 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
       >
         <Messages
           threadId={currentThreadId}
-          messages={messages}
+          messages={renderMessages}
           status={status}
           setMessages={setMessages}
           reload={reload}
@@ -128,11 +158,12 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
           setInput={setInput}
           setMessages={setMessages}
           stop={stop}
-          messageCount={messages.length}
+          messageCount={renderMessages.length}
           error={error}
-          onThreadCreated={setCurrentThreadId}
-        />
+        onThreadCreated={setCurrentThreadId}
+      />
       </main>
+      <BottomBar />
       
       {/* Logo in top left with blur background */}
       <div className={cn(

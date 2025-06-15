@@ -23,6 +23,8 @@ import { useModelStore } from '@/frontend/stores/ModelStore';
 import { useQuoteStore } from '@/frontend/stores/QuoteStore';
 import { AI_MODELS, AIModel, getModelConfig } from '@/lib/models';
 import { UIMessage } from 'ai';
+import AttachmentsBar from './AttachmentsBar';
+import { useAttachmentsStore } from '../stores/AttachmentsStore';
 import { v4 as uuidv4 } from 'uuid';
 import { isConvexId } from '@/lib/ids';
 import { StopIcon } from './ui/icons';
@@ -86,7 +88,9 @@ function PureChatInput({
   const navigate = useNavigate();
   const createThread = useMutation(api.threads.create);
   const sendMessage = useMutation<typeof api.messages.send>(api.messages.send);
+  const saveAttachments = useMutation(api.attachments.save as any);
   const { complete } = useMessageSummary();
+  const { attachments, clear } = useAttachmentsStore();
 
   const isDisabled = useMemo(
     () => !input.trim() || status === 'streaming' || status === 'submitted',
@@ -145,7 +149,21 @@ function PureChatInput({
       content: finalMessage,
       role: 'user',
     });
+    if (attachments.length > 0) {
+      await saveAttachments({
+        threadId: currentThreadId as Id<'threads'>,
+        attachments: attachments.map((a) => ({
+          file: a.file,
+          name: a.name,
+          type: a.type,
+          messageId: newId,
+        })),
+      });
+      clear();
+    }
     // Replace the temporary UUID with the real database ID
+    document.body.classList.add('no-transition');
+    setTimeout(() => document.body.classList.remove('no-transition'), 50);
     setMessages(prev =>
       prev.map(m => (m.id === messageId ? { ...m, id: newId } : m))
     );
@@ -183,8 +201,8 @@ function PureChatInput({
   // Если есть ошибка и нельзя отправлять сообщения, показываем форму для ввода API ключей
   if (error && !canChat) {
     return (
-      <div className={`fixed w-full max-w-3xl bottom-0 ${messageCount === 0 ? 'md:bottom-auto md:top-1/2 md:transform md:-translate-y-1/2' : ''}`}>
-        <div className={cn('bg-secondary p-4 pb-2 w-full', messageCount === 0 ? 'rounded-[20px]' : 'rounded-t-[20px]')}>
+      <div className="sticky bottom-0 inset-x-0 flex justify-center pb-safe mobile-keyboard-fix w-full">
+        <div className={cn('backdrop-blur-md bg-secondary p-4 pb-2 border-t border-border/50 max-w-3xl w-full', messageCount === 0 ? 'rounded-[20px]' : 'rounded-t-[20px]')}>
           <div className="space-y-2">
             {(['google','openrouter','openai'] as const).map(provider => (
               <Input key={provider}
@@ -201,8 +219,8 @@ function PureChatInput({
 
   return (
     <>
-      <div className={`fixed w-full max-w-3xl ${messageCount === 0 ? 'md:bottom-auto md:top-1/2 md:transform md:-translate-y-1/2' : 'bottom-0 pb-safe'}`}>
-        <div ref={containerRef} className={cn('relative bg-secondary p-2 pb-0 w-full', messageCount === 0 ? 'rounded-[20px]' : 'rounded-t-[20px]')}>
+      <div className="sticky bottom-0 inset-x-0 flex justify-center pb-safe mobile-keyboard-fix w-full">
+        <div ref={containerRef} className={cn('backdrop-blur-md bg-secondary p-2 pb-0 border-t border-border/50 max-w-3xl w-full', messageCount === 0 ? 'rounded-[20px]' : 'rounded-t-[20px]')}>
           {/* Scroll to bottom button */}
           <div className="absolute right-4 -top-12 z-50">
             <ScrollToBottomButton />
@@ -263,7 +281,8 @@ function PureChatInput({
               </div>
             </div>
             <div className="h-14 flex items-center px-2">
-              <div className="flex items-center justify-between w-full">
+              <div className="flex items-center justify-between w-full gap-2 overflow-x-auto">
+                <AttachmentsBar />
                 <ChatModelDropdown />
 
                 {status === 'submitted' || status === 'streaming' ? (

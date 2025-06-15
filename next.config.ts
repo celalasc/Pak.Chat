@@ -1,4 +1,5 @@
 const withAnalyzer = require('@next/bundle-analyzer')({ enabled: process.env.ANALYZE === 'true' });
+const withPWA = require('next-pwa')({ dest: 'public', disable: process.env.NODE_ENV === 'development' });
 
 const nextConfig = {
   headers() {
@@ -34,7 +35,7 @@ const nextConfig = {
     ];
   },
 };
-module.exports = withAnalyzer({
+module.exports = withPWA(withAnalyzer({
   ...nextConfig,
   
   // This helps Next.js resolve the `target.css` file within `next/font/local`.
@@ -42,4 +43,4 @@ module.exports = withAnalyzer({
   turbopack: {
     resolveExtensions: ['.ts', '.tsx', '.js', '.jsx', '.json', '.css'],
   },
-});
+}));

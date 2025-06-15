@@ -39,6 +39,17 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_thread_and_time", ["threadId", "createdAt"]),
 
+  // Attachments for messages
+  attachments: defineTable({
+    threadId: v.id("threads"),
+    fileId: v.string(),
+    name: v.string(),
+    type: v.string(),
+    messageId: v.optional(v.id("messages")),
+  })
+    .index("by_thread", ["threadId"])
+    .index("by_message", ["messageId"]),
+
   // Message edit history
   messageVersions: defineTable({
     messageId: v.id("messages"),

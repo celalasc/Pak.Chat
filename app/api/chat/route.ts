@@ -53,10 +53,11 @@ export async function POST(req: NextRequest) {
     const chunking: 'line' | 'word' =
       netType.includes('2g') || netType.includes('3g') ? 'line' : 'word';
 
-    const result = streamText({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const options: any = {
       model: aiModel,
       messages,
-      onError: (error) => {
+      onError: (error: unknown) => {
         console.log('error', error);
       },
       system: `
@@ -75,8 +76,10 @@ export async function POST(req: NextRequest) {
       $$\\frac{d}{dx}\\sin(x) = \\cos(x)$$
       `,
       experimental_transform: [smoothStream({ chunking })],
+      experimental_stream_frequency: 20,
       abortSignal: req.signal,
-    });
+    };
+    const result = streamText(options);
 
     return result.toDataStreamResponse({
       sendReasoning: true,

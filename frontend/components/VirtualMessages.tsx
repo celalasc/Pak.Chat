@@ -1,4 +1,5 @@
 import { FixedSizeList as List } from 'react-window';
+import AutoSizer from 'react-virtualized-auto-sizer';
 import PreviewMessage from './Message';
 import { UIMessage } from 'ai';
 import { UseChatHelpers } from '@ai-sdk/react';
@@ -16,23 +17,28 @@ interface Props {
 export default function VirtualMessages({ messages, ...rest }: Props) {
   const itemHeight = 240;
   return (
-    <List
-      height={window.innerHeight}
-      itemCount={messages.length}
-      itemSize={itemHeight}
-      width="100%"
-    >
-      {({ index, style }) => (
-        <div style={style}>
-          <PreviewMessage
-            {...rest}
-            message={messages[index]}
-            isStreaming={
-              rest.status === 'streaming' && index === messages.length - 1
-            }
-          />
-        </div>
+    <AutoSizer>
+      {({ height, width }) => (
+        <List
+          height={height}
+          itemCount={messages.length}
+          itemSize={itemHeight}
+          width={width}
+          overscanCount={4}
+        >
+          {({ index, style }) => (
+            <div style={style}>
+              <PreviewMessage
+                {...rest}
+                message={messages[index]}
+                isStreaming={
+                  rest.status === 'streaming' && index === messages.length - 1
+                }
+              />
+            </div>
+          )}
+        </List>
       )}
-    </List>
+    </AutoSizer>
   );
 }

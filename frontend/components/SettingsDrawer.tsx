@@ -127,7 +127,7 @@ function SettingsDrawerComponent({ children, isOpen, setIsOpen }: SettingsDrawer
         <DrawerTrigger asChild>
           {children}
         </DrawerTrigger>
-        <DrawerContent className="max-h-[95vh] flex flex-col w-full p-0">
+        <DrawerContent className="max-h-[calc(100dvh-10px)] flex flex-col w-full p-0">
           {/* Pull handle */}
           <div className="flex justify-center pt-2 pb-1 flex-shrink-0">
             <div className="w-12 h-1 bg-muted-foreground/30 rounded-full" />
@@ -536,7 +536,7 @@ const ApiKeyField = ({
       id={id}
       placeholder={placeholder}
       {...register(id as keyof FormValues)}
-      className={cn("text-sm", error ? 'border-red-500' : '')}
+      className={cn("text-sm w-full min-w-0", error ? 'border-red-500' : '')}
     />
 
     <a
