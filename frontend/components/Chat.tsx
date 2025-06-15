@@ -35,6 +35,7 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
   const { selectedModel } = useModelStore();
   const { isMobile } = useIsMobile();
   const panelRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const isHeaderVisible = useScrollHide<HTMLDivElement>({ threshold: 15, panelRef });
   const navigate = useNavigate();
   const { clearQuote } = useQuoteStore();
@@ -194,70 +195,50 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
   }, [messages, currentThreadId, savedAssistantMessages, sendMessage, setMessages, status, initialMessages]);
 
   return (
-    <div className="relative w-full min-h-screen flex flex-col">
-      {messages.length === 0 ? (
-        // Когда нет сообщений - поле ввода по центру
-        <main className="flex-1 flex flex-col justify-center items-center w-full max-w-3xl mx-auto px-4">
-          <ChatInput
-            threadId={currentThreadId}
-            input={input}
-            status={status}
-            reload={reload}
-            setInput={setInput}
-            setMessages={setMessages}
-            stop={stop}
-            messageCount={messages.length}
-            error={error}
-            onThreadCreated={setCurrentThreadId}
-          />
-        </main>
-      ) : (
-        // Когда есть сообщения - обычная разметка
-        <>
-          <main className="flex-1 w-full max-w-3xl mx-auto pt-10 pb-4">
-            <Messages
-              threadId={currentThreadId}
-              messages={messages}
-              status={status}
-              setMessages={setMessages}
-              reload={reload}
-              error={error}
-              stop={stop}
-            />
-          </main>
-          <div className="sticky bottom-0 w-full">
-            <ChatInput
-              threadId={currentThreadId}
-              input={input}
-              status={status}
-              reload={reload}
-              setInput={setInput}
-              setMessages={setMessages}
-              stop={stop}
-              messageCount={messages.length}
-              error={error}
-              onThreadCreated={setCurrentThreadId}
-            />
-          </div>
-        </>
-      )}
-      
-      {/* Chat Navigation Bars */}
+    <div className="w-full h-screen flex flex-col overflow-hidden">
+      {/* Верхние кнопки (New Chat, History, Settings) */}
+      <div
+        ref={panelRef}
+        className={cn(
+          "fixed right-4 top-4 z-20 flex gap-2 p-1 bg-background/60 backdrop-blur-md rounded-lg border border-border/20 transition-transform duration-300 ease-in-out",
+          isMobile && (!isHeaderVisible || isKeyboardVisible) &&
+            "transform translate-x-[calc(100%-3rem)]"
+        )}
+      >
+        {!keysLoading && hasKeys && (
+          <NewChatButton className="backdrop-blur-sm" />
+        )}
+        <ChatHistoryButton className="backdrop-blur-sm" />
+        <SettingsButton
+          className={cn(
+            "backdrop-blur-sm transition-opacity duration-300",
+            isMobile && (!isHeaderVisible || isKeyboardVisible) &&
+              "opacity-0 pointer-events-none"
+          )}
+        />
+      </div>
+
+      {/* Навигационные полоски слева */}
       {messages.length > 0 && (
-        <ChatNavigationBars messages={messages} scrollToMessage={scrollToMessage} />
+        <ChatNavigationBars
+          messages={messages}
+          scrollToMessage={scrollToMessage}
+        />
       )}
-      
-      {/* Logo in top left with blur background */}
-      <div className={cn(
-        "fixed left-4 top-4 z-20 transition-all duration-300 ease-in-out",
-        isMobile && (!isHeaderVisible || isKeyboardVisible) && "transform -translate-x-full opacity-0"
-      )}>
+
+      {/* Логотип */}
+      <div
+        className={cn(
+          "fixed left-4 top-4 z-20 transition-all duration-300 ease-in-out",
+          isMobile && (!isHeaderVisible || isKeyboardVisible) &&
+            "transform -translate-x-full opacity-0"
+        )}
+      >
         <div className="relative">
-          {/* Blur background for mobile */}
           {isMobile && (
             <div className="absolute inset-0 -m-2 bg-background/60 backdrop-blur-md rounded-lg" />
           )}
-          <span 
+          <span
             className="relative text-xl font-bold text-foreground hover:text-primary transition-colors cursor-pointer"
             onClick={() => {
               if (window.location.pathname !== '/chat') {
@@ -270,22 +251,49 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
         </div>
       </div>
 
-      {/* Top buttons */}
-      <div
-        ref={panelRef}
-        className={cn(
-          "fixed right-4 top-4 z-20 flex gap-2 p-1 bg-background/60 backdrop-blur-md rounded-lg border border-border/20 transition-transform duration-300 ease-in-out",
-          isMobile && (!isHeaderVisible || isKeyboardVisible) && "transform translate-x-[calc(100%-3rem)]"
-        )}
-      >
-        {!keysLoading && hasKeys && (
-          <NewChatButton className="backdrop-blur-sm" />
-        )}
-        <ChatHistoryButton className="backdrop-blur-sm" />
-        <SettingsButton className={cn(
-          "backdrop-blur-sm transition-opacity duration-300",
-          isMobile && (!isHeaderVisible || isKeyboardVisible) && "opacity-0 pointer-events-none"
-        )} />
+      {/* Основная область, которая содержит и сообщения, и поле ввода */}
+      <div className="flex-1 flex flex-col relative">
+        {/* Скролл-область для сообщений */}
+        <div className="flex-1 overflow-y-auto" id="messages-scroll-area">
+          <main className="w-full max-w-3xl mx-auto pt-24 pb-44 px-4">
+            {messages.length > 0 && (
+              <Messages
+                threadId={currentThreadId}
+                messages={messages}
+                status={status}
+                setMessages={setMessages}
+                reload={reload}
+                error={error}
+                stop={stop}
+              />
+            )}
+            {/* "Якорь" для автопрокрутки. */}
+            <div ref={messagesEndRef} />
+          </main>
+        </div>
+
+        {/* Поле ввода */}
+        <div
+          className={cn(
+            "absolute left-1/2 -translate-x-1/2 w-full max-w-3xl px-4",
+            messages.length > 0
+              ? "bottom-0"
+              : "top-1/2 -translate-y-1/2"
+          )}
+        >
+          <ChatInput
+            threadId={currentThreadId}
+            input={input}
+            status={status}
+            reload={reload}
+            setInput={setInput}
+            setMessages={setMessages}
+            stop={stop}
+            messageCount={messages.length}
+            error={error}
+            onThreadCreated={setCurrentThreadId}
+          />
+        </div>
       </div>
     </div>
   );
