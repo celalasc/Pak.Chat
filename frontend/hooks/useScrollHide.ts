@@ -1,18 +1,27 @@
 import { useState, useEffect, useCallback, RefObject } from 'react';
 
-interface UseScrollHideOptions {
+/**
+ * Options for {@link useScrollHide}.
+ *
+ * @template T Element type for the panel reference.
+ */
+interface UseScrollHideOptions<T extends HTMLElement = HTMLElement> {
+  /** Minimum scroll difference before the panel reacts. */
   threshold?: number;
+  /** Hides the panel when scrolling down if `true`. */
   hideOnScrollDown?: boolean;
+  /** Shows the panel when scrolling up if `true`. */
   showOnScrollUp?: boolean;
-  panelRef?: RefObject<HTMLElement>;
+  /** Optional ref to the panel element that moves with the scroll. */
+  panelRef?: RefObject<T | null>;
 }
 
-export function useScrollHide({
+export function useScrollHide<T extends HTMLElement = HTMLElement>({
   threshold = 10,
   hideOnScrollDown = true,
   showOnScrollUp = true,
   panelRef,
-}: UseScrollHideOptions = {}) {
+}: UseScrollHideOptions<T> = {}) {
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
 

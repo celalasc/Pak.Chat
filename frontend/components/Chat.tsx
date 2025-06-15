@@ -31,7 +31,7 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
   const { selectedModel } = useModelStore();
   const { isMobile } = useIsMobile();
   const panelRef = useRef<HTMLDivElement>(null);
-  const isHeaderVisible = useScrollHide({ threshold: 15, panelRef });
+  const isHeaderVisible = useScrollHide<HTMLDivElement>({ threshold: 15, panelRef });
   const navigate = useNavigate();
   // Track the current thread ID locally to ensure it exists before sending messages
   const [currentThreadId, setCurrentThreadId] = useState(threadId);
