@@ -56,7 +56,6 @@ interface SendButtonProps {
 }
 
 const createUserMessage = (id: string, text: string, attachments?: any[]): UIMessage & { attachments?: any[] } => {
-  console.log('Creating user message:', { id, hasAttachments: !!attachments?.length, attachmentsCount: attachments?.length || 0 });
   return {
     id,
     parts: [{ type: 'text', text }],
@@ -184,7 +183,6 @@ function PureChatInput({
         messageAttachments = savedAttachments;
         clear();
       } catch (error) {
-        console.error('Error uploading attachments:', error);
         toast.error('Failed to upload attachments');
         return;
       }
@@ -201,10 +199,6 @@ function PureChatInput({
     
     // Обновляем messageId у вложений
     if (messageAttachments.length > 0) {
-      console.log('Updating attachment messageIds:', {
-        attachmentIds: messageAttachments.map(a => a.id),
-        newMessageId: newId,
-      });
       await updateAttachmentMessageId({
         attachmentIds: messageAttachments.map(a => a.id),
         messageId: newId,
@@ -213,7 +207,6 @@ function PureChatInput({
 
     // Теперь добавляем сообщение в UI с правильным ID из БД
     const userMessageWithRealId = { ...userMessage, id: newId };
-    console.log('Adding message to UI with real ID:', { oldId: messageId, newId, hasAttachments: !!messageAttachments.length });
     
     append(userMessageWithRealId);
     setInput('');

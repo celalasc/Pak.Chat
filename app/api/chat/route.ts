@@ -52,36 +52,29 @@ export async function POST(req: NextRequest) {
     }
 
     // Получаем вложения из базы данных, если есть threadId
-    let attachments: any[] = [];
+    let attachments: {
+      id: string;
+      messageId: string | undefined;
+      name: string;
+      type: string;
+      url: string;
+    }[] = [];
     if (threadId) {
       try {
         attachments = await fetchQuery(api.attachments.byThread, { threadId });
-        console.log('Fetched attachments from DB:', attachments.map(a => ({ 
-          id: a.id, 
-          messageId: a.messageId, 
-          name: a.name, 
-          type: a.type 
-        })));
-      } catch (error) {
-        console.log('Failed to fetch attachments:', error);
+        // Attachments fetched successfully
+      } catch {
+        // Attachment fetch failed
       }
     }
 
     // Преобразуем сообщения для поддержки изображений
-    const processedMessages = messages.map((message: any, index: number) => {
+    const processedMessages = messages.map((message: { id: string; role: string; content: string }) => {
       const messageId = message.id;
       
       // Находим вложения для этого сообщения
       const messageAttachments = attachments.filter(a => a.messageId === messageId);
       
-      console.log(`Processing message ${index}:`, { 
-        role: message.role, 
-        id: messageId,
-        hasAttachments: messageAttachments.length > 0, 
-        attachmentsCount: messageAttachments.length,
-        availableAttachments: attachments.length,
-        content: message.content?.substring(0, 50) + '...'
-      });
       
       if (messageAttachments.length === 0) {
         return {
@@ -102,8 +95,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Добавляем изображения
-      messageAttachments.forEach((attachment: any) => {
-        console.log('Processing attachment:', { type: attachment.type, url: attachment.url });
+      messageAttachments.forEach((attachment) => {
         if (attachment.type.startsWith('image/')) {
           content.push({
             type: 'image_url',
@@ -120,11 +112,6 @@ export async function POST(req: NextRequest) {
         content: content.length > 0 ? content : message.content,
       };
       
-      console.log('Processed message result:', { 
-        role: result.role, 
-        contentType: Array.isArray(result.content) ? 'multimodal' : 'text',
-        contentLength: Array.isArray(result.content) ? result.content.length : result.content.length
-      });
       
       return result;
     });
@@ -137,8 +124,8 @@ export async function POST(req: NextRequest) {
     const options: any = {
       model: aiModel,
       messages: processedMessages,
-      onError: (error: unknown) => {
-        console.log('error', error);
+      onError: () => {
+        /* Intentionally left blank to suppress logging */
       },
       system: `
       You are Pak.Chat, an ai assistant that can answer questions and help with tasks.
@@ -169,8 +156,7 @@ export async function POST(req: NextRequest) {
         return (error as { message: string }).message;
       },
     });
-  } catch (error) {
-    console.log('error', error);
+  } catch {
     return new NextResponse(
       JSON.stringify({ error: 'Internal Server Error' }),
       {

@@ -61,9 +61,6 @@ export const sync = mutation({
     // When a user signs in, the token may take a moment to attach. In that case
     // we exit quietly so the client can retry.
     if (!identity) {
-      console.log(
-        "users.sync called, but identity is not yet available. Exiting gracefully."
-      );
       return null;
     }
 
@@ -84,7 +81,6 @@ export const sync = mutation({
       }
       return existingUser._id;
     } else {
-      console.log(`Creating new user: ${identity.name}`);
       return await ctx.db.insert("users", {
         name: identity.name!,
         email: identity.email,

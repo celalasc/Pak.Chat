@@ -20,8 +20,6 @@ export const useAuthStore = create<AuthState>((set) => {
       set({ loading: true });
       try {
         await signInWithPopup(auth, new GoogleAuthProvider());
-      } catch (error) {
-        console.error('Login failed:', error);
       } finally {
         set({ loading: false });
       }
@@ -29,8 +27,8 @@ export const useAuthStore = create<AuthState>((set) => {
     async logout() {
       try {
         await signOut(auth);
-      } catch (error) {
-        console.error("Logout failed:", error);
+      } catch {
+        /* ignore logout failure */
       }
     },
     toggleBlur: () => {

@@ -35,8 +35,7 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ title, isTitle, messageId, threadId });
-  } catch (error) {
-    console.error('Failed to generate title:', error);
+  } catch {
     // Fallback: use the first 80 characters of the prompt as the title so that
     // the client can continue functioning even if the LLM request fails.
     const fallbackTitle = (prompt as string)?.trim().slice(0, 80) || 'New chat';
