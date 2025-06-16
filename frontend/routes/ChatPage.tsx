@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams, useNavigate } from 'react-router';
+import { useParams, useNavigate, useLocation } from 'react-router';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { isConvexId } from '@/lib/ids';
@@ -13,6 +13,7 @@ import { UIMessage } from 'ai';
 export default function ChatPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Проверяем валидность ID
   useEffect(() => {
@@ -69,5 +70,11 @@ export default function ChatPage() {
     attachments: attachmentsMap[m._id] ?? [],
   }));
 
-  return <Chat key={id ?? 'new'} threadId={id ?? ''} initialMessages={messages} />;
+  return (
+    <Chat
+      key={location.key}
+      threadId={id ?? ''}
+      initialMessages={messages}
+    />
+  );
 }
