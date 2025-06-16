@@ -222,8 +222,6 @@ function PureChatInput({
         });
       }
 
-      // Явно запрашиваем ответ после отправки
-      setTimeout(() => reload(), 0);
     } catch (error) {
       toast.error('Failed to send message.');
       setInput(currentInput);
@@ -248,7 +246,6 @@ function PureChatInput({
     setMessages,
     complete,
     router,
-    reload,
     onThreadCreated,
   ]);
 

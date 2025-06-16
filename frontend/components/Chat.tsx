@@ -181,6 +181,18 @@ function Chat({ threadId, initialMessages }: ChatProps) {
     setMessages(initialMessages);
   }, [threadId]);
 
+  // Если это новый чат и есть только одно сообщение пользователя,
+  // запускаем генерацию ответа после полной инициализации страницы
+  useEffect(() => {
+    if (
+      status === 'ready' &&
+      messages.length === 1 &&
+      messages[0].role === 'user'
+    ) {
+      reload();
+    }
+  }, [messages, status, reload]);
+
 
 
   // Persist final assistant content to DB once generation is complete
