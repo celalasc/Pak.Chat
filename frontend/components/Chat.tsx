@@ -214,7 +214,7 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
   }, []);
 
   return (
-    <div className="w-full h-screen flex flex-col overflow-hidden">
+    <div className="w-full min-h-screen flex flex-col overflow-y-auto">
         {/* Верхние кнопки, навигация, логотип */}
         <div
           ref={panelRef}
