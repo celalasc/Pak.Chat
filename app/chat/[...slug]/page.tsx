@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { use, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useConvexAuth } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id, Doc } from '@/convex/_generated/dataModel';
@@ -37,7 +37,7 @@ export default function CatchAllChatPage({ params }: { params: { slug: string[] 
   const messages = useMemo(() => {
     if (!attachments || !messagesResult) return []; // Защита от undefined
 
-    const attachmentsMap: Record<string, any[]> = {}
+      const attachmentsMap: Record<string, Doc<'attachments'>[]> = {}
     attachments.forEach(a => {
       if (!a.messageId) return
       if (!attachmentsMap[a.messageId]) attachmentsMap[a.messageId] = []
