@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { use, useEffect, useMemo, useState } from 'react';
 import { useQuery, useConvexAuth } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id, Doc } from '@/convex/_generated/dataModel';
@@ -9,9 +9,9 @@ import { isConvexId } from '@/lib/ids';
 import Chat from '@/frontend/components/Chat';
 import AppShellSkeleton from '@/frontend/components/AppShellSkeleton';
 
-// Эта страница теперь ловит все адреса типа /chat/что-угодно
-export default function CatchAllChatPage({ params }: { params: { slug: string[] } }) {
-  const chatId = params.slug?.[0]; 
+export default function CatchAllChatPage({ params }: { params: Promise<{ slug: string[] }> }) {
+  const resolvedParams = use(params);
+  const chatId = resolvedParams.slug?.[0];
   
   const router = useRouter();
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
@@ -35,13 +35,19 @@ export default function CatchAllChatPage({ params }: { params: { slug: string[] 
   );
   
   const messages = useMemo(() => {
-    if (!attachments || !messagesResult) return []; // Защита от undefined
+    if (!attachments || !messagesResult) return [];
 
-      const attachmentsMap: Record<string, Doc<'attachments'>[]> = {}
+    // Мы используем эту чистую и правильную версию
+    const attachmentsMap: Record<string, Doc<'attachments'>[]> = {};
+    
     attachments.forEach(a => {
-      if (!a.messageId) return
-      if (!attachmentsMap[a.messageId]) attachmentsMap[a.messageId] = []
-      attachmentsMap[a.messageId].push(a)
+      // Здесь был баг в типизации, исправляем его
+      const typedAttachment = a as Doc<'attachments'>;
+      if (!typedAttachment.messageId) return
+      if (!attachmentsMap[typedAttachment.messageId]) {
+        attachmentsMap[typedAttachment.messageId] = []
+      }
+      attachmentsMap[typedAttachment.messageId].push(typedAttachment)
     })
 
     const rawMessages: Doc<'messages'>[] = Array.isArray(messagesResult)
