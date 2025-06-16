@@ -106,7 +106,7 @@ export default function ChatPage() {
   // ---------------------------------------------------------------------------
   return (
     <Chat
-      key={`${id}-${messages.length}`}
+      key={id as string}
       threadId={id as string}
       initialMessages={messages}
     />

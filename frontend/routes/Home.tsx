@@ -30,7 +30,7 @@ export default function Home() {
   // Используем Chat компонент с пустым threadId для новой беседы
   return (
     <Chat
-      key={searchParams.get('newChat') ?? 'new'}
+      key="new"
       threadId=""
       initialMessages={initialMessages}
     />
