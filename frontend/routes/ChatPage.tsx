@@ -4,7 +4,7 @@ import { useParams, useNavigate, useLocation } from 'react-router';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { isConvexId } from '@/lib/ids';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import Chat from '@/frontend/components/Chat';
 import { Id, Doc } from '@/convex/_generated/dataModel';
 import MessageLoading from '@/frontend/components/ui/MessageLoading';
@@ -49,30 +49,36 @@ export default function ChatPage() {
     return null;
   }
 
-  // Извлекаем сообщения из пагинированного результата
-  const rawMessages: Doc<'messages'>[] = Array.isArray(messagesResult)
-    ? messagesResult
-    : messagesResult?.page || [];
+  // Извлекаем сообщения из результатов и мемоизируем их,
+  // чтобы не пересоздавать массив на каждой перерисовке
+  const messages: UIMessage[] = useMemo(() => {
+    const attachmentsMap: Record<string, any[]> = {};
+    if (attachments) {
+      attachments.forEach((a) => {
+        if (!a.messageId) return;
+        if (!attachmentsMap[a.messageId]) {
+          attachmentsMap[a.messageId] = [];
+        }
+        attachmentsMap[a.messageId].push(a);
+      });
+    }
 
-  const attachmentsMap: Record<string, any[]> = {};
-  attachments?.forEach((a) => {
-    if (!a.messageId) return;
-    if (!attachmentsMap[a.messageId]) attachmentsMap[a.messageId] = [];
-    attachmentsMap[a.messageId].push(a);
-  });
+    const rawMessages: Doc<'messages'>[] = Array.isArray(messagesResult)
+      ? messagesResult
+      : messagesResult?.page || [];
 
-  const messages: UIMessage[] = rawMessages.map((m) => ({
-    id: m._id,
-    role: m.role,
-    content: m.content,
-    createdAt: new Date(m.createdAt),
-    parts: [{ type: 'text', text: m.content }],
-    attachments: attachmentsMap[m._id] ?? [],
-  }));
+    return rawMessages.map((m) => ({
+      id: m._id,
+      role: m.role,
+      content: m.content,
+      createdAt: new Date(m.createdAt),
+      parts: [{ type: 'text', text: m.content }],
+      attachments: attachmentsMap[m._id] ?? [],
+    }));
+  }, [messagesResult, attachments]);
 
   return (
     <Chat
-      key={location.key}
       threadId={id ?? ''}
       initialMessages={messages}
     />

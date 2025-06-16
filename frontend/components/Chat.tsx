@@ -16,7 +16,7 @@ import { useScrollHide } from '@/frontend/hooks/useScrollHide';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { useKeyboardInsets } from '../hooks/useKeyboardInsets';
 import { cn } from '@/lib/utils';
-import { useEffect, useState, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
@@ -52,7 +52,7 @@ interface ChatProps {
   initialMessages: UIMessage[];
 }
 
-export default function Chat({ threadId, initialMessages }: ChatProps) {
+function Chat({ threadId, initialMessages }: ChatProps) {
   const { keys, hasRequiredKeys, keysLoading } = useAPIKeyStore();
   const { selectedModel } = useModelStore();
   const { isMobile } = useIsMobile();
@@ -169,14 +169,17 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
   
   // Синхронизация и сброс состояний
   useEffect(() => {
+    // Этот эффект выполняется только при смене чата
     setCurrentThreadId(threadId);
     setHasInitialized(true);
     setInput('');
     clearQuote();
     clearAttachments();
-    // Сбрасываем версии при смене чата
-    useMessageVersionStore.getState().reset(); 
-  }, [threadId, initialMessages, setInput, clearQuote, clearAttachments]);
+    useMessageVersionStore.getState().reset();
+
+    // Устанавливаем начальные сообщения для useChat
+    setMessages(initialMessages);
+  }, [threadId]);
 
 
   // Persist final assistant content to DB once generation is complete
@@ -286,3 +289,5 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
     </div>
   );
 }
+
+export default React.memo(Chat);
