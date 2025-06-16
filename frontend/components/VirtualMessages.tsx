@@ -1,4 +1,4 @@
-import { FixedSizeList as List } from 'react-window';
+import { VariableSizeList as List } from 'react-window';
 import AutoSizer from 'react-virtualized-auto-sizer';
 import PreviewMessage from './Message';
 import { UIMessage } from 'ai';
@@ -15,14 +15,21 @@ interface Props {
 }
 
 export default function VirtualMessages({ messages, ...rest }: Props) {
-  const itemHeight = 240;
+  const getItemSize = (index: number) => {
+    const msg = messages[index];
+    const textLength = msg.parts
+      .map((p) => (p.type === 'text' ? p.text.length : 0))
+      .reduce((a, b) => a + b, 0);
+    const lines = Math.max(1, Math.ceil(textLength / 80));
+    return 80 + lines * 24;
+  };
   return (
     <AutoSizer>
       {({ height, width }) => (
         <List
           height={height}
           itemCount={messages.length}
-          itemSize={itemHeight}
+          itemSize={getItemSize}
           width={width}
           overscanCount={4}
         >

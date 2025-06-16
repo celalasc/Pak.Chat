@@ -5,6 +5,8 @@ import { Plus } from 'lucide-react';
 import { WithTooltip } from './WithTooltip';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router';
+import { useChatStore } from '@/frontend/stores/ChatStore';
+import { useQuoteStore } from '@/frontend/stores/QuoteStore';
 
 interface NewChatButtonProps {
   className?: string;
@@ -18,9 +20,13 @@ export default function NewChatButton({
   size = "icon"
 }: NewChatButtonProps) {
   const navigate = useNavigate();
+  const { setInput } = useChatStore();
+  const { clearQuote } = useQuoteStore();
 
   const handleClick = () => {
-    navigate('/chat');
+    setInput('');
+    clearQuote();
+    navigate('/chat', { state: { ts: Date.now() } });
   };
 
   return (

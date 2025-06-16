@@ -65,7 +65,9 @@ const LargeListBoundary = 20;
 
 export default function Messages(props: React.ComponentProps<typeof PureMessages>) {
   return props.messages.length > LargeListBoundary ? (
-    <VirtualMessages {...props} />
+    <div className="h-full flex-1">
+      <VirtualMessages {...props} />
+    </div>
   ) : (
     <PureMessagesMemo {...props} />
   );

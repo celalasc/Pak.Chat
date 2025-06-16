@@ -25,6 +25,7 @@ import { Id } from '@/convex/_generated/dataModel';
 import { useQuoteStore } from '@/frontend/stores/QuoteStore';
 import { useAttachmentsStore } from '@/frontend/stores/AttachmentsStore';
 import { create } from 'zustand'; // Импортируем Zustand
+import { useChatStore } from '@/frontend/stores/ChatStore';
 
 // --- НАЧАЛО: Код для Zustand Store ---
 // Мы определяем store прямо в этом файле, так как нельзя создать новый.
@@ -67,10 +68,6 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
   const [currentThreadId, setCurrentThreadId] = useState(threadId);
   const [hasInitialized, setHasInitialized] = useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
-  // Track IDs of assistant messages that have already been persisted to the
-  // database so we don't repeatedly insert duplicates while streaming.
-  const [savedAssistantMessages, setSavedAssistantMessages] = useState<Set<string>>(new Set());
-
   // Перенос навигации осуществляется из ChatInput
   
   // Используем наш store, определенный выше
@@ -147,15 +144,29 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
         threadId: currentThreadId,
       };
     },
-    onFinish: async (message) => {
-      // Логика здесь не нужна, все обрабатывается в useEffect
+    onFinish: async (finalMsg) => {
+      // Persist assistant message once generation is finished
+      if (finalMsg.role === 'assistant' && !isConvexId(finalMsg.id)) {
+        const realId = await sendMessage({
+          threadId: currentThreadId as Id<'threads'>,
+          role: 'assistant',
+          content: finalMsg.content,
+        });
+        setMessages((prev) =>
+          prev.map((m) => (m.id === finalMsg.id ? { ...m, id: realId } : m))
+        );
+      }
     },
   });
+
+  const registerInputSetter = useChatStore((s) => s.registerInputSetter);
+  useEffect(() => {
+    registerInputSetter(setInput);
+  }, [setInput, registerInputSetter]);
   
   // Синхронизация и сброс состояний
   useEffect(() => {
     setCurrentThreadId(threadId);
-    setSavedAssistantMessages(new Set(initialMessages.filter(m => m.role === 'assistant').map(m => m.id)));
     setHasInitialized(true);
     setInput('');
     clearQuote();
@@ -165,33 +176,8 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
   }, [threadId, initialMessages, setInput, clearQuote, clearAttachments]);
 
 
-  // Persist a new assistant message only once per generation to avoid
-  // creating a database entry for every streamed token.
-  useEffect(() => {
-    const unsavedAssistantMessage = messages.find(
-      (m) => m.role === 'assistant' && !isConvexId(m.id)
-    );
-
-    if (
-      unsavedAssistantMessage &&
-      isConvexId(currentThreadId) &&
-      !savedAssistantMessages.has(unsavedAssistantMessage.id)
-    ) {
-      sendMessage({
-        threadId: currentThreadId as Id<'threads'>,
-        role: 'assistant',
-        content: unsavedAssistantMessage.content,
-      }).then((dbId) => {
-        setMessages((prevMessages) =>
-          prevMessages.map((m) =>
-            m.id === unsavedAssistantMessage.id ? { ...m, id: dbId } : m
-          )
-        );
-        // Remember the temporary ID so we don't save again during streaming
-        setSavedAssistantMessages((prev) => new Set(prev).add(unsavedAssistantMessage.id));
-      });
-    }
-  }, [messages, currentThreadId, sendMessage, setMessages, savedAssistantMessages]);
+  // Persist final assistant content to DB once generation is complete
+  // Versions are incrementally patched while streaming.
 
   // Инкрементальное сохранение с защитой от лишних вызовов
   useEffect(() => {
@@ -204,13 +190,22 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
     }
   }, [messages, status, debouncedPatch, updateVersion]);
 
-  // Keep local state clean after the assistant finishes generating a message
+  // After generation ends, flush pending patches
   useEffect(() => {
-    if (status !== 'streaming') {
-      // Once generation completes, forget temporary IDs
-      setSavedAssistantMessages(new Set());
+    if (status === 'done') {
+      const last = messages[messages.length - 1];
+      if (last?.role === 'assistant' && isConvexId(last.id)) {
+        const currentVersion =
+          useMessageVersionStore.getState().versions[last.id] ?? 0;
+        patchContent({
+          messageId: last.id as Id<'messages'>,
+          content: last.content,
+          version: currentVersion + 1,
+        });
+        useMessageVersionStore.getState().reset();
+      }
     }
-  }, [status]);
+  }, [status, messages, patchContent]);
 
   return (
     <div className="w-full min-h-screen flex flex-col overflow-y-auto">
@@ -244,7 +239,7 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
         {/* Основная область */}
         <div className="flex-1 flex flex-col relative">
             <div className="flex-1 overflow-y-auto" id="messages-scroll-area">
-                <main className="w-full max-w-3xl mx-auto pt-24 pb-44 px-4">
+                <main className="w-full max-w-3xl mx-auto pt-24 pb-44 px-4 min-h-full flex-1">
                     {messages.length > 0 && (
                       <Messages
                         threadId={currentThreadId}
