@@ -193,11 +193,12 @@ function Chat({ threadId, initialMessages }: ChatProps) {
     if (
       status === 'ready' &&
       messages.length === 1 &&
-      messages[0].role === 'user'
+      messages[0].role === 'user' &&
+      isConvexId(currentThreadId)
     ) {
       reload();
     }
-  }, [messages, status, reload]);
+  }, [messages, status, reload, currentThreadId]);
 
 
 

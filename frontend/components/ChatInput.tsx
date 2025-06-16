@@ -147,7 +147,13 @@ function PureChatInput({
             title: finalMessage.slice(0, 30) || 'New Chat',
           });
 
-      // 2. Оптимистично добавляем сообщение в UI
+      // 2. Если тред новый, сразу меняем URL и стейт
+      if (!isConvexId(threadId)) {
+        onThreadCreated?.(ensuredThreadId);
+        router.replace(`/chat/${ensuredThreadId}`, { scroll: false });
+      }
+
+      // 3. Оптимистично добавляем сообщение в UI
       const attachmentsToUpload = [...attachments];
       const attachmentsForMessage = await Promise.all(
         attachmentsToUpload.map(async (att) => ({
@@ -164,7 +170,7 @@ function PureChatInput({
       setMessages((prev) => [...prev, userMessage]);
       clear();
 
-      // 3. Сохраняем сообщение в БД
+      // 4. Сохраняем сообщение в БД
       let savedAttachments: any[] = [];
       if (attachmentsToUpload.length > 0) {
         try {
@@ -209,13 +215,11 @@ function PureChatInput({
         });
       }
 
-      // 4. Обновляем UI с реальным ID
+      // 5. Обновляем UI с реальным ID
       setMessages((prev) => prev.map((m) => (m.id === clientMsgId ? { ...m, id: dbMsgId } : m)));
 
-      // 5. Навигация и генерация заголовка только для новых тредов
+      // 6. Генерация заголовка только для новых тредов
       if (!isConvexId(threadId)) {
-        router.replace(`/chat/${ensuredThreadId}`, { scroll: false });
-        onThreadCreated?.(ensuredThreadId);
         complete(finalMessage, {
           body: { threadId: ensuredThreadId, messageId: dbMsgId, isTitle: true },
         });
