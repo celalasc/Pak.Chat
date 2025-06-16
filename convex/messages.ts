@@ -113,3 +113,23 @@ export const removeAfter = mutation({
     await Promise.all(msgs.map((m) => ctx.db.delete(m._id)));
   },
 });
+
+/** Incrementally patch message content (no history) */
+export const patchContent = mutation({
+  args: {
+    messageId: v.id("messages"),
+    content: v.string(),
+    version: v.number(),
+  },
+  async handler(ctx, args) {
+    const uid = await currentUserId(ctx);
+    if (!uid) throw new Error("Unauthenticated");
+    const message = await ctx.db.get(args.messageId);
+    if (!message) throw new Error("Message not found");
+    const thread = await ctx.db.get(message.threadId);
+    if (!thread || thread.userId !== uid)
+      throw new Error("Permission denied");
+    await ctx.db.patch(args.messageId, { content: args.content });
+    return args.version;
+  },
+});

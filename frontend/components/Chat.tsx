@@ -16,6 +16,7 @@ import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { useKeyboardInsets } from '../hooks/useKeyboardInsets';
 import { cn } from '@/lib/utils';
 import { useEffect, useState, useMemo, useRef } from 'react';
+import { useDebouncedCallback } from 'use-debounce';
 import { useNavigate } from 'react-router';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
@@ -24,6 +25,7 @@ import { toast } from 'sonner';
 import { Id } from '@/convex/_generated/dataModel';
 import { useQuoteStore } from '@/frontend/stores/QuoteStore';
 import { useAttachmentsStore } from '@/frontend/stores/AttachmentsStore';
+import { useMessageVersionStore } from '@/frontend/stores/MessageVersionStore';
 
 interface ChatProps {
   threadId: string;
@@ -35,6 +37,7 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
   const { selectedModel } = useModelStore();
   const { isMobile } = useIsMobile();
   const panelRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const isHeaderVisible = useScrollHide<HTMLDivElement>({ threshold: 15, panelRef });
   const navigate = useNavigate();
   const { clearQuote } = useQuoteStore();
@@ -64,10 +67,20 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
   }, [threadId, initialMessages]);
 
   const sendMessage = useMutation<typeof api.messages.send>(api.messages.send);
+  const patchContent = useMutation(api.messages.patchContent);
   const hasKeys = useMemo(() => hasRequiredKeys(), [hasRequiredKeys]);
+  const debouncedPatch = useDebouncedCallback(
+    (id: Id<'messages'>, content: string, version: number) => {
+      patchContent({ messageId: id, content, version }).catch((err) => {
+        console.error('patchContent failed', err);
+      });
+    },
+    1000
+  );
 
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const [savedAssistantMessages, setSavedAssistantMessages] = useState<Set<string>>(new Set());
+  const { versions: messageVersions, updateVersion } = useMessageVersionStore();
 
   useQuoteShortcuts();
 
@@ -99,6 +112,10 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
+  };
+
+  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+    messagesEndRef.current?.scrollIntoView({ behavior });
   };
 
   const {
@@ -158,40 +175,58 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
 
   // Отслеживаем и сохраняем новые сообщения от ИИ
   useEffect(() => {
-    if (!isConvexId(currentThreadId) || status === 'streaming') return;
+    if (!isConvexId(currentThreadId)) return;
 
     const assistantMessages = messages.filter(m => m.role === 'assistant');
-    
+
     assistantMessages.forEach(async (message) => {
-      // Проверяем, что сообщение еще не сохранено и имеет временный ID
-      // Также проверяем, что это не сообщение из initialMessages (которое уже в БД)
-      if (!savedAssistantMessages.has(message.id) && 
-          !isConvexId(message.id) && 
-          message.content.trim() &&
-          !initialMessages.some(initial => initial.id === message.id)) {
-        
-        try {
-          const dbId = await sendMessage({
-            threadId: currentThreadId as Id<'threads'>,
-            role: 'assistant',
-            content: message.content,
-          });
+      if (!savedAssistantMessages.has(message.id)) {
+        if (!isConvexId(message.id)) {
+          try {
+            const dbId = await sendMessage({
+              threadId: currentThreadId as Id<'threads'>,
+              role: 'assistant',
+              content: message.content,
+            });
 
-          // Отмечаем сообщение как сохраненное
+            setSavedAssistantMessages(prev => new Set(prev).add(dbId));
+
+            setMessages(prev =>
+              prev.map(m =>
+                m.id === message.id ? { ...m, id: dbId } : m
+              )
+            );
+          } catch (error) {
+            console.error('Failed to save assistant message:', error);
+          }
+        } else {
           setSavedAssistantMessages(prev => new Set(prev).add(message.id));
-
-          // Обновляем ID сообщения на реальный ID из базы данных
-          setMessages(prev =>
-            prev.map(m =>
-              m.id === message.id ? { ...m, id: dbId } : m
-            )
-          );
-        } catch (error) {
-          console.error('Failed to save assistant message:', error);
         }
       }
     });
-  }, [messages, currentThreadId, savedAssistantMessages, sendMessage, setMessages, status, initialMessages]);
+  }, [messages, currentThreadId, savedAssistantMessages, sendMessage, setMessages]);
+
+  // Инкрементальное сохранение последнего сообщения ассистента
+  useEffect(() => {
+    const last = messages[messages.length - 1];
+    if (!last || last.role !== 'assistant' || status !== 'streaming') return;
+    if (!isConvexId(last.id)) return;
+
+    const currentVersion = messageVersions[last.id] ?? 0;
+    const newVersion = currentVersion + 1;
+    debouncedPatch(last.id as Id<'messages'>, last.content, newVersion);
+    updateVersion(last.id, newVersion);
+  }, [messages, status, debouncedPatch, messageVersions, updateVersion]);
+
+  // Автопрокрутка чата при появлении новых сообщений
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  // Прокрутка в конец при первой загрузке
+  useEffect(() => {
+    scrollToBottom('auto');
+  }, []);
 
   return (
     <div className="relative w-full min-h-screen flex flex-col">
@@ -224,6 +259,7 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
               error={error}
               stop={stop}
             />
+            <div ref={messagesEndRef} />
           </main>
           <div className="sticky bottom-0 w-full">
             <ChatInput
