@@ -70,6 +70,13 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
   const [hasInitialized, setHasInitialized] = useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const [savedAssistantMessages, setSavedAssistantMessages] = useState<Set<string>>(new Set());
+
+  // Навигация после создания нового треда
+  useEffect(() => {
+    if (isConvexId(currentThreadId) && !threadId) {
+      navigate(`/chat/${currentThreadId}`, { replace: true });
+    }
+  }, [currentThreadId, threadId, navigate]);
   
   // Используем наш store, определенный выше
   const { versions: messageVersions, updateVersion } = useMessageVersionStore();

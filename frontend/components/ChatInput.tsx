@@ -14,7 +14,6 @@ import {
 } from '@/frontend/components/ui/dropdown-menu';
 import useAutoResizeTextarea from '@/hooks/useAutoResizeTextArea';
 import { UseChatHelpers, useCompletion } from '@ai-sdk/react';
-import { useNavigate } from 'react-router';
 import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
@@ -89,7 +88,6 @@ function PureChatInput({
     minHeight: 72,
     maxHeight: 200,
   });
-  const navigate = useNavigate();
   const createThread = useMutation(api.threads.create);
   const sendMessage = useMutation<typeof api.messages.send>(api.messages.send);
   const generateUploadUrl = useMutation(api.attachments.generateUploadUrl);
@@ -115,164 +113,122 @@ function PureChatInput({
   }, [setKeys, localKeys]);
 
   const handleSubmit = useCallback(async () => {
-    if (!canChat) {
-      return;
-    }
-    if (!input.trim() || status === 'streaming' || status === 'submitted' || isSubmitting) return;
+    if (!canChat || isDisabled) return;
 
     setIsSubmitting(true);
 
     const currentInput = textareaRef.current?.value || input;
-
-    // Очищаем поле ввода сразу после начала отправки
-    setInput('');
-    adjustHeight(true);
-
-    // Temporary ID used for optimistic UI and initial attachment save
-    const clientMsgId = uuidv4();
-
-    // Формируем финальный текст сообщения с цитатой
     let finalMessage = currentInput.trim();
     if (currentQuote) {
       finalMessage = `> ${currentQuote.text.replace(/\n/g, '\n> ')}\n\n${currentInput.trim()}`;
     }
 
-    let currentThreadId: Id<'threads'>;
+    // Очищаем интерфейс
+    setInput('');
+    clearQuote();
+    adjustHeight(true);
+
     try {
-      if (!isConvexId(threadId)) {
+      let threadIdToUse = threadId as Id<'threads'> | string;
+
+      if (!isConvexId(threadIdToUse)) {
         const newThreadId = await createThread({ title: 'New Chat' });
+        threadIdToUse = newThreadId;
         onThreadCreated?.(newThreadId);
-        currentThreadId = newThreadId;
-      } else {
-        currentThreadId = threadId as Id<'threads'>;
       }
 
-      complete(finalMessage, {
-        body: {
-          threadId: currentThreadId,
-          messageId: clientMsgId,
-          isTitle: !isConvexId(threadId),
-        },
+      const clientMsgId = uuidv4();
+      const optimistic = createUserMessage(
+        clientMsgId,
+        finalMessage,
+        attachments.map(att => ({ ...att, url: att.preview }))
+      );
+      setMessages(prev => [...prev, optimistic]);
+
+      const attachmentsToUpload = [...attachments];
+      clear();
+
+      let savedAttachments: any[] = [];
+      if (attachmentsToUpload.length > 0) {
+        try {
+          const uploadedFiles = await Promise.all(
+            attachmentsToUpload.map(async (attachment) => {
+              const uploadUrl = await generateUploadUrl();
+              const result = await fetch(uploadUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': attachment.file.type },
+                body: attachment.file,
+              });
+              if (!result.ok) throw new Error(`Failed to upload ${attachment.name}`);
+              const { storageId } = await result.json();
+              return {
+                storageId,
+                name: attachment.name,
+                type: attachment.type,
+                messageId: clientMsgId,
+              };
+            })
+          );
+          savedAttachments = await saveAttachments({
+            threadId: threadIdToUse as Id<'threads'>,
+            attachments: uploadedFiles,
+          });
+        } catch {
+          toast.error('Failed to upload attachments');
+        }
+      }
+
+      const dbMsgId = await sendMessage({
+        threadId: threadIdToUse as Id<'threads'>,
+        content: finalMessage,
+        role: 'user',
       });
 
-      const userMessage = createUserMessage(clientMsgId, finalMessage);
-
-    // Сохраняем ссылку на attachments для загрузки
-    const attachmentsToUpload = [...attachments];
-    
-    // Добавляем изображения с preview URL для немедленного отображения
-    if (attachments.length > 0) {
-      userMessage.attachments = attachments.map(att => ({
-        id: att.id,
-        url: att.preview, // Используем preview для немедленного показа
-        name: att.name,
-        type: att.type,
-        size: att.size,
-      }));
-    }
-
-    // Очищаем attachments сразу после создания сообщения
-    clear();
-
-    // Optimistically show the message
-    setMessages(prev => [...prev, userMessage]);
-
-    // Upload attachments linked to the temporary ID
-    let savedAttachments: any[] = [];
-    if (attachmentsToUpload.length > 0) {
-      try {
-        const uploadedFiles = await Promise.all(
-          attachmentsToUpload.map(async (attachment) => {
-            const uploadUrl = await generateUploadUrl();
-            const result = await fetch(uploadUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': attachment.file.type },
-              body: attachment.file,
-            });
-            if (!result.ok) {
-              throw new Error(`Failed to upload ${attachment.name}`);
-            }
-            const { storageId } = await result.json();
-            // Link the uploaded file to the temporary client-side
-            // message ID until we receive the real database ID.
-            return {
-              storageId,
-              name: attachment.name,
-              type: attachment.type,
-              messageId: clientMsgId,
-            };
-          })
-        );
-        savedAttachments = await saveAttachments({
-          threadId: currentThreadId as Id<'threads'>,
-          attachments: uploadedFiles,
+      if (savedAttachments.length > 0) {
+        await updateAttachmentMessageId({
+          attachmentIds: savedAttachments.map(a => a.id),
+          messageId: dbMsgId,
         });
-      } catch (error) {
-        toast.error('Failed to upload attachments');
       }
-    }
 
-    // Persist the message and get the real database ID
-    const dbMsgId = await sendMessage({
-      threadId: currentThreadId as Id<'threads'>,
-      content: finalMessage,
-      role: 'user',
-    });
+      setMessages(prev =>
+        prev.map(m => (m.id === clientMsgId ? { ...m, id: dbMsgId } : m))
+      );
 
-    if (savedAttachments.length > 0) {
-      await updateAttachmentMessageId({
-        attachmentIds: savedAttachments.map((a) => a.id),
-        messageId: dbMsgId,
-      });
-    }
-
-    // Replace temporary ID and add attachment metadata
-    setMessages(prev =>
-      prev.map(m =>
-        m.id === clientMsgId
-          ? { 
-              ...m, 
-              id: dbMsgId, 
-              // Сохраняем существующие attachments с preview URL до получения реальных URL
-              attachments: (m as any).attachments
-            }
-          : m
-      )
-    );
-
-      // Trigger assistant response generation
       await reload();
 
-      clearQuote();
       if (!isConvexId(threadId)) {
-        navigate(`/chat/${currentThreadId}`);
+        complete(finalMessage, {
+          body: { threadId: threadIdToUse as Id<'threads'>, messageId: dbMsgId, isTitle: true },
+        });
       }
+    } catch (error) {
+      toast.error('Failed to send message.');
+      setInput(currentInput);
     } finally {
       setIsSubmitting(false);
     }
   }, [
+    isDisabled,
     canChat,
     input,
-    status,
+    threadId,
+    attachments,
+    clear,
+    currentQuote,
     setInput,
     adjustHeight,
-    reload,
-    threadId,
-    complete,
-    currentQuote,
     clearQuote,
+    reload,
     createThread,
     sendMessage,
     generateUploadUrl,
     saveAttachments,
     updateAttachmentMessageId,
-    attachments,
-    clear,
     setMessages,
-    navigate,
-    isConvexId,
-    onThreadCreated,
+    complete,
     isSubmitting,
+    onThreadCreated,
   ]);
 
   const handleKeyDown = useCallback(
