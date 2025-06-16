@@ -1,12 +1,11 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
-import { streamText, StreamTextResult } from 'ai';
+import { streamText, convertToCoreMessages, type Message } from 'ai';
 import { getModelConfig, AIModel } from '@/lib/models';
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchQuery } from 'convex/nextjs';
 import { api } from '@/convex/_generated/api';
-import { LanguageModel } from 'ai';
 import type { Id } from '@/convex/_generated/dataModel';
 
 interface Attachment {
@@ -17,18 +16,8 @@ interface Attachment {
   url: string | null;
 }
 
-interface ChatMessage {
-  role: string;
-  content: string | Array<{ type: string; text?: string; image?: string }>;
-}
+type ChatMessage = Omit<Message, 'id'>;
 
-interface StreamTextOptions {
-  model: LanguageModel;
-  messages: ChatMessage[];
-  onError?: (error: Error) => void;
-  system?: string;
-  abortSignal?: AbortSignal;
-}
 
 export const maxDuration = 60;
 
@@ -132,9 +121,11 @@ export async function POST(req: NextRequest) {
       return result;
     });
 
-    const options: StreamTextOptions = {
+    const coreMessages = convertToCoreMessages(processedMessages);
+
+    const result = await streamText({
       model: aiModel,
-      messages: processedMessages,
+      messages: coreMessages,
       onError: () => {
         /* Intentionally left blank to suppress logging */
       },
@@ -143,7 +134,7 @@ export async function POST(req: NextRequest) {
       Be helpful and provide relevant information
       Be respectful and polite in all interactions.
       Be engaging and maintain a conversational tone.
-      Always use LaTeX for mathematical expressions - 
+      Always use LaTeX for mathematical expressions -
       Inline math must be wrapped in single dollar signs: $content$
       Display math must be wrapped in double dollar signs: $$content$$
       Display math should be placed on its own line, with nothing else on that line.
@@ -156,8 +147,7 @@ export async function POST(req: NextRequest) {
       When analyzing images, be descriptive and helpful. Explain what you see in detail and answer any questions about the image content.
       `,
       abortSignal: req.signal,
-    };
-    const result: StreamTextResult = await streamText(options);
+    });
 
     return result.toDataStreamResponse({
       sendReasoning: true,
