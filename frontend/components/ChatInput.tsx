@@ -209,7 +209,9 @@ function PureChatInput({
       // 5. Запускаем reload для ответа ИИ
       await reload();
 
-      // 6. Инициируем навигацию и генерацию заголовка
+      // 6. Навигация и генерация заголовка
+      // Выполняем переход только после успешного обновления данных,
+      // чтобы исключить гонку состояний при отправке первого сообщения.
       if (!isConvexId(threadId)) {
         onThreadCreated?.(threadIdToUse as Id<'threads'>);
         complete(finalMessage, {
