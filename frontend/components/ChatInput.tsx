@@ -140,17 +140,12 @@ function PureChatInput({
     adjustHeight(true);
 
     try {
-      let threadIdToUse: string | Id<'threads'> = threadId;
-      let isNewThread = false;
-
-      // 1. Создаем тред, если его нет
-      if (!isConvexId(threadIdToUse)) {
-        const newThreadId = await createThread({
-          title: finalMessage.slice(0, 30) || 'New Chat',
-        });
-        threadIdToUse = newThreadId;
-        isNewThread = true;
-      }
+      // 1. Если это черновик, создаем тред заранее
+      const ensuredThreadId: string | Id<'threads'> = isConvexId(threadId)
+        ? threadId
+        : await createThread({
+            title: finalMessage.slice(0, 30) || 'New Chat',
+          });
 
       // 2. Оптимистично добавляем сообщение в UI
       const attachmentsToUpload = [...attachments];
@@ -167,9 +162,6 @@ function PureChatInput({
         attachmentsForMessage,
       );
       setMessages((prev) => [...prev, userMessage]);
-
-      // Теперь, когда сообщение уже в UI, сообщаем о создании треда
-      if (isNewThread) onThreadCreated?.(threadIdToUse as Id<'threads'>);
       clear();
 
       // 3. Сохраняем сообщение в БД
@@ -195,7 +187,7 @@ function PureChatInput({
             })
           );
           savedAttachments = await saveAttachments({
-            threadId: threadIdToUse as Id<'threads'>,
+            threadId: ensuredThreadId as Id<'threads'>,
             attachments: uploadedFiles,
           });
         } catch (err) {
@@ -205,7 +197,7 @@ function PureChatInput({
       }
 
       const dbMsgId = await sendMessage({
-        threadId: threadIdToUse as Id<'threads'>,
+        threadId: ensuredThreadId as Id<'threads'>,
         content: finalMessage,
         role: 'user',
       });
@@ -221,11 +213,11 @@ function PureChatInput({
       setMessages((prev) => prev.map((m) => (m.id === clientMsgId ? { ...m, id: dbMsgId } : m)));
 
       // 5. Навигация и генерация заголовка только для новых тредов
-      if (isNewThread) {
-        // Заменяем адрес без полного перемонтирования страницы
-        router.replace(`/chat/${threadIdToUse}`, { scroll: false });
+      if (!isConvexId(threadId)) {
+        router.replace(`/chat/${ensuredThreadId}`, { scroll: false });
+        onThreadCreated?.(ensuredThreadId as Id<'threads'>);
         complete(finalMessage, {
-          body: { threadId: threadIdToUse, messageId: dbMsgId, isTitle: true },
+          body: { threadId: ensuredThreadId, messageId: dbMsgId, isTitle: true },
         });
       }
 
