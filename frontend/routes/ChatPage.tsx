@@ -1,64 +1,55 @@
 'use client';
 
-import { useParams, useNavigate, useLocation } from 'react-router';
+import { useParams, useLocation, Navigate } from 'react-router-dom';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { isConvexId } from '@/lib/ids';
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import Chat from '@/frontend/components/Chat';
 import { Id, Doc } from '@/convex/_generated/dataModel';
 import MessageLoading from '@/frontend/components/ui/MessageLoading';
-import { UIMessage } from 'ai';
 
 export default function ChatPage() {
   const { id } = useParams();
-  const navigate = useNavigate();
   const location = useLocation();
 
-  // Проверяем валидность ID
-  useEffect(() => {
-    if (!id || !isConvexId(id)) {
-      navigate('/chat');
-      return;
-    }
-  }, [id, navigate]);
+  // ================================================================
+  //                    CALL ALL HOOKS AT THE TOP
+  // ================================================================
+  const isValidId = useMemo(() => id && isConvexId(id), [id]);
 
-  // Получаем данные треда
-  const thread = useQuery(api.threads.get, id && isConvexId(id) ? { threadId: id as Id<'threads'> } : 'skip');
-  const messagesResult = useQuery(
-    api.messages.get,
-    id && isConvexId(id) ? { threadId: id as Id<'threads'> } : 'skip'
-  );
-  const attachments = useQuery(
-    api.attachments.byThread,
-    id && isConvexId(id) ? { threadId: id as Id<'threads'> } : 'skip'
-  );
+  const thread = useQuery(api.threads.get, isValidId ? { threadId: id as Id<'threads'> } : 'skip');
+  const messagesResult = useQuery(api.messages.get, isValidId ? { threadId: id as Id<'threads'> } : 'skip');
+  const attachments = useQuery(api.attachments.byThread, isValidId ? { threadId: id as Id<'threads'> } : 'skip');
 
-  // Показываем загрузку пока данные не загружены
-  if (!id || !isConvexId(id)) {
-    return null; // Перенаправление уже происходит в useEffect
+  // ================================================================
+  //                    EARLY RETURNS AND VALIDATION
+  // ================================================================
+  if (id !== undefined && !isValidId) {
+    return <Navigate to="/chat" replace />;
   }
 
   if (thread === undefined || messagesResult === undefined || attachments === undefined) {
-    return null;
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <MessageLoading />
+      </div>
+    );
   }
 
-  // Если тред не найден, перенаправляем на главную
   if (thread === null) {
-    navigate('/chat');
-    return null;
+    return <Navigate to="/chat" replace />;
   }
 
-  // Извлекаем сообщения из результатов и мемоизируем их,
-  // чтобы не пересоздавать массив на каждой перерисовке
-  const messages: UIMessage[] = useMemo(() => {
+  // ================================================================
+  //                    MEMOIZE MESSAGES
+  // ================================================================
+  const messages = useMemo(() => {
     const attachmentsMap: Record<string, any[]> = {};
     if (attachments) {
       attachments.forEach((a) => {
         if (!a.messageId) return;
-        if (!attachmentsMap[a.messageId]) {
-          attachmentsMap[a.messageId] = [];
-        }
+        if (!attachmentsMap[a.messageId]) attachmentsMap[a.messageId] = [];
         attachmentsMap[a.messageId].push(a);
       });
     }
@@ -71,16 +62,14 @@ export default function ChatPage() {
       id: m._id,
       role: m.role,
       content: m.content,
-      createdAt: new Date(m.createdAt),
+      createdAt: new Date(m._creationTime),
       parts: [{ type: 'text', text: m.content }],
       attachments: attachmentsMap[m._id] ?? [],
     }));
   }, [messagesResult, attachments]);
 
-  return (
-    <Chat
-      threadId={id ?? ''}
-      initialMessages={messages}
-    />
-  );
+  // ================================================================
+  //                        RENDER
+  // ================================================================
+  return <Chat threadId={id as string} initialMessages={messages} />;
 }
