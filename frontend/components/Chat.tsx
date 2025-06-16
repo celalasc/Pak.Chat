@@ -169,46 +169,41 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
     useMessageVersionStore.getState().reset(); 
   }, [threadId, initialMessages, setInput, clearQuote, clearAttachments]);
 
+
+  // Сохранение ID нового сообщения от ассистента без рекурсивных обновлений
   useEffect(() => {
-    if (!isConvexId(threadId) && hasInitialized && initialMessages.length === 0) {
-      setMessages([]);
-      setSavedAssistantMessages(new Set());
+    const unsavedAssistantMessage = messages.find(
+      (m) => m.role === 'assistant' && !isConvexId(m.id)
+    );
+
+    if (unsavedAssistantMessage) {
+      sendMessage({
+        threadId: currentThreadId as Id<'threads'>,
+        role: 'assistant',
+        content: unsavedAssistantMessage.content,
+      }).then((dbId) => {
+        setMessages((prevMessages) =>
+          prevMessages.map((m) =>
+            m.id === unsavedAssistantMessage.id ? { ...m, id: dbId } : m
+          )
+        );
+        setSavedAssistantMessages((prev) => new Set(prev).add(dbId));
+      });
     }
-  }, [threadId, hasInitialized, initialMessages.length, setMessages]);
+  }, [messages, currentThreadId, sendMessage, setMessages, setSavedAssistantMessages]);
 
-  // Сохранение ID новых сообщений от ассистента
-  useEffect(() => {
-    if (!isConvexId(currentThreadId)) return;
-    const assistantMessages = messages.filter(m => m.role === 'assistant');
-    assistantMessages.forEach(async (message) => {
-      if (!savedAssistantMessages.has(message.id)) {
-        if (!isConvexId(message.id)) {
-          try {
-            const dbId = await sendMessage({
-              threadId: currentThreadId as Id<'threads'>,
-              role: 'assistant',
-              content: message.content,
-            });
-            setSavedAssistantMessages(prev => new Set(prev).add(dbId));
-            setMessages(prev => prev.map(m => m.id === message.id ? { ...m, id: dbId } : m));
-          } catch (error) {
-            console.error('Failed to save assistant message:', error);
-          }
-        } else {
-          setSavedAssistantMessages(prev => new Set(prev).add(message.id));
-        }
-      }
-    });
-  }, [messages, currentThreadId, savedAssistantMessages, sendMessage, setMessages]);
-
-  // Инкрементальное сохранение
+  // Инкрементальное сохранение с защитой от лишних вызовов
   useEffect(() => {
     const last = messages[messages.length - 1];
-    if (!last || last.role !== 'assistant' || status !== 'streaming' || !isConvexId(last.id)) return;
-    const currentVersion = messageVersions[last.id] ?? 0;
-    const newVersion = currentVersion + 1;
-    debouncedPatch(last.id as Id<'messages'>, last.content, newVersion);
-    updateVersion(last.id, newVersion);
+    if (last?.role === 'assistant' && status === 'streaming' && isConvexId(last.id)) {
+      const currentVersion = messageVersions[last.id] ?? 0;
+      const newVersion = currentVersion + 1;
+      // Защита от лишних вызовов
+      if (newVersion > currentVersion) {
+        debouncedPatch(last.id as Id<'messages'>, last.content, newVersion);
+        updateVersion(last.id, newVersion);
+      }
+    }
   }, [messages, status, debouncedPatch, messageVersions, updateVersion]);
 
   // Автопрокрутка
