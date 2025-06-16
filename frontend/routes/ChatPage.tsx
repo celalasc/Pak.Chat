@@ -1,80 +1,59 @@
 'use client'
 
-// Next.js router utilities
-import { useParams, usePathname, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { useEffect, useMemo } from 'react'
-
-// Convex data hooks
 import { useQuery, useConvexAuth } from 'convex/react'
 import { api } from '@/convex/_generated/api'
 import { Id, Doc } from '@/convex/_generated/dataModel'
-
-// Local utilities and components
 import { isConvexId } from '@/lib/ids'
 import Chat from '@/frontend/components/Chat'
-import MessageLoading from '@/frontend/components/ui/MessageLoading'
+import AppShellSkeleton from '@/frontend/components/AppShellSkeleton'
 
-export default function ChatPage() {
-  const params = useParams()
+export default function ChatPage({ chatId }: { chatId: string }) {
   const router = useRouter()
-  const pathname = usePathname()
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth()
 
-  // ID may be string or array in Next.js App Router
-  const id = Array.isArray(params.id) ? params.id[0] : params.id
+  const isValidId = useMemo(() => isConvexId(chatId), [chatId])
 
-  // ---------------------------------------------------------------------------
-  //                             Data fetching
-  // ---------------------------------------------------------------------------
-  const isValidId = useMemo(() => id && isConvexId(id), [id])
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.replace('/');
+      return;
+    }
+    if (chatId && !isValidId) {
+      router.replace('/chat');
+      return;
+    }
+  }, [authLoading, isAuthenticated, chatId, isValidId, router]);
 
   const thread = useQuery(
     api.threads.get,
-    isValidId && isAuthenticated ? { threadId: id as Id<'threads'> } : 'skip'
-  )
+    isValidId ? { threadId: chatId as Id<'threads'> } : 'skip'
+  );
   const messagesResult = useQuery(
     api.messages.get,
-    isValidId && isAuthenticated ? { threadId: id as Id<'threads'> } : 'skip'
-  )
+    isValidId ? { threadId: chatId as Id<'threads'> } : 'skip'
+  );
   const attachments = useQuery(
     api.attachments.byThread,
-    isValidId ? { threadId: id as Id<'threads'> } : 'skip'
-  )
+    isValidId ? { threadId: chatId as Id<'threads'> } : 'skip'
+  );
 
-  // ---------------------------------------------------------------------------
-  //                             Redirect logic
-  // ---------------------------------------------------------------------------
   useEffect(() => {
-    // Redirect if the id is malformed
-    if (id !== undefined && !isValidId && pathname === `/chat/${id}`) {
-      router.replace('/chat')
-    }
-
-    // Redirect if the thread does not exist
+    // Если тред загрузился и его нет (null), редиректим
     if (thread === null) {
-      router.replace('/chat')
+      router.replace('/chat');
     }
-  }, [id, isValidId, thread, router, pathname])
+  }, [thread, router]);
 
-  // Show loading state while fetching data or if id is invalid
-  if (
-    authLoading ||
-    !isValidId ||
-    thread === undefined ||
-    messagesResult === undefined ||
-    attachments === undefined
-  ) {
-    return <div className="w-full h-screen flex items-center justify-center">Loading...</div>
+  if (authLoading || !isValidId || thread === undefined || messagesResult === undefined || attachments === undefined) {
+    return <AppShellSkeleton />;
   }
 
-  // Thread was not found: useEffect will handle redirect
   if (thread === null) {
-    return null
+    return null; // Ждем редиректа
   }
 
-  // ---------------------------------------------------------------------------
-  //                          Prepare messages
-  // ---------------------------------------------------------------------------
   const messages = useMemo(() => {
     const attachmentsMap: Record<string, any[]> = {}
     attachments?.forEach(a => {
@@ -97,13 +76,10 @@ export default function ChatPage() {
     }))
   }, [messagesResult, attachments])
 
-  // ---------------------------------------------------------------------------
-  //                              Render
-  // ---------------------------------------------------------------------------
   return (
     <Chat
-      key={id as string}
-      threadId={id as string}
+      key={chatId}
+      threadId={chatId}
       initialMessages={messages}
     />
   )

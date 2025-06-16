@@ -5,9 +5,6 @@ import { Plus } from 'lucide-react';
 import { WithTooltip } from './WithTooltip';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
-import { useChatStore } from '@/frontend/stores/ChatStore';
-import { useQuoteStore } from '@/frontend/stores/QuoteStore';
-import { useDraftStore } from '@/frontend/stores/DraftStore';
 
 interface NewChatButtonProps {
   className?: string;
@@ -21,14 +18,8 @@ export default function NewChatButton({
   size = "icon"
 }: NewChatButtonProps) {
   const router = useRouter();
-  const { setInput } = useChatStore();
-  const { clearQuote } = useQuoteStore();
 
   const handleClick = () => {
-    setInput('');
-    clearQuote();
-    // Инкрементируем локальный ключ, чтобы Chat пересоздался
-    useDraftStore.getState().next();
     router.push('/chat');
   };
 
@@ -45,4 +36,4 @@ export default function NewChatButton({
       </Button>
     </WithTooltip>
   );
-} 
+}

@@ -21,6 +21,16 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 
+const StreamingText = memo(({ content }: { content: string }) => {
+  const proseClasses = 'prose prose-base dark:prose-invert break-words max-w-none w-full';
+  return (
+    <div className={proseClasses}>
+      <div style={{ whiteSpace: 'pre-wrap' }}>{content}</div>
+    </div>
+  );
+});
+StreamingText.displayName = 'StreamingText';
+
 function PureMessage({
   threadId,
   message,
@@ -47,7 +57,6 @@ function PureMessage({
     size?: number;
   } | null>(null);
   const { keys, setKeys } = useAPIKeyStore();
-  // Keep editable copy of API keys for the inline prompt
   const [localKeys, setLocalKeys] = useState<APIKeys>(keys);
   const { isMobile } = useIsMobile();
   
@@ -59,8 +68,7 @@ function PureMessage({
   const canChat = hasRequiredKeys();
 
   const handleNewChat = () => {
-    // Start a fresh chat without creating a thread upfront
-    router.push(`/chat?newChat=${Date.now()}`);
+    router.push(`/chat`);
   };
 
   const handleMobileMessageClick = () => {
@@ -111,12 +119,12 @@ function PureMessage({
                       <Input id={provider}
                         placeholder={provider === 'google' ? 'AIza...' : provider === 'openrouter' ? 'sk-or-...' : 'sk-...'}
                         value={localKeys[provider]||''}
-          onChange={e =>
-            setLocalKeys((prev: APIKeys) => ({
-              ...prev,
-              [provider]: e.target.value,
-            }))
-          }
+                        onChange={e =>
+                            setLocalKeys((prev: APIKeys) => ({
+                              ...prev,
+                              [provider]: e.target.value,
+                            }))
+                        }
                       />
                       <a href={provider === 'google' ? 'https://aistudio.google.com/apikey' : provider === 'openrouter' ? 'https://openrouter.ai/settings/keys' : 'https://platform.openai.com/settings/organization/api-keys'}
                          target="_blank" rel="noopener noreferrer"
@@ -220,7 +228,11 @@ function PureMessage({
               onClick={handleMobileMessageClick}
             >
               <SelectableText messageId={message.id} disabled={isStreaming}>
-                <MarkdownRenderer content={part.text} id={message.id} />
+                {isStreaming ? (
+                  <StreamingText content={part.text} />
+                ) : (
+                  <MarkdownRenderer content={part.text} id={message.id} />
+                )}
               </SelectableText>
               {attachments && attachments.length > 0 && (
                 <div className="flex gap-2 flex-wrap mt-2">
@@ -288,7 +300,8 @@ function PureMessage({
 const PreviewMessage = memo(PureMessage, (prevProps, nextProps) => {
   if (prevProps.isStreaming !== nextProps.isStreaming) return false;
   if (prevProps.message.id !== nextProps.message.id) return false;
-  if (!equal(prevProps.message.parts, nextProps.message.parts)) return false;
+  if (nextProps.isStreaming && prevProps.message.content !== nextProps.message.content) return false;
+  if (!nextProps.isStreaming && !equal(prevProps.message, nextProps.message)) return false;
   return true;
 });
 
