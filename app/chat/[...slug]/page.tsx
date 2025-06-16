@@ -10,8 +10,10 @@ import Chat from '@/frontend/components/Chat';
 import AppShellSkeleton from '@/frontend/components/AppShellSkeleton';
 
 // Эта страница теперь ловит все адреса типа /chat/что-угодно
-export default function CatchAllChatPage({ params }: { params: { slug: string[] } }) {
-  const chatId = params.slug?.[0]; 
+export default function CatchAllChatPage({ params }: { params: Promise<{ slug: string[] }> }) {
+  // Next.js 15 requires resolving dynamic params using React's experimental `use`
+  const resolvedParams = use(params);
+  const chatId = resolvedParams.slug?.[0];
   
   const router = useRouter();
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
@@ -37,7 +39,16 @@ export default function CatchAllChatPage({ params }: { params: { slug: string[] 
   const messages = useMemo(() => {
     if (!attachments || !messagesResult) return []; // Защита от undefined
 
-    const attachmentsMap: Record<string, any[]> = {}
+    const attachmentsMap: Record<
+      string,
+      {
+        id: Id<'attachments'>;
+        messageId?: Id<'messages'>;
+        name: string;
+        type: string;
+        url: string | null;
+      }[]
+    > = {}
     attachments.forEach(a => {
       if (!a.messageId) return
       if (!attachmentsMap[a.messageId]) attachmentsMap[a.messageId] = []
