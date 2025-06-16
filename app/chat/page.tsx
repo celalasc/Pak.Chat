@@ -1,13 +1,30 @@
 'use client'
+import Chat from '@/frontend/components/Chat';
+import { useConvexAuth } from 'convex/react';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import AppShellSkeleton from '@/frontend/components/AppShellSkeleton';
 
-import { useDraftStore } from '@/frontend/stores/DraftStore'
-import Chat from '@/frontend/components/Chat'
+export default function NewChatPage() {
+  const { isAuthenticated, isLoading } = useConvexAuth();
+  const router = useRouter();
 
-export const dynamic = 'force-dynamic'
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.replace('/');
+    }
+  }, [isLoading, isAuthenticated, router]);
 
-export default function Page() {
-  const draftKey = useDraftStore((s) => s.draftKey)
+  if (isLoading || !isAuthenticated) {
+    return <AppShellSkeleton />;
+  }
+
+  // Ключ "new-draft" гарантирует, что для нового чата всегда будет чистое состояние
   return (
-    <Chat key={`draft-${draftKey}`} threadId="" initialMessages={[]} />
-  )
+    <Chat
+      key="new-draft"
+      threadId=""
+      initialMessages={[]}
+    />
+  );
 }
