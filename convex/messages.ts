@@ -41,6 +41,7 @@ export const send = mutation({
   async handler(ctx, args) {
     const uid = await currentUserId(ctx);
     if (!uid) throw new Error("Unauthenticated");
+    if (!args.content.trim()) throw new Error("Empty message");
     const thread = await ctx.db.get(args.threadId);
     if (!thread || thread.userId !== uid)
       throw new Error("Thread not found or permission denied");
@@ -143,5 +144,26 @@ export const patchContent = mutation({
         version: args.version,
       });
     }
+  },
+});
+
+/** Finalize message after streaming ends and clean versions */
+export const finalize = mutation({
+  args: { messageId: v.id("messages") },
+  async handler(ctx, { messageId }) {
+    const uid = await currentUserId(ctx);
+    if (!uid) throw new Error("Unauthenticated");
+    const msg = await ctx.db.get(messageId);
+    if (!msg) return;
+    const thread = await ctx.db.get(msg.threadId);
+    if (!thread || thread.userId !== uid) throw new Error("Permission denied");
+
+    await ctx.db.patch(messageId, { version: 0 });
+
+    const versions = await ctx.db
+      .query("messageVersions")
+      .withIndex("by_message", (q) => q.eq("messageId", messageId))
+      .collect();
+    await Promise.all(versions.map((v) => ctx.db.delete(v._id)));
   },
 });

@@ -26,7 +26,7 @@ export default function NewChatButton({
   const handleClick = () => {
     setInput('');
     clearQuote();
-    navigate('/chat', { state: { ts: Date.now() } });
+    navigate('/chat', { state: { newChat: Date.now() } });
   };
 
   return (
