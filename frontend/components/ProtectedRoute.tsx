@@ -1,18 +1,18 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router';
+import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/frontend/stores/AuthStore';
 
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuthStore();
-  const navigate = useNavigate();
+  const router = useRouter();
 
   useEffect(() => {
     if (!loading && !user) {
-      navigate('/');
+      router.push('/');
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, router]);
 
   if (loading || !user) {
     return (

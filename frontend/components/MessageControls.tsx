@@ -10,7 +10,7 @@ import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { isConvexId } from '@/lib/ids';
 import type { Id } from '@/convex/_generated/dataModel';
-import { useNavigate } from 'react-router';
+import { useRouter } from 'next/navigation';
 
 interface MessageControlsProps {
   threadId: string;
@@ -50,7 +50,7 @@ export default function MessageControls({
     api.threads.get,
     isConvexId(threadId) ? { threadId: threadId as Id<'threads'> } : 'skip'
   );
-  const navigate = useNavigate();
+  const router = useRouter();
 
   const handleCopy = () => {
     navigator.clipboard.writeText(content);
@@ -140,7 +140,7 @@ export default function MessageControls({
               threadId: threadId as Id<'threads'>,
               title,
             });
-            navigate(`/chat/${newId}`);
+            router.push(`/chat/${newId}`);
             onToggleVisibility?.();
           }}
         >

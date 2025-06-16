@@ -1,12 +1,9 @@
-import { Outlet } from 'react-router';
 import ErrorBoundary from './components/ErrorBoundary';
 
-export default function ChatLayout() {
+export default function ChatLayout({ children }: { children?: React.ReactNode }) {
   return (
     <ErrorBoundary>
-      <div className="w-full h-full">
-        <Outlet />
-      </div>
+      <div className="w-full h-full">{children}</div>
     </ErrorBoundary>
   );
 }

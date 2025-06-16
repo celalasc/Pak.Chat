@@ -1,11 +1,11 @@
 import { UIMessage } from 'ai';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 import Chat from '@/frontend/components/Chat';
-import { useLocation } from 'react-router';
+import { useSearchParams } from 'next/navigation';
 import MessageLoading from '@/frontend/components/ui/MessageLoading';
 
 export default function Home() {
-  const { state } = useLocation();
+  const searchParams = useSearchParams();
   const eightDaysAgo = new Date(Date.now() - 1000 * 60 * 60 * 24 * 8);
   const welcomeMessage: UIMessage = {
     id: 'welcome',
@@ -30,7 +30,7 @@ export default function Home() {
   // Используем Chat компонент с пустым threadId для новой беседы
   return (
     <Chat
-      key={state?.newChat ?? 'new'}
+      key={searchParams.get('newChat') ?? 'new'}
       threadId=""
       initialMessages={initialMessages}
     />

@@ -1,6 +1,6 @@
 import { Button } from '@/frontend/components/ui/button';
 import { Key } from 'lucide-react';
-import { Link } from 'react-router';
+import Link from 'next/link';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 
 export default function KeyPrompt() {
@@ -20,7 +20,7 @@ export default function KeyPrompt() {
           </p>
         </div>
 
-        <Link to="/settings">
+        <Link href="/settings">
           <Button size="sm" variant="outline" className="ml-2 h-8 text-xs">
             Configure
           </Button>

@@ -1,20 +1,20 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router';
+import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/frontend/stores/AuthStore';
 import { Button } from '@/frontend/components/ui/button';
 import MessageLoading from '@/frontend/components/ui/MessageLoading';
 
 export default function Index() {
   const { user, loading, login } = useAuthStore();
-  const navigate = useNavigate();
+  const router = useRouter();
 
   useEffect(() => {
     if (!loading && user) {
-      navigate('/chat');
+      router.push('/chat');
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, router]);
   
   if (loading || (!loading && user)) {
     return (

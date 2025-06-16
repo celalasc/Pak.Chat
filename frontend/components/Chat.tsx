@@ -10,7 +10,7 @@ import { UIMessage } from 'ai';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 import { useModelStore } from '@/frontend/stores/ModelStore';
 import SettingsButton from './SettingsButton';
-import { useNavigate } from 'react-router';
+import { useRouter } from 'next/navigation';
 import { useQuoteShortcuts } from '@/frontend/hooks/useQuoteShortcuts';
 import { useScrollHide } from '@/frontend/hooks/useScrollHide';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
@@ -56,7 +56,7 @@ function Chat({ threadId, initialMessages }: ChatProps) {
   const { keys, hasRequiredKeys, keysLoading } = useAPIKeyStore();
   const { selectedModel } = useModelStore();
   const { isMobile } = useIsMobile();
-  const navigate = useNavigate();
+  const router = useRouter();
   const panelRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isHeaderVisible = useScrollHide<HTMLDivElement>({ threshold: 15, panelRef });
@@ -181,16 +181,6 @@ function Chat({ threadId, initialMessages }: ChatProps) {
     setMessages(initialMessages);
   }, [threadId]);
 
-  // При первом сообщении в новом чате автоматически запрашиваем ответ ИИ
-  useEffect(() => {
-    if (
-      messages.length === 1 &&
-      messages[0].role === 'user' &&
-      status === 'ready'
-    ) {
-      reload();
-    }
-  }, [messages, status, reload]);
 
 
   // Persist final assistant content to DB once generation is complete
@@ -251,7 +241,7 @@ function Chat({ threadId, initialMessages }: ChatProps) {
                 {isMobile && <div className="absolute inset-0 -m-2 bg-background/60 backdrop-blur-md rounded-lg" />}
                 <span
                   className="relative text-xl font-bold text-foreground hover:text-primary transition-colors cursor-pointer"
-                  onClick={() => navigate('/chat', { state: { newChat: Date.now() } })}
+                  onClick={() => router.push(`/chat?newChat=${Date.now()}`)}
                 >
                     Pak.Chat
                 </span>

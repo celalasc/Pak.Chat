@@ -4,7 +4,7 @@ import { Button } from './ui/button';
 import { Plus } from 'lucide-react';
 import { WithTooltip } from './WithTooltip';
 import { cn } from '@/lib/utils';
-import { useNavigate } from 'react-router';
+import { useRouter } from 'next/navigation';
 import { useChatStore } from '@/frontend/stores/ChatStore';
 import { useQuoteStore } from '@/frontend/stores/QuoteStore';
 
@@ -19,14 +19,14 @@ export default function NewChatButton({
   variant = "outline",
   size = "icon"
 }: NewChatButtonProps) {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { setInput } = useChatStore();
   const { clearQuote } = useQuoteStore();
 
   const handleClick = () => {
     setInput('');
     clearQuote();
-    navigate('/chat', { state: { newChat: Date.now() } });
+    router.push(`/chat?newChat=${Date.now()}`);
   };
 
   return (
