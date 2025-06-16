@@ -181,6 +181,17 @@ function Chat({ threadId, initialMessages }: ChatProps) {
     setMessages(initialMessages);
   }, [threadId]);
 
+  // При первом сообщении в новом чате автоматически запрашиваем ответ ИИ
+  useEffect(() => {
+    if (
+      messages.length === 1 &&
+      messages[0].role === 'user' &&
+      status === 'ready'
+    ) {
+      reload();
+    }
+  }, [messages, status, reload]);
+
 
   // Persist final assistant content to DB once generation is complete
   // Versions are incrementally patched while streaming.

@@ -222,8 +222,8 @@ function PureChatInput({
         });
       }
 
-      // 6. Запускаем reload для ответа ИИ
-      await reload();
+      // Ответ получаем уже на новой странице
+      // reload() будет вызван в Chat.tsx
     } catch (error) {
       toast.error('Failed to send message.');
       setInput(currentInput);
@@ -245,7 +245,6 @@ function PureChatInput({
     generateUploadUrl,
     saveAttachments,
     updateAttachmentMessageId,
-    reload,
     setMessages,
     complete,
     onThreadCreated,
