@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { useChatStore } from '@/frontend/stores/ChatStore';
 import { useQuoteStore } from '@/frontend/stores/QuoteStore';
+import { useDraftStore } from '@/frontend/stores/DraftStore';
 
 interface NewChatButtonProps {
   className?: string;
@@ -26,7 +27,9 @@ export default function NewChatButton({
   const handleClick = () => {
     setInput('');
     clearQuote();
-    router.push(`/chat?newChat=${Date.now()}`);
+    router.push('/chat');
+    // Инкрементируем локальный ключ, чтобы Chat пересоздался
+    useDraftStore.getState().next();
   };
 
   return (
