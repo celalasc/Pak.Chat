@@ -17,7 +17,6 @@ import { useKeyboardInsets } from '../hooks/useKeyboardInsets';
 import { cn } from '@/lib/utils';
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
-import { useNavigate } from 'react-router';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { isConvexId } from '@/lib/ids';
@@ -58,7 +57,6 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isHeaderVisible = useScrollHide<HTMLDivElement>({ threshold: 15, panelRef });
-  const navigate = useNavigate();
   const { clearQuote } = useQuoteStore();
   const { clear: clearAttachments } = useAttachmentsStore();
   
@@ -71,12 +69,7 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const [savedAssistantMessages, setSavedAssistantMessages] = useState<Set<string>>(new Set());
 
-  // Навигация после создания нового треда
-  useEffect(() => {
-    if (isConvexId(currentThreadId) && !threadId) {
-      navigate(`/chat/${currentThreadId}`, { replace: true });
-    }
-  }, [currentThreadId, threadId, navigate]);
+  // Перенос навигации осуществляется из ChatInput
   
   // Используем наш store, определенный выше
   const updateVersion = useMessageVersionStore((s) => s.updateVersion);
