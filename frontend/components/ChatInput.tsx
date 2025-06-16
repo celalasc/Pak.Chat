@@ -216,7 +216,8 @@ function PureChatInput({
 
       // 5. Навигация и генерация заголовка только для новых тредов
       if (isNewThread) {
-        router.replace(`/chat/${threadIdToUse}`);
+        // Заменяем адрес без полного перемонтирования страницы
+        router.replace(`/chat/${threadIdToUse}`, { scroll: false });
         complete(finalMessage, {
           body: { threadId: threadIdToUse, messageId: dbMsgId, isTitle: true },
         });
