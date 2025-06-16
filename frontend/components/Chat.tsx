@@ -67,6 +67,8 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
   const [currentThreadId, setCurrentThreadId] = useState(threadId);
   const [hasInitialized, setHasInitialized] = useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  // Track IDs of assistant messages that have already been persisted to the
+  // database so we don't repeatedly insert duplicates while streaming.
   const [savedAssistantMessages, setSavedAssistantMessages] = useState<Set<string>>(new Set());
 
   // Перенос навигации осуществляется из ChatInput
@@ -163,14 +165,18 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
   }, [threadId, initialMessages, setInput, clearQuote, clearAttachments]);
 
 
-  // Сохранение ID нового сообщения от ассистента без рекурсивных обновлений
+  // Persist a new assistant message only once per generation to avoid
+  // creating a database entry for every streamed token.
   useEffect(() => {
     const unsavedAssistantMessage = messages.find(
       (m) => m.role === 'assistant' && !isConvexId(m.id)
     );
 
-    // Skip saving until we have a valid thread ID to avoid server errors
-    if (unsavedAssistantMessage && isConvexId(currentThreadId)) {
+    if (
+      unsavedAssistantMessage &&
+      isConvexId(currentThreadId) &&
+      !savedAssistantMessages.has(unsavedAssistantMessage.id)
+    ) {
       sendMessage({
         threadId: currentThreadId as Id<'threads'>,
         role: 'assistant',
@@ -181,10 +187,11 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
             m.id === unsavedAssistantMessage.id ? { ...m, id: dbId } : m
           )
         );
-        setSavedAssistantMessages((prev) => new Set(prev).add(dbId));
+        // Remember the temporary ID so we don't save again during streaming
+        setSavedAssistantMessages((prev) => new Set(prev).add(unsavedAssistantMessage.id));
       });
     }
-  }, [messages, currentThreadId, sendMessage, setMessages]);
+  }, [messages, currentThreadId, sendMessage, setMessages, savedAssistantMessages]);
 
   // Инкрементальное сохранение с защитой от лишних вызовов
   useEffect(() => {
@@ -197,14 +204,13 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
     }
   }, [messages, status, debouncedPatch, updateVersion]);
 
-  // Автопрокрутка
+  // Keep local state clean after the assistant finishes generating a message
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  useEffect(() => {
-    scrollToBottom('auto');
-  }, []);
+    if (status !== 'streaming') {
+      // Once generation completes, forget temporary IDs
+      setSavedAssistantMessages(new Set());
+    }
+  }, [status]);
 
   return (
     <div className="w-full min-h-screen flex flex-col overflow-y-auto">
@@ -254,7 +260,12 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
                 </main>
             </div>
 
-            <div className={cn("absolute left-1/2 -translate-x-1/2 w-full max-w-3xl px-4 transition-all duration-300", messages.length > 0 ? "bottom-0" : "top-1/2 -translate-y-1/2")}>
+            <div
+              className={cn(
+                "fixed left-1/2 -translate-x-1/2 w-full max-w-3xl px-4 transition-all duration-300",
+                messages.length > 0 ? "bottom-0" : "top-1/2 -translate-y-1/2"
+              )}
+            >
                 <ChatInput
                   threadId={currentThreadId}
                   input={input}
