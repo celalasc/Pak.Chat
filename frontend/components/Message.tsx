@@ -18,7 +18,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/frontend/components/ui/badge';
 import { useAPIKeyStore, type APIKeys } from '@/frontend/stores/APIKeyStore';
 import { toast } from 'sonner';
-import { useNavigate } from 'react-router';
+import { useRouter } from 'next/navigation';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 
 function PureMessage({
@@ -54,13 +54,13 @@ function PureMessage({
   useEffect(() => { setLocalKeys(keys); }, [keys]);
   
   const saveKeys = () => { setKeys(localKeys); toast.success('API keys saved'); };
-  const navigate = useNavigate();
+  const router = useRouter();
   const { hasRequiredKeys } = useAPIKeyStore();
   const canChat = hasRequiredKeys();
 
   const handleNewChat = () => {
     // Start a fresh chat without creating a thread upfront
-    navigate('/chat');
+    router.push('/chat');
   };
 
   const handleMobileMessageClick = () => {

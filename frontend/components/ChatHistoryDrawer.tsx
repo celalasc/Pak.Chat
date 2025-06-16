@@ -7,7 +7,7 @@ import { Button, buttonVariants } from './ui/button';
 import { Input } from './ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 // Dexie imports removed as Convex is now the data source
-import { useNavigate, useParams } from 'react-router';
+import { useRouter, useParams } from 'next/navigation';
 import { X, Pin, PinOff, Search, MessageSquare, Plus, Edit2, Check, GitBranch } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
@@ -33,7 +33,7 @@ function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistory
   
   const { isMobile, mounted } = useIsMobile(600);
   const { id } = useParams();
-  const navigate = useNavigate();
+  const router = useRouter();
   const { isAuthenticated } = useConvexAuth();
   
   const threads = useQuery(
@@ -74,9 +74,9 @@ function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistory
       handleOpenChange(false);
       return;
     }
-    navigate(`/chat/${threadId}`);
+    router.push(`/chat/${threadId}`);
     handleOpenChange(false);
-  }, [id, navigate, handleOpenChange]);
+  }, [id, router, handleOpenChange]);
 
   const handleEdit = useCallback((thread: Thread) => {
     setEditingThreadId(thread._id);
@@ -101,10 +101,10 @@ function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistory
   const handleConfirmDelete = useCallback(async (threadId: Id<'threads'>) => {
     await removeThread({ threadId });
     if (id === threadId) {
-      navigate('/chat');
+      router.push('/chat');
     }
     setDeletingThreadId(null);
-  }, [id, navigate, removeThread]);
+  }, [id, router, removeThread]);
 
   const handleCancelDelete = useCallback(() => {
     setDeletingThreadId(null);
@@ -122,9 +122,9 @@ function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistory
   );
 
   const handleNewChat = useCallback(() => {
-    navigate('/chat', { replace: true });
-    handleOpenChange(false);
-  }, [navigate, handleOpenChange]);
+    router.replace('/chat');
+  handleOpenChange(false);
+  }, [router, handleOpenChange]);
 
   const formatDate = (date: Date) => {
     const now = new Date();

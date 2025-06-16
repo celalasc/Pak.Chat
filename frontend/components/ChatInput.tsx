@@ -31,7 +31,7 @@ import { toast } from 'sonner';
 import { useMessageSummary } from '../hooks/useMessageSummary';
 import QuoteDisplay from './QuoteDisplay';
 import { Input } from '@/frontend/components/ui/input';
-import { useNavigate } from 'react-router';
+import { useRouter } from 'next/navigation';
 
 // Helper to convert File objects to Base64 data URLs
 const fileToDataUrl = (file: File): Promise<string> => {
@@ -94,7 +94,7 @@ function PureChatInput({
   const canChat = hasRequiredKeys();
   const { currentQuote, clearQuote } = useQuoteStore();
   const [localKeys, setLocalKeys] = useState(keys);
-  const navigate = useNavigate();
+  const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({
     minHeight: 72,
@@ -216,14 +216,14 @@ function PureChatInput({
 
       // 5. Навигация и генерация заголовка только для новых тредов
       if (isNewThread) {
-        navigate(`/chat/${threadIdToUse}`, { replace: true });
+        router.replace(`/chat/${threadIdToUse}`);
         complete(finalMessage, {
           body: { threadId: threadIdToUse, messageId: dbMsgId, isTitle: true },
         });
       }
 
-      // Ответ получаем уже на новой странице
-      // reload() будет вызван в Chat.tsx
+      // Явно запрашиваем ответ после отправки
+      setTimeout(() => reload(), 0);
     } catch (error) {
       toast.error('Failed to send message.');
       setInput(currentInput);
@@ -247,6 +247,8 @@ function PureChatInput({
     updateAttachmentMessageId,
     setMessages,
     complete,
+    router,
+    reload,
     onThreadCreated,
   ]);
 

@@ -1,4 +1,5 @@
-import { Link, useSearchParams } from 'react-router';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { buttonVariants } from '../components/ui/button';
 import { ArrowLeftIcon } from 'lucide-react';
 import SettingsDrawer from '@/frontend/components/SettingsDrawer';
@@ -6,7 +7,7 @@ import { useState } from 'react';
 import ErrorBoundary from '@/frontend/components/ErrorBoundary';
 
 export default function Settings() {
-  const [searchParams] = useSearchParams();
+  const searchParams = useSearchParams();
   const chatId = searchParams.get('from');
   const [isOpen, setIsOpen] = useState(true);
 
@@ -14,9 +15,7 @@ export default function Settings() {
     <ErrorBoundary>
       <section className="flex w-full h-full">
         <Link
-          to={{
-            pathname: `/chat${chatId ? `/${chatId}` : ''}`,
-          }}
+          href={`/chat${chatId ? `/${chatId}` : ''}`}
           className={buttonVariants({
             variant: 'default',
             className: 'w-fit fixed top-10 left-40 z-10',

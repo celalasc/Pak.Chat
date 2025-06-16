@@ -5,7 +5,7 @@ import { useParams, usePathname, useRouter } from 'next/navigation'
 import { useEffect, useMemo } from 'react'
 
 // Convex data hooks
-import { useQuery } from 'convex/react'
+import { useQuery, useConvexAuth } from 'convex/react'
 import { api } from '@/convex/_generated/api'
 import { Id, Doc } from '@/convex/_generated/dataModel'
 
@@ -18,6 +18,7 @@ export default function ChatPage() {
   const params = useParams()
   const router = useRouter()
   const pathname = usePathname()
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth()
 
   // ID may be string or array in Next.js App Router
   const id = Array.isArray(params.id) ? params.id[0] : params.id
@@ -29,11 +30,11 @@ export default function ChatPage() {
 
   const thread = useQuery(
     api.threads.get,
-    isValidId ? { threadId: id as Id<'threads'> } : 'skip'
+    isValidId && isAuthenticated ? { threadId: id as Id<'threads'> } : 'skip'
   )
   const messagesResult = useQuery(
     api.messages.get,
-    isValidId ? { threadId: id as Id<'threads'> } : 'skip'
+    isValidId && isAuthenticated ? { threadId: id as Id<'threads'> } : 'skip'
   )
   const attachments = useQuery(
     api.attachments.byThread,
@@ -57,6 +58,7 @@ export default function ChatPage() {
 
   // Show loading state while fetching data or if id is invalid
   if (
+    authLoading ||
     !isValidId ||
     thread === undefined ||
     messagesResult === undefined ||
@@ -94,7 +96,7 @@ export default function ChatPage() {
       role: m.role,
       content: m.content,
       createdAt: new Date(m._creationTime),
-      parts: [{ type: 'text', text: m.content }],
+      parts: [{ type: 'text' as const, text: m.content }],
       attachments: attachmentsMap[m._id] ?? []
     }))
   }, [messagesResult, attachments])
@@ -102,5 +104,11 @@ export default function ChatPage() {
   // ---------------------------------------------------------------------------
   //                              Render
   // ---------------------------------------------------------------------------
-  return <Chat threadId={id as string} initialMessages={messages} />
+  return (
+    <Chat
+      key={`${id}-${messages.length}`}
+      threadId={id as string}
+      initialMessages={messages}
+    />
+  )
 }
