@@ -8,9 +8,8 @@ const App = dynamic(() => import('@/frontend/app'), { ssr: false });
 
 export default function ClientApp() {
   return (
-    <>
-      <AuthListener />
+    <AuthListener>
       <App />
-    </>
+    </AuthListener>
   );
 }

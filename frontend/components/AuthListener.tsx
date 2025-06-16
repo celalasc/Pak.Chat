@@ -1,12 +1,18 @@
 'use client';
 import { useAuthStore } from '@/frontend/stores/AuthStore';
-import { useEffect } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 
-export default function AuthListener() {
+export default function AuthListener({ children }: { children: ReactNode }) {
   const init = useAuthStore((s) => s.init);
+  const loading = useAuthStore((s) => s.loading);
+  const [ready, setReady] = useState(false);
 
-  // Start Firebase auth listener on mount and clean up on unmount
-  useEffect(() => init(), [init]);
+  useEffect(() => {
+    const unsub = init();
+    setReady(true);
+    return unsub;
+  }, [init]);
 
-  return null;
+  if (!ready || loading) return null;
+  return <>{children}</>;
 }
