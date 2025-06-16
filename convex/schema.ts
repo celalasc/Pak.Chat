@@ -29,7 +29,9 @@ export default defineSchema({
     pinned: v.optional(v.boolean()),
     clonedFrom: v.optional(v.id("threads")),
     forkedFromMessageId: v.optional(v.id("messages")),
-  }).index("by_user_and_time", ["userId", "createdAt"]),
+  })
+    .index("by_user_and_time", ["userId", "createdAt"])
+    .searchIndex("by_title", { searchField: "title" }),
 
   // Messages
   messages: defineTable({

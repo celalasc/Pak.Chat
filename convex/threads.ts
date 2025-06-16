@@ -37,6 +37,28 @@ export const list = query({
   },
 });
 
+/** Search threads by title */
+export const search = query({
+  args: { searchQuery: v.string() },
+  async handler(ctx, args) {
+    const uid = await currentUserId(ctx);
+    if (uid === null) return [];
+    if (!args.searchQuery.trim()) {
+      return ctx.db
+        .query("threads")
+        .withIndex("by_user_and_time", (q) => q.eq("userId", uid))
+        .order("desc")
+        .collect();
+    }
+    return ctx.db
+      .query("threads")
+      .withSearchIndex("by_title", (q) =>
+        q.search("title", args.searchQuery).filter(q.eq("userId", uid))
+      )
+      .take(20);
+  },
+});
+
 /** List system threads for the authenticated user */
 export const listSystem = query({
   args: {},
