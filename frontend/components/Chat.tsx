@@ -186,7 +186,7 @@ function Chat({ threadId, initialMessages }: ChatProps) {
     setMessages(prev =>
       prev.length === 0 || initialMessages.length > 0 ? initialMessages : prev
     );
-  }, [threadId]);
+  }, [threadId, setInput, clearQuote, clearAttachments, setMessages, initialMessages]);
 
   // Автозапуск генерации для любого сообщения пользователя без ответа
   useEffect(() => {
@@ -268,7 +268,7 @@ function Chat({ threadId, initialMessages }: ChatProps) {
                 {isMobile && <div className="absolute inset-0 -m-2 bg-background/60 backdrop-blur-md rounded-lg" />}
                 <span
                   className="relative text-xl font-bold text-foreground hover:text-primary transition-colors cursor-pointer"
-                  onClick={() => router.push(`/chat?newChat=${Date.now()}`)}
+                  onClick={() => router.push('/chat')}
                 >
                     Pak.Chat
                 </span>

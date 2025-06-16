@@ -122,7 +122,7 @@ function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistory
   );
 
   const handleNewChat = useCallback(() => {
-    router.replace(`/chat?newChat=${Date.now()}`);
+    router.push('/chat');
     handleOpenChange(false);
   }, [router, handleOpenChange]);
 
