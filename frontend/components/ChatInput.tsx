@@ -32,6 +32,16 @@ import { useMessageSummary } from '../hooks/useMessageSummary';
 import QuoteDisplay from './QuoteDisplay';
 import { Input } from '@/frontend/components/ui/input';
 
+// Helper to convert File objects to Base64 data URLs
+const fileToDataUrl = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
+  });
+};
+
 interface ChatInputProps {
   threadId: string;
   input: UseChatHelpers['input'];
@@ -113,8 +123,7 @@ function PureChatInput({
   }, [setKeys, localKeys]);
 
   const handleSubmit = useCallback(async () => {
-    if (!canChat || isDisabled) return;
-
+    if (isDisabled) return;
     setIsSubmitting(true);
 
     const currentInput = textareaRef.current?.value || input;
@@ -123,10 +132,20 @@ function PureChatInput({
       finalMessage = `> ${currentQuote.text.replace(/\n/g, '\n> ')}\n\n${currentInput.trim()}`;
     }
 
-    // Очищаем интерфейс
+    // 1. Prepare attachments as Base64 before clearing state
+    const attachmentsToUpload = [...attachments];
+    const attachmentsForMessage = await Promise.all(
+      attachmentsToUpload.map(async (att) => ({
+        ...att,
+        url: await fileToDataUrl(att.file),
+      }))
+    );
+
+    // 2. Clear UI after data preparation
     setInput('');
     clearQuote();
     adjustHeight(true);
+    clear();
 
     try {
       let threadIdToUse = threadId as Id<'threads'> | string;
@@ -137,17 +156,12 @@ function PureChatInput({
         onThreadCreated?.(newThreadId);
       }
 
+      // 3. Optimistic UI update using reliable Base64 URLs
       const clientMsgId = uuidv4();
-      const optimistic = createUserMessage(
-        clientMsgId,
-        finalMessage,
-        attachments.map(att => ({ ...att, url: att.preview }))
-      );
-      setMessages(prev => [...prev, optimistic]);
+      const userMessage = createUserMessage(clientMsgId, finalMessage, attachmentsForMessage);
+      setMessages((prev) => [...prev, userMessage]);
 
-      const attachmentsToUpload = [...attachments];
-      clear();
-
+      // 4. Upload original files
       let savedAttachments: any[] = [];
       if (attachmentsToUpload.length > 0) {
         try {
@@ -173,11 +187,13 @@ function PureChatInput({
             threadId: threadIdToUse as Id<'threads'>,
             attachments: uploadedFiles,
           });
-        } catch {
+        } catch (err) {
           toast.error('Failed to upload attachments');
+          console.error(err);
         }
       }
 
+      // 5. Save message in DB
       const dbMsgId = await sendMessage({
         threadId: threadIdToUse as Id<'threads'>,
         content: finalMessage,
@@ -186,14 +202,12 @@ function PureChatInput({
 
       if (savedAttachments.length > 0) {
         await updateAttachmentMessageId({
-          attachmentIds: savedAttachments.map(a => a.id),
+          attachmentIds: savedAttachments.map((a) => a.id),
           messageId: dbMsgId,
         });
       }
 
-      setMessages(prev =>
-        prev.map(m => (m.id === clientMsgId ? { ...m, id: dbMsgId } : m))
-      );
+      setMessages((prev) => prev.map((m) => (m.id === clientMsgId ? { ...m, id: dbMsgId } : m)));
 
       await reload();
 
@@ -205,6 +219,7 @@ function PureChatInput({
     } catch (error) {
       toast.error('Failed to send message.');
       setInput(currentInput);
+      console.error(error);
     } finally {
       setIsSubmitting(false);
     }
@@ -214,11 +229,11 @@ function PureChatInput({
     input,
     threadId,
     attachments,
-    clear,
     currentQuote,
     setInput,
     adjustHeight,
     clearQuote,
+    clear,
     reload,
     createThread,
     sendMessage,
