@@ -132,36 +132,33 @@ function PureChatInput({
       finalMessage = `> ${currentQuote.text.replace(/\n/g, '\n> ')}\n\n${currentInput.trim()}`;
     }
 
-    // 1. Prepare attachments as Base64 before clearing state
-    const attachmentsToUpload = [...attachments];
-    const attachmentsForMessage = await Promise.all(
-      attachmentsToUpload.map(async (att) => ({
-        ...att,
-        url: await fileToDataUrl(att.file),
-      }))
-    );
-
-    // 2. Clear UI after data preparation
+    // Reset UI early
     setInput('');
     clearQuote();
     adjustHeight(true);
-    clear();
 
     try {
-      let threadIdToUse = threadId as Id<'threads'> | string;
+      let threadIdToUse: string | Id<'threads'> = threadId;
 
+      // 1. Создаем тред, если его нет
       if (!isConvexId(threadIdToUse)) {
-        const newThreadId = await createThread({ title: 'New Chat' });
-        threadIdToUse = newThreadId;
-        onThreadCreated?.(newThreadId);
+        threadIdToUse = await createThread({ title: 'New Chat' });
       }
 
-      // 3. Optimistic UI update using reliable Base64 URLs
+      // 2. Оптимистично добавляем сообщение в UI
+      const attachmentsToUpload = [...attachments];
+      const attachmentsForMessage = await Promise.all(
+        attachmentsToUpload.map(async (att) => ({
+          ...att,
+          url: await fileToDataUrl(att.file),
+        }))
+      );
       const clientMsgId = uuidv4();
       const userMessage = createUserMessage(clientMsgId, finalMessage, attachmentsForMessage);
       setMessages((prev) => [...prev, userMessage]);
+      clear();
 
-      // 4. Upload original files
+      // 3. Сохраняем сообщение в БД
       let savedAttachments: any[] = [];
       if (attachmentsToUpload.length > 0) {
         try {
@@ -193,7 +190,6 @@ function PureChatInput({
         }
       }
 
-      // 5. Save message in DB
       const dbMsgId = await sendMessage({
         threadId: threadIdToUse as Id<'threads'>,
         content: finalMessage,
@@ -207,42 +203,43 @@ function PureChatInput({
         });
       }
 
+      // 4. Обновляем UI с реальным ID
       setMessages((prev) => prev.map((m) => (m.id === clientMsgId ? { ...m, id: dbMsgId } : m)));
 
+      // 5. Запускаем reload для ответа ИИ
       await reload();
 
+      // 6. Инициируем навигацию и генерацию заголовка
       if (!isConvexId(threadId)) {
+        onThreadCreated?.(threadIdToUse as Id<'threads'>);
         complete(finalMessage, {
-          body: { threadId: threadIdToUse as Id<'threads'>, messageId: dbMsgId, isTitle: true },
+          body: { threadId: threadIdToUse, messageId: dbMsgId, isTitle: true },
         });
       }
     } catch (error) {
       toast.error('Failed to send message.');
       setInput(currentInput);
-      console.error(error);
     } finally {
       setIsSubmitting(false);
     }
   }, [
     isDisabled,
-    canChat,
     input,
     threadId,
     attachments,
     currentQuote,
     setInput,
-    adjustHeight,
     clearQuote,
+    adjustHeight,
     clear,
-    reload,
     createThread,
     sendMessage,
     generateUploadUrl,
     saveAttachments,
     updateAttachmentMessageId,
+    reload,
     setMessages,
     complete,
-    isSubmitting,
     onThreadCreated,
   ]);
 
