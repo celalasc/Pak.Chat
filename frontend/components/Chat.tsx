@@ -190,7 +190,7 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
         setSavedAssistantMessages((prev) => new Set(prev).add(dbId));
       });
     }
-  }, [messages, currentThreadId, sendMessage, setMessages, setSavedAssistantMessages]);
+  }, [messages, currentThreadId, sendMessage, setMessages]);
 
   // Инкрементальное сохранение с защитой от лишних вызовов
   useEffect(() => {
