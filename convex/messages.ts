@@ -50,7 +50,6 @@ export const send = mutation({
       role: args.role,
       content: args.content,
       createdAt: Date.now(),
-      // Initialize versioning for concurrency control
       version: 0,
     });
     return id as Id<"messages">;

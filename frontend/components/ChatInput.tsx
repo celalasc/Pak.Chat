@@ -97,10 +97,11 @@ function PureChatInput({
   const updateAttachmentMessageId = useMutation(api.attachments.updateMessageId);
   const { complete } = useMessageSummary();
   const { attachments, clear } = useAttachmentsStore();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isDisabled = useMemo(
-    () => !input.trim() || status === 'streaming' || status === 'submitted',
-    [input, status]
+    () => !input.trim() || status === 'streaming' || status === 'submitted' || isSubmitting,
+    [input, status, isSubmitting]
   );
   
   // Синхронизируем localKeys с основным состоянием
@@ -117,7 +118,9 @@ function PureChatInput({
     if (!canChat) {
       return;
     }
-    if (!input.trim() || status === 'streaming' || status === 'submitted') return;
+    if (!input.trim() || status === 'streaming' || status === 'submitted' || isSubmitting) return;
+
+    setIsSubmitting(true);
 
     const currentInput = textareaRef.current?.value || input;
 
@@ -135,20 +138,24 @@ function PureChatInput({
     }
 
     let currentThreadId: Id<'threads'>;
-    if (!isConvexId(threadId)) {
-      const newThreadId = await createThread({ title: 'New Chat' });
-      onThreadCreated?.(newThreadId);
-      navigate(`/chat/${newThreadId}`);
-      currentThreadId = newThreadId;
-      complete(finalMessage, {
-        body: { threadId: newThreadId, messageId: clientMsgId, isTitle: true },
-      });
-    } else {
-      currentThreadId = threadId as Id<'threads'>;
-      complete(finalMessage, { body: { messageId: clientMsgId, threadId: currentThreadId } });
-    }
+    try {
+      if (!isConvexId(threadId)) {
+        const newThreadId = await createThread({ title: 'New Chat' });
+        onThreadCreated?.(newThreadId);
+        currentThreadId = newThreadId;
+      } else {
+        currentThreadId = threadId as Id<'threads'>;
+      }
 
-    const userMessage = createUserMessage(clientMsgId, finalMessage);
+      complete(finalMessage, {
+        body: {
+          threadId: currentThreadId,
+          messageId: clientMsgId,
+          isTitle: !isConvexId(threadId),
+        },
+      });
+
+      const userMessage = createUserMessage(clientMsgId, finalMessage);
 
     // Сохраняем ссылку на attachments для загрузки
     const attachmentsToUpload = [...attachments];
@@ -233,10 +240,16 @@ function PureChatInput({
       )
     );
 
-    // Trigger assistant response generation
-    await reload();
+      // Trigger assistant response generation
+      await reload();
 
-    clearQuote();
+      clearQuote();
+      if (!isConvexId(threadId)) {
+        navigate(`/chat/${currentThreadId}`);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   }, [
     canChat,
     input,
@@ -259,6 +272,7 @@ function PureChatInput({
     navigate,
     isConvexId,
     onThreadCreated,
+    isSubmitting,
   ]);
 
   const handleKeyDown = useCallback(

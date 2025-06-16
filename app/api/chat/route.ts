@@ -20,7 +20,6 @@ export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
-    // Убираем 'net' из деструктуризации, так как он больше не используется.
     const { messages, model, apiKeys, threadId } = await req.json();
 
     const modelConfig = getModelConfig(model as AIModel);
@@ -66,7 +65,6 @@ export async function POST(req: NextRequest) {
     if (threadId) {
       try {
         attachments = await fetchQuery(api.attachments.byThread, { threadId });
-        // Attachments fetched successfully
       } catch {
         // Attachment fetch failed
       }
@@ -76,7 +74,6 @@ export async function POST(req: NextRequest) {
     const processedMessages = messages.map((message: { id: string; role: string; content: string }) => {
       const messageId = message.id;
       
-      // Находим вложения для этого сообщения
       const messageAttachments = attachments.filter(
         a => a.messageId === messageId && a.url
       );
@@ -88,10 +85,8 @@ export async function POST(req: NextRequest) {
         };
       }
 
-      // Если есть вложения, создаем multimodal content
       const content: ({ type: string; text?: string; image?: string })[] = [];
       
-      // Добавляем текст сообщения
       if (message.content && message.content.trim()) {
         content.push({
           type: 'text',
@@ -99,7 +94,6 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // Добавляем изображения
       messageAttachments.forEach((attachment) => {
         if (attachment.type.startsWith('image/')) {
           content.push({
@@ -109,7 +103,6 @@ export async function POST(req: NextRequest) {
         }
       });
 
-      // Если есть изображения, но нет текста, добавляем пустой текст
       if (content.length > 0 && !content.some(c => c.type === 'text')) {
         content.unshift({
           type: 'text',
@@ -125,7 +118,6 @@ export async function POST(req: NextRequest) {
       return result;
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const options: any = {
       model: aiModel,
       messages: processedMessages,
