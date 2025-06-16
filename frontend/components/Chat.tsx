@@ -18,7 +18,7 @@ import { useKeyboardInsets } from '../hooks/useKeyboardInsets';
 import { cn } from '@/lib/utils';
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { isConvexId } from '@/lib/ids';
 import { toast } from 'sonner';

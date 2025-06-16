@@ -1,7 +1,9 @@
 import { create } from 'zustand';
 import { useEffect, useCallback } from 'react';
-import { useMutation, useQuery, useConvexAuth } from 'convex/react';
+import { useMutation, useConvexAuth } from 'convex/react';
+import { useSafeConvexQuery } from '@/frontend/hooks/useSafeConvexQuery';
 import { api } from '@/convex/_generated/api';
+import type { Doc } from '@/convex/_generated/dataModel';
 import { encryptData, decryptData } from '@/frontend/lib/crypto';
 import { useAuthStore } from './AuthStore';
 
@@ -39,15 +41,15 @@ export function useAPIKeyStore() {
   const { user } = useAuthStore();
 
   // Fetch the Convex user to ensure sync is complete
-  const convexUser = useQuery(
+  const convexUser = useSafeConvexQuery<{}, Doc<'users'> | null>(
     api.users.getCurrent,
-    isAuthenticated ? {} : 'skip'
+    isAuthenticated ? {} : null
   );
 
   // Only query settings once the user exists in Convex
-  const settings = useQuery(
+  const settings = useSafeConvexQuery<{}, Doc<'userSettings'> | null>(
     api.userSettings.get,
-    convexUser ? {} : 'skip'
+    convexUser ? {} : null
   );
   const saveApiKeys = useMutation(api.userSettings.saveApiKeys);
   

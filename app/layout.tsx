@@ -51,9 +51,14 @@ export default function RootLayout({
         <Suspense fallback={<AppShellSkeleton />}>
           <ConvexClientProvider>
             <Providers>
-              <AuthListener />
-              <UserSync />
-              {children}
+              <AuthListener>
+                {() => (
+                  <>
+                    <UserSync />
+                    {children}
+                  </>
+                )}
+              </AuthListener>
             </Providers>
             <Toaster richColors position="top-right" />
           </ConvexClientProvider>

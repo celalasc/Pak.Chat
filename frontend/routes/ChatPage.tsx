@@ -5,7 +5,8 @@ import { useParams, usePathname, useRouter } from 'next/navigation'
 import { useEffect, useMemo } from 'react'
 
 // Convex data hooks
-import { useQuery, useConvexAuth } from 'convex/react'
+import { useConvexAuth } from 'convex/react'
+import { useSafeConvexQuery } from '@/frontend/hooks/useSafeConvexQuery'
 import { api } from '@/convex/_generated/api'
 import { Id, Doc } from '@/convex/_generated/dataModel'
 
@@ -28,17 +29,17 @@ export default function ChatPage() {
   // ---------------------------------------------------------------------------
   const isValidId = useMemo(() => id && isConvexId(id), [id])
 
-  const thread = useQuery(
+  const thread = useSafeConvexQuery<{ threadId: Id<'threads'> }, Doc<'threads'> | null>(
     api.threads.get,
-    isValidId && isAuthenticated ? { threadId: id as Id<'threads'> } : 'skip'
+    isValidId && isAuthenticated ? { threadId: id as Id<'threads'> } : null
   )
-  const messagesResult = useQuery(
+  const messagesResult = useSafeConvexQuery<{ threadId: Id<'threads'> }, any>(
     api.messages.get,
-    isValidId && isAuthenticated ? { threadId: id as Id<'threads'> } : 'skip'
+    isValidId && isAuthenticated ? { threadId: id as Id<'threads'> } : null
   )
-  const attachments = useQuery(
+  const attachments = useSafeConvexQuery<{ threadId: Id<'threads'> }, any[]>(
     api.attachments.byThread,
-    isValidId ? { threadId: id as Id<'threads'> } : 'skip'
+    isValidId ? { threadId: id as Id<'threads'> } : null
   )
 
   // ---------------------------------------------------------------------------

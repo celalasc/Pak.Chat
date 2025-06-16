@@ -6,10 +6,11 @@ import { UIMessage } from 'ai';
 import { UseChatHelpers } from '@ai-sdk/react';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation } from 'convex/react';
+import { useSafeConvexQuery } from '@/frontend/hooks/useSafeConvexQuery';
 import { api } from '@/convex/_generated/api';
 import { isConvexId } from '@/lib/ids';
-import type { Id } from '@/convex/_generated/dataModel';
+import type { Id, Doc } from '@/convex/_generated/dataModel';
 import { useRouter } from 'next/navigation';
 
 interface MessageControlsProps {
@@ -46,9 +47,9 @@ export default function MessageControls({
     api.messages.remove
   );
   const cloneThread = useMutation<typeof api.threads.clone>(api.threads.clone);
-  const thread = useQuery(
+  const thread = useSafeConvexQuery<{ threadId: Id<'threads'> }, Doc<'threads'> | null>(
     api.threads.get,
-    isConvexId(threadId) ? { threadId: threadId as Id<'threads'> } : 'skip'
+    isConvexId(threadId) ? { threadId: threadId as Id<'threads'> } : null
   );
   const router = useRouter();
 

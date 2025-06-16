@@ -1,7 +1,9 @@
 import { create, Mutate, StoreApi } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { useConvexAuth, useMutation, useQuery } from 'convex/react';
+import { useConvexAuth, useMutation } from 'convex/react';
+import { useSafeConvexQuery } from '@/frontend/hooks/useSafeConvexQuery';
 import { api } from '@/convex/_generated/api';
+import type { Doc } from '@/convex/_generated/dataModel';
 import { useEffect, useRef } from 'react';
 
 export const GENERAL_FONTS = ['Proxima Vara', 'System Font'] as const;
@@ -81,13 +83,13 @@ if (typeof window !== 'undefined') {
 
 export function useSettingsSync() {
   const { isAuthenticated } = useConvexAuth();
-  const convexUser = useQuery(
+  const convexUser = useSafeConvexQuery<{}, Doc<'users'> | null>(
     api.users.getCurrent,
-    isAuthenticated ? {} : 'skip'
+    isAuthenticated ? {} : null
   );
-  const settingsDoc = useQuery(
+  const settingsDoc = useSafeConvexQuery<{}, Doc<'userSettings'> | null>(
     api.userSettings.get,
-    convexUser ? {} : 'skip'
+    convexUser ? {} : null
   );
   const save = useMutation(api.userSettings.saveSettings);
 

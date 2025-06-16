@@ -11,7 +11,8 @@ import { useRouter, useParams } from 'next/navigation';
 import { X, Pin, PinOff, Search, MessageSquare, Plus, Edit2, Check, GitBranch } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
-import { useQuery, useMutation, useConvexAuth } from 'convex/react';
+import { useMutation, useConvexAuth } from 'convex/react';
+import { useSafeConvexQuery } from '@/frontend/hooks/useSafeConvexQuery';
 import { api } from '@/convex/_generated/api';
 import type { Doc, Id } from '@/convex/_generated/dataModel';
 
@@ -36,9 +37,9 @@ function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistory
   const router = useRouter();
   const { isAuthenticated } = useConvexAuth();
   
-  const threads = useQuery(
+  const threads = useSafeConvexQuery<{}, Thread[]>(
     api.threads.list,
-    isAuthenticated ? undefined : "skip"
+    isAuthenticated ? {} : null
   );
   const removeThread = useMutation(api.threads.remove);
   const renameThread = useMutation(api.threads.rename);
