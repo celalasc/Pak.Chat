@@ -141,10 +141,16 @@ function PureChatInput({
 
     try {
       let threadIdToUse: string | Id<'threads'> = threadId;
+      let isNewThread = false;
 
       // 1. Создаем тред, если его нет
       if (!isConvexId(threadIdToUse)) {
-        threadIdToUse = await createThread({ title: 'New Chat' });
+        const newThreadId = await createThread({ title: finalMessage.slice(0, 30) || 'New Chat' });
+        threadIdToUse = newThreadId;
+        isNewThread = true;
+
+        // Сразу сообщаем родителю о созданном треде
+        onThreadCreated?.(newThreadId);
       }
 
       // 2. Оптимистично добавляем сообщение в UI
@@ -208,11 +214,8 @@ function PureChatInput({
       // 4. Обновляем UI с реальным ID
       setMessages((prev) => prev.map((m) => (m.id === clientMsgId ? { ...m, id: dbMsgId } : m)));
 
-      // 5. Навигация и генерация заголовка
-      // Переходим на новый тред перед запуском стриминга,
-      // чтобы не прервать поток сообщений при смене маршрута
-      if (!isConvexId(threadId)) {
-        onThreadCreated?.(threadIdToUse as Id<'threads'>);
+      // 5. Навигация и генерация заголовка только для новых тредов
+      if (isNewThread) {
         navigate(`/chat/${threadIdToUse}`, { replace: true });
         complete(finalMessage, {
           body: { threadId: threadIdToUse, messageId: dbMsgId, isTitle: true },
