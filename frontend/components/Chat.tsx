@@ -149,7 +149,11 @@ function Chat({ threadId, initialMessages }: ChatProps) {
     },
     onFinish: async (finalMsg) => {
       // Persist assistant message once generation is finished
-      if (finalMsg.role === 'assistant' && !isConvexId(finalMsg.id)) {
+      if (
+        finalMsg.role === 'assistant' &&
+        !isConvexId(finalMsg.id) &&
+        isConvexId(currentThreadId)
+      ) {
         const realId = await sendMessage({
           threadId: currentThreadId as Id<'threads'>,
           role: 'assistant',

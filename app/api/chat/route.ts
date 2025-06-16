@@ -41,6 +41,13 @@ export async function POST(req: NextRequest) {
   try {
     const { messages, model, apiKeys, threadId } = await req.json();
 
+    if (!threadId) {
+      return NextResponse.json(
+        { error: 'threadId required' },
+        { status: 400 }
+      );
+    }
+
     const modelConfig = getModelConfig(model as AIModel);
     const apiKey = apiKeys[modelConfig.provider];
 
