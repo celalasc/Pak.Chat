@@ -39,6 +39,9 @@ export const send = mutation({
     content: v.string(),
   },
   async handler(ctx, args) {
+    if (!args.content?.trim()) {
+      throw new v.ValidationError("EMPTY");
+    }
     const uid = await currentUserId(ctx);
     if (!uid) throw new Error("Unauthenticated");
     const thread = await ctx.db.get(args.threadId);

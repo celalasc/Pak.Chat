@@ -222,6 +222,13 @@ function PureChatInput({
       // 6. Запускаем reload для ответа ИИ
       await reload();
     } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.includes('EMPTY')
+      ) {
+        // Ignore empty message validation errors silently
+        return;
+      }
       toast.error('Failed to send message.');
       setInput(currentInput);
     } finally {
