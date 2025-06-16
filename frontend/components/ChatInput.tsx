@@ -147,10 +147,13 @@ function PureChatInput({
             title: finalMessage.slice(0, 30) || 'New Chat',
           });
 
-      // 2. Если тред новый, сразу меняем URL и стейт
+      // 2. Если тред новый, обновляем состояние без редиректа
       if (!isConvexId(threadId)) {
         onThreadCreated?.(ensuredThreadId);
-        router.replace(`/chat/${ensuredThreadId}`, { scroll: false });
+        // Обновляем URL плавно без перезагрузки страницы (только на клиенте)
+        if (typeof window !== 'undefined') {
+          window.history.replaceState(null, '', `/chat/${ensuredThreadId}`);
+        }
       }
 
       // 3. Оптимистично добавляем сообщение в UI

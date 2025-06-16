@@ -27,9 +27,9 @@ export default function NewChatButton({
   const handleClick = () => {
     setInput('');
     clearQuote();
-    router.push('/chat');
     // Инкрементируем локальный ключ, чтобы Chat пересоздался
     useDraftStore.getState().next();
+    router.push('/chat');
   };
 
   return (

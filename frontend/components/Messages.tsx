@@ -24,10 +24,9 @@ function PureMessages({
   error: UseChatHelpers['error'];
   stop: UseChatHelpers['stop'];
 }) {
-  // Проверяем, есть ли последнее сообщение от пользователя без ответа ассистента
+  // Показываем прыгающие точки только когда сообщение отправлено но ответ не начался
   const lastMessage = messages[messages.length - 1];
-  const shouldShowLoading = status === 'submitted' || 
-    (lastMessage?.role === 'user' && (status === 'streaming' || status === 'ready'));
+  const shouldShowLoading = status === 'submitted' && lastMessage?.role === 'user';
 
   return (
     <section className="flex flex-col space-y-12">

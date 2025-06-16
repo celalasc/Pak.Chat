@@ -180,6 +180,7 @@ function Chat({ threadId, initialMessages }: ChatProps) {
     clearQuote();
     clearAttachments();
     useMessageVersionStore.getState().reset();
+    // Сбрасываем состояния при смене чата
 
     // Устанавливаем начальные сообщения для useChat
     setMessages(prev =>
@@ -187,16 +188,22 @@ function Chat({ threadId, initialMessages }: ChatProps) {
     );
   }, [threadId]);
 
-  // Если это новый чат и есть только одно сообщение пользователя,
-  // запускаем генерацию ответа после полной инициализации страницы
+  // Автозапуск генерации для любого сообщения пользователя без ответа
   useEffect(() => {
+    const lastMessage = messages[messages.length - 1];
     if (
       status === 'ready' &&
-      messages.length === 1 &&
-      messages[0].role === 'user' &&
+      lastMessage?.role === 'user' &&
       isConvexId(currentThreadId)
     ) {
-      reload();
+      // Проверяем, есть ли ответ ассистента после последнего сообщения пользователя
+      const hasResponse = messages.some((msg, index) => 
+        index > messages.length - 1 && msg.role === 'assistant'
+      );
+      
+      if (!hasResponse) {
+        reload();
+      }
     }
   }, [messages, status, reload, currentThreadId]);
 
@@ -230,7 +237,8 @@ function Chat({ threadId, initialMessages }: ChatProps) {
           version: currentVersion + 1,
         });
         finalizeMessage({ messageId: last.id as Id<'messages'> });
-        useMessageVersionStore.getState().reset();
+        // Закомментируем сброс, который может вызывать перерендер
+        // useMessageVersionStore.getState().reset();
       }
     }
   }, [status, messages, patchContent, finalizeMessage]);

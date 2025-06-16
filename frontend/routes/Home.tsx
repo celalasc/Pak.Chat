@@ -11,11 +11,7 @@ export default function Home() {
 
   // Render a loading indicator until the API keys are ready
   if (keysLoading) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <MessageLoading />
-      </div>
-    );
+    return <div className="w-full h-screen flex items-center justify-center">Loading...</div>;
   }
   return (
     <Chat

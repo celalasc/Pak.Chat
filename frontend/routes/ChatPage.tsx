@@ -64,11 +64,7 @@ export default function ChatPage() {
     messagesResult === undefined ||
     attachments === undefined
   ) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <MessageLoading />
-      </div>
-    )
+    return <div className="w-full h-screen flex items-center justify-center">Loading...</div>
   }
 
   // Thread was not found: useEffect will handle redirect

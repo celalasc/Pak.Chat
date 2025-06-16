@@ -20,10 +20,15 @@ export const withStorageDOMEvents = (store: StoreWithPersist) => {
     }
   };
 
-  window.addEventListener('storage', storageEventCallback);
+  // Проверяем что window существует (только на клиенте)
+  if (typeof window !== 'undefined') {
+    window.addEventListener('storage', storageEventCallback);
+  }
 
   return () => {
-    window.removeEventListener('storage', storageEventCallback);
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('storage', storageEventCallback);
+    }
   };
 };
 

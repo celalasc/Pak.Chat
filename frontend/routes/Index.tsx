@@ -17,11 +17,7 @@ export default function Index() {
   }, [user, loading, router]);
   
   if (loading || (!loading && user)) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <MessageLoading />
-      </div>
-    );
+    return <div></div>; // Показываем пустой div вместо загрузочного экрана
   }
 
   return (
