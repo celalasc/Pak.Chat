@@ -8,6 +8,22 @@ import { fetchQuery } from 'convex/nextjs';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
 
+/**
+ * Download a remote file and return it as a data URL for models that
+ * require inline file contents.
+ */
+async function urlToDataUrl(url: string): Promise<{ dataUrl: string; type: string }> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch file from URL: ${url}`);
+  }
+  const blob = await response.blob();
+  const buffer = await blob.arrayBuffer();
+  const base64 = Buffer.from(buffer).toString('base64');
+  const dataUrl = `data:${blob.type};base64,${base64}`;
+  return { dataUrl, type: blob.type };
+}
+
 interface Attachment {
   id: Id<'attachments'>;
   messageId: Id<'messages'> | undefined;
@@ -26,108 +42,89 @@ export async function POST(req: NextRequest) {
     const { messages, model, apiKeys, threadId } = await req.json();
 
     const modelConfig = getModelConfig(model as AIModel);
-    
     const apiKey = apiKeys[modelConfig.provider];
-    
+
     if (!apiKey) {
-      return new NextResponse(
-        JSON.stringify({ error: 'Missing API key' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return new NextResponse(JSON.stringify({ error: 'Missing API key' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
     let aiModel;
     switch (modelConfig.provider) {
       case 'google':
-        const google = createGoogleGenerativeAI({ apiKey });
-        aiModel = google(modelConfig.modelId);
+        aiModel = createGoogleGenerativeAI({ apiKey })(modelConfig.modelId);
         break;
-
       case 'openai':
-        const openai = createOpenAI({ apiKey });
-        aiModel = openai(modelConfig.modelId);
+        aiModel = createOpenAI({ apiKey })(modelConfig.modelId);
         break;
-
       case 'openrouter':
-        const openrouter = createOpenRouter({ apiKey });
-        aiModel = openrouter(modelConfig.modelId);
+        aiModel = createOpenRouter({ apiKey })(modelConfig.modelId);
         break;
-
       default:
-        return new Response(
-          JSON.stringify({ error: 'Unsupported model provider' }),
-          {
-            status: 400,
-            headers: { 'Content-Type': 'application/json' },
-          }
-        );
+        return new Response(JSON.stringify({ error: 'Unsupported model provider' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        });
     }
 
-    // Получаем вложения из базы данных, если есть threadId
     let attachments: Attachment[] = [];
     if (threadId) {
       try {
         attachments = await fetchQuery(api.attachments.byThread, { threadId });
-      } catch {
-        // Attachment fetch failed
+      } catch (e) {
+        console.error('Attachment fetch failed:', e);
       }
     }
 
-    // Преобразуем сообщения для поддержки изображений
-    const processedMessages: ChatMessage[] = messages.map((message: { id: string; role: string; content: string }) => {
-      const messageId = message.id;
-      
-      const messageAttachments = attachments.filter(
-        a => a.messageId === messageId && a.url
-      );
-      
-      if (messageAttachments.length === 0) {
-        return {
-          role: message.role,
-          content: message.content,
-        };
-      }
+    const processedMessages: ChatMessage[] = await Promise.all(
+      messages.map(async (message: { id: string; role: string; content: string }) => {
+        const messageAttachments = attachments.filter(
+          (a) => a.messageId === message.id && a.url
+        );
 
-      const content: ({ type: string; text?: string; image?: string })[] = [];
-      
-      if (message.content && message.content.trim()) {
-        content.push({
-          type: 'text',
-          text: message.content,
-        });
-      }
-
-      messageAttachments.forEach((attachment) => {
-        if (attachment.type.startsWith('image/')) {
-          content.push({
-            type: 'image',
-            image: attachment.url!,
-          });
+        if (messageAttachments.length === 0) {
+          return { role: message.role, content: message.content };
         }
-      });
 
-      if (content.length > 0 && !content.some(c => c.type === 'text')) {
-        content.unshift({
-          type: 'text',
-          text: '',
-        });
-      }
+        const content: ({ type: 'text'; text: string } | { type: 'image'; image: string })[] = [];
 
-      const result = {
-        role: message.role,
-        content: content.length > 0 ? content : message.content,
-      };
-      
-      return result;
-    });
+        if (message.content && message.content.trim()) {
+          content.push({ type: 'text', text: message.content });
+        }
+
+        for (const attachment of messageAttachments) {
+          if (modelConfig.provider === 'google') {
+            content.push({ type: 'image', image: attachment.url! });
+          } else {
+            try {
+              const { dataUrl } = await urlToDataUrl(attachment.url!);
+              content.push({ type: 'image', image: dataUrl });
+            } catch (e) {
+              console.error(`Failed to process attachment for ${modelConfig.provider}:`, e);
+            }
+          }
+        }
+
+        if (content.length > 0 && !content.some((c) => c.type === 'text')) {
+          content.unshift({ type: 'text', text: 'Analyze the attached file(s).' });
+        }
+
+        return {
+          role: message.role as 'user' | 'assistant',
+          content: content.length > 1 ? content : message.content,
+        };
+      })
+    );
 
     const coreMessages = convertToCoreMessages(processedMessages);
 
     const result = await streamText({
       model: aiModel,
       messages: coreMessages,
-      onError: () => {
-        /* Intentionally left blank to suppress logging */
+      onError: (e) => {
+        console.error('AI SDK streamText Error:', e);
       },
       system: `
       You are Pak.Chat, an ai assistant that can answer questions and help with tasks.
@@ -143,26 +140,21 @@ export async function POST(req: NextRequest) {
       - Inline: The equation $E = mc^2$ shows mass-energy equivalence.
       - Display: 
       $$\\frac{d}{dx}\\sin(x) = \\cos(x)$$
-      
-      When analyzing images, be descriptive and helpful. Explain what you see in detail and answer any questions about the image content.
+
+      When analyzing images or files, be descriptive and helpful. Explain what you see in detail and answer any questions about the content.
       `,
       abortSignal: req.signal,
     });
 
     return result.toDataStreamResponse({
       sendReasoning: true,
-      getErrorMessage: (error) => {
-        return (error as { message: string }).message;
-      },
+      getErrorMessage: (error) => (error as { message: string }).message,
     });
   } catch (error) {
     console.error('Chat API Error:', error);
     return new NextResponse(
       JSON.stringify({ error: 'Internal Server Error' }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      }
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
 }
