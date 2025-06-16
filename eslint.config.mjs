@@ -1,6 +1,7 @@
 import { dirname } from "path";
 import { fileURLToPath } from "url";
 import { FlatCompat } from "@eslint/eslintrc";
+import reactHooks from "eslint-plugin-react-hooks";
 import noNestedInteractive from "./eslint-rules/no-nested-interactive.js";
 
 const customPlugin = {
@@ -20,10 +21,11 @@ const eslintConfig = [
   ...compat.extends(
     "next/core-web-vitals",
     "next/typescript",
-    "plugin:jsx-a11y/recommended"
+    "plugin:jsx-a11y/recommended",
+    "plugin:react-hooks/recommended"
   ),
   {
-    plugins: { custom: customPlugin },
+    plugins: { custom: customPlugin, "react-hooks": reactHooks },
     rules: {
       "jsx-a11y/no-noninteractive-element-interactions": "error",
       "custom/no-nested-interactive": "error",
