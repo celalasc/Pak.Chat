@@ -178,7 +178,9 @@ function Chat({ threadId, initialMessages }: ChatProps) {
     useMessageVersionStore.getState().reset();
 
     // Устанавливаем начальные сообщения для useChat
-    setMessages(initialMessages);
+    setMessages(prev =>
+      prev.length === 0 || initialMessages.length > 0 ? initialMessages : prev
+    );
   }, [threadId]);
 
   // Если это новый чат и есть только одно сообщение пользователя,

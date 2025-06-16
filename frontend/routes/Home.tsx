@@ -1,12 +1,12 @@
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 import Chat from '@/frontend/components/Chat';
-import { useSearchParams } from 'next/navigation';
+import { useDraftStore } from '@/frontend/stores/DraftStore';
 import MessageLoading from '@/frontend/components/ui/MessageLoading';
 import useWelcomeThread from '@/frontend/hooks/useWelcomeThread';
 
 export default function Home() {
   useWelcomeThread();
-  const searchParams = useSearchParams();
+  const draftKey = useDraftStore(s => s.draftKey);
   const { keysLoading } = useAPIKeyStore();
 
   // Render a loading indicator until the API keys are ready
@@ -19,7 +19,7 @@ export default function Home() {
   }
   return (
     <Chat
-      key={searchParams.get('newChat') ?? 'new'}
+      key={`draft-${draftKey}`}
       threadId=""
       initialMessages={[]}
     />

@@ -145,12 +145,11 @@ function PureChatInput({
 
       // 1. Создаем тред, если его нет
       if (!isConvexId(threadIdToUse)) {
-        const newThreadId = await createThread({ title: finalMessage.slice(0, 30) || 'New Chat' });
+        const newThreadId = await createThread({
+          title: finalMessage.slice(0, 30) || 'New Chat',
+        });
         threadIdToUse = newThreadId;
         isNewThread = true;
-
-        // Сразу сообщаем родителю о созданном треде
-        onThreadCreated?.(newThreadId);
       }
 
       // 2. Оптимистично добавляем сообщение в UI
@@ -162,8 +161,15 @@ function PureChatInput({
         }))
       );
       const clientMsgId = uuidv4();
-      const userMessage = createUserMessage(clientMsgId, finalMessage, attachmentsForMessage);
+      const userMessage = createUserMessage(
+        clientMsgId,
+        finalMessage,
+        attachmentsForMessage,
+      );
       setMessages((prev) => [...prev, userMessage]);
+
+      // Теперь, когда сообщение уже в UI, сообщаем о создании треда
+      if (isNewThread) onThreadCreated?.(threadIdToUse as Id<'threads'>);
       clear();
 
       // 3. Сохраняем сообщение в БД
