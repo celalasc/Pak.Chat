@@ -31,6 +31,22 @@ export const get = query({
   },
 });
 
+/** Get latest messages for preview */
+export const preview = query({
+  args: { threadId: v.id("threads"), limit: v.optional(v.number()) },
+  async handler(ctx, { threadId, limit }) {
+    const uid = await currentUserId(ctx);
+    if (uid === null) return [];
+    const thread = await ctx.db.get(threadId);
+    if (!thread || thread.userId !== uid) return [];
+    return ctx.db
+      .query("messages")
+      .withIndex("by_thread_and_time", (q) => q.eq("threadId", threadId))
+      .order("desc")
+      .take(limit ?? 4);
+  },
+});
+
 /** Send a message */
 export const send = mutation({
   args: {

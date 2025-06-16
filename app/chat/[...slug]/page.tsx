@@ -9,9 +9,7 @@ import { isConvexId } from '@/lib/ids';
 import Chat from '@/frontend/components/Chat';
 import AppShellSkeleton from '@/frontend/components/AppShellSkeleton';
 
-// Эта страница теперь ловит все адреса типа /chat/что-угодно
 export default function CatchAllChatPage({ params }: { params: Promise<{ slug: string[] }> }) {
-  // Next.js 15 requires resolving dynamic params using React's experimental `use`
   const resolvedParams = use(params);
   const chatId = resolvedParams.slug?.[0];
   
@@ -37,22 +35,19 @@ export default function CatchAllChatPage({ params }: { params: Promise<{ slug: s
   );
   
   const messages = useMemo(() => {
-    if (!attachments || !messagesResult) return []; // Защита от undefined
+    if (!attachments || !messagesResult) return [];
 
-    const attachmentsMap: Record<
-      string,
-      {
-        id: Id<'attachments'>;
-        messageId?: Id<'messages'>;
-        name: string;
-        type: string;
-        url: string | null;
-      }[]
-    > = {}
+    // Мы используем эту чистую и правильную версию
+    const attachmentsMap: Record<string, Doc<'attachments'>[]> = {};
+    
     attachments.forEach(a => {
-      if (!a.messageId) return
-      if (!attachmentsMap[a.messageId]) attachmentsMap[a.messageId] = []
-      attachmentsMap[a.messageId].push(a)
+      // Здесь был баг в типизации, исправляем его
+      const typedAttachment = a as Doc<'attachments'>;
+      if (!typedAttachment.messageId) return
+      if (!attachmentsMap[typedAttachment.messageId]) {
+        attachmentsMap[typedAttachment.messageId] = []
+      }
+      attachmentsMap[typedAttachment.messageId].push(typedAttachment)
     })
 
     const rawMessages: Doc<'messages'>[] = Array.isArray(messagesResult)
