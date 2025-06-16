@@ -21,16 +21,6 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 
-const StreamingText = memo(({ content }: { content: string }) => {
-  const proseClasses = 'prose prose-base dark:prose-invert break-words max-w-none w-full';
-  return (
-    <div className={proseClasses}>
-      <div style={{ whiteSpace: 'pre-wrap' }}>{content}</div>
-    </div>
-  );
-});
-StreamingText.displayName = 'StreamingText';
-
 function PureMessage({
   threadId,
   message,
@@ -228,11 +218,7 @@ function PureMessage({
               onClick={handleMobileMessageClick}
             >
               <SelectableText messageId={message.id} disabled={isStreaming}>
-                {isStreaming ? (
-                  <StreamingText content={part.text} />
-                ) : (
-                  <MarkdownRenderer content={part.text} id={message.id} />
-                )}
+                <MarkdownRenderer content={part.text} id={message.id} />
               </SelectableText>
               {attachments && attachments.length > 0 && (
                 <div className="flex gap-2 flex-wrap mt-2">
@@ -300,7 +286,7 @@ function PureMessage({
 const PreviewMessage = memo(PureMessage, (prevProps, nextProps) => {
   if (prevProps.isStreaming !== nextProps.isStreaming) return false;
   if (prevProps.message.id !== nextProps.message.id) return false;
-  if (nextProps.isStreaming && prevProps.message.content !== nextProps.message.content) return false;
+  if (prevProps.message.content !== nextProps.message.content) return false;
   if (!nextProps.isStreaming && !equal(prevProps.message, nextProps.message)) return false;
   return true;
 });
