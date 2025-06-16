@@ -24,6 +24,7 @@ export default defineSchema({
   threads: defineTable({
     userId: v.id("users"),
     title: v.string(),
+    system: v.optional(v.boolean()),
     createdAt: v.number(),
     pinned: v.optional(v.boolean()),
     clonedFrom: v.optional(v.id("threads")),

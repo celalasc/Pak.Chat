@@ -37,9 +37,25 @@ export const list = query({
   },
 });
 
+/** List system threads for the authenticated user */
+export const listSystem = query({
+  args: {},
+  async handler(ctx) {
+    const uid = await currentUserId(ctx);
+    if (uid === null) {
+      return [];
+    }
+    const all = await ctx.db
+      .query("threads")
+      .withIndex("by_user_and_time", (q) => q.eq("userId", uid))
+      .collect();
+    return all.filter((t) => t.system === true);
+  },
+});
+
 /** Create a new thread */
 export const create = mutation({
-  args: { title: v.string() },
+  args: { title: v.string(), system: v.optional(v.boolean()) },
   async handler(ctx, args) {
     const uid = await currentUserId(ctx);
     if (!uid) throw new Error("Unauthenticated");
@@ -48,6 +64,7 @@ export const create = mutation({
       title: args.title,
       createdAt: Date.now(),
       pinned: false,
+      system: args.system ?? false,
     });
   },
 });
