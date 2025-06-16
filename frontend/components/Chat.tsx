@@ -176,7 +176,8 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
       (m) => m.role === 'assistant' && !isConvexId(m.id)
     );
 
-    if (unsavedAssistantMessage) {
+    // Skip saving until we have a valid thread ID to avoid server errors
+    if (unsavedAssistantMessage && isConvexId(currentThreadId)) {
       sendMessage({
         threadId: currentThreadId as Id<'threads'>,
         role: 'assistant',
