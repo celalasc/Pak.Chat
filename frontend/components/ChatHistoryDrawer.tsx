@@ -122,8 +122,8 @@ function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistory
   );
 
   const handleNewChat = useCallback(() => {
-    router.replace('/chat');
-  handleOpenChange(false);
+    router.replace(`/chat?newChat=${Date.now()}`);
+    handleOpenChange(false);
   }, [router, handleOpenChange]);
 
   const formatDate = (date: Date) => {

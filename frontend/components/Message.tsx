@@ -60,7 +60,7 @@ function PureMessage({
 
   const handleNewChat = () => {
     // Start a fresh chat without creating a thread upfront
-    router.push('/chat');
+    router.push(`/chat?newChat=${Date.now()}`);
   };
 
   const handleMobileMessageClick = () => {
