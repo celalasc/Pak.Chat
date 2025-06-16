@@ -140,9 +140,9 @@ function PureChatInput({
     adjustHeight(true);
 
     try {
-      // 1. Если это черновик, создаем тред заранее
-      const ensuredThreadId: string | Id<'threads'> = isConvexId(threadId)
-        ? threadId
+      // 1. Если это черновик, создаем тред заранее и сразу приводим тип
+      const ensuredThreadId: Id<'threads'> = isConvexId(threadId)
+        ? (threadId as Id<'threads'>)
         : await createThread({
             title: finalMessage.slice(0, 30) || 'New Chat',
           });
@@ -187,7 +187,7 @@ function PureChatInput({
             })
           );
           savedAttachments = await saveAttachments({
-            threadId: ensuredThreadId as Id<'threads'>,
+            threadId: ensuredThreadId,
             attachments: uploadedFiles,
           });
         } catch (err) {
@@ -197,7 +197,7 @@ function PureChatInput({
       }
 
       const dbMsgId = await sendMessage({
-        threadId: ensuredThreadId as Id<'threads'>,
+        threadId: ensuredThreadId,
         content: finalMessage,
         role: 'user',
       });
@@ -215,7 +215,7 @@ function PureChatInput({
       // 5. Навигация и генерация заголовка только для новых тредов
       if (!isConvexId(threadId)) {
         router.replace(`/chat/${ensuredThreadId}`, { scroll: false });
-        onThreadCreated?.(ensuredThreadId as Id<'threads'>);
+        onThreadCreated?.(ensuredThreadId);
         complete(finalMessage, {
           body: { threadId: ensuredThreadId, messageId: dbMsgId, isTitle: true },
         });
