@@ -192,7 +192,8 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
 
   // After generation ends, flush pending patches
   useEffect(() => {
-    if (status === 'done') {
+    // Status 'ready' means the assistant finished responding
+    if (status === 'ready') {
       const last = messages[messages.length - 1];
       if (last?.role === 'assistant' && isConvexId(last.id)) {
         const currentVersion =
