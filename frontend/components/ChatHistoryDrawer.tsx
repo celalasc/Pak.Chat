@@ -14,6 +14,7 @@ import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { useQuery, useMutation, useConvexAuth } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import type { Doc, Id } from '@/convex/_generated/dataModel';
+import ChatPreview from './ChatPreview';
 
 // Minimal thread interface used for rendering
 type Thread = Doc<'threads'>;
@@ -30,15 +31,22 @@ function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistory
   const [editingThreadId, setEditingThreadId] = useState<Id<'threads'> | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
   const [deletingThreadId, setDeletingThreadId] = useState<Id<'threads'> | null>(null);
+  const [hoveredThreadId, setHoveredThreadId] = useState<Id<'threads'> | null>(null);
+  const [longPressThreadId, setLongPressThreadId] = useState<Id<'threads'> | null>(null);
   
   const { isMobile, mounted } = useIsMobile(600);
   const { id } = useParams();
   const router = useRouter();
   const { isAuthenticated } = useConvexAuth();
   
+  const trimmedQuery = searchQuery.trim();
   const threads = useQuery(
-    api.threads.list,
-    isAuthenticated ? undefined : "skip"
+    trimmedQuery ? api.threads.search : api.threads.list,
+    isAuthenticated
+      ? trimmedQuery
+        ? { searchQuery: trimmedQuery }
+        : {}
+      : "skip"
   );
   const removeThread = useMutation(api.threads.remove);
   const renameThread = useMutation(api.threads.rename);
@@ -51,23 +59,17 @@ function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistory
       setEditingThreadId(null);
       setEditingTitle('');
       setDeletingThreadId(null);
+      setHoveredThreadId(null);
+      setLongPressThreadId(null);
     }
   }, [setIsOpen]);
 
   const filteredThreads = useMemo(() => {
     if (!threads) return [];
-
-    const filtered = searchQuery.trim()
-      ? threads.filter(thread =>
-          thread.title.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-      : threads;
-
-    const pinned = filtered.filter(t => t.pinned);
-    const unpinned = filtered.filter(t => !t.pinned);
-
+    const pinned = threads.filter(t => t.pinned);
+    const unpinned = threads.filter(t => !t.pinned);
     return [...pinned, ...unpinned];
-  }, [threads, searchQuery]);
+  }, [threads]);
 
   const handleThreadClick = useCallback((threadId: Id<'threads'>) => {
     if (id === threadId) {
@@ -75,27 +77,32 @@ function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistory
       return;
     }
     router.push(`/chat/${threadId}`);
+    setLongPressThreadId(null);
     handleOpenChange(false);
   }, [id, router, handleOpenChange]);
 
   const handleEdit = useCallback((thread: Thread) => {
     setEditingThreadId(thread._id);
     setEditingTitle(thread.title);
+    setLongPressThreadId(null);
   }, []);
 
   const handleSaveEdit = useCallback(async (threadId: Id<'threads'>) => {
     await renameThread({ threadId, title: editingTitle });
     setEditingThreadId(null);
     setEditingTitle('');
+    setLongPressThreadId(null);
   }, [editingTitle, renameThread]);
 
   const handleCancelEdit = useCallback(() => {
     setEditingThreadId(null);
     setEditingTitle('');
+    setLongPressThreadId(null);
   }, []);
 
   const handleDelete = useCallback((threadId: Id<'threads'>) => {
     setDeletingThreadId(threadId);
+    setLongPressThreadId(null);
   }, []);
 
   const handleConfirmDelete = useCallback(async (threadId: Id<'threads'>) => {
@@ -104,10 +111,12 @@ function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistory
       router.push('/chat');
     }
     setDeletingThreadId(null);
+    setLongPressThreadId(null);
   }, [id, router, removeThread]);
 
   const handleCancelDelete = useCallback(() => {
     setDeletingThreadId(null);
+    setLongPressThreadId(null);
   }, []);
 
   const handlePinToggle = useCallback(
@@ -230,6 +239,17 @@ function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistory
               "group flex items-center justify-between rounded-lg px-2 py-1.5 hover:bg-accent cursor-pointer transition-colors",
               id === thread._id && "bg-accent"
             )}
+            onMouseEnter={() => setHoveredThreadId(thread._id)}
+            onMouseLeave={() => {
+              setHoveredThreadId(null);
+              setLongPressThreadId(null);
+            }}
+            onContextMenu={(e) => {
+              if (isMobile) {
+                e.preventDefault();
+                setLongPressThreadId(thread._id);
+              }
+            }}
             onClick={() => handleThreadClick(thread._id)}
           >
             <div className="flex-1 min-w-0 pr-2">
@@ -244,36 +264,41 @@ function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistory
               </div>
               <span className="text-xs text-muted-foreground">{formatDate(new Date(thread._creationTime))}</span>
             </div>
-            <div className="flex gap-0.5 sm:gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+            <div
+              className={cn(
+                'flex gap-0.5 sm:gap-1 transition-opacity shrink-0',
+                longPressThreadId === thread._id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+              )}
+            >
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button 
-                    size="icon" 
-                    variant="ghost" 
-                    className="h-6 w-6 sm:h-7 sm:w-7"
-                    onClick={(e) => { 
-                      e.preventDefault(); 
-                      e.stopPropagation(); 
-                      handleEdit(thread); 
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className={cn('h-6 w-6 sm:h-7 sm:w-7', isMobile && 'h-8 w-8')}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleEdit(thread);
                     }}
                   >
-                    <Edit2 className="size-2.5 sm:size-3" />
+                    <Edit2 className={cn('size-2.5 sm:size-3', isMobile && 'size-3.5')} />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Edit</TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button 
-                    size="icon" 
-                    variant="ghost" 
-                    className="h-6 w-6 sm:h-7 sm:w-7"
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className={cn('h-6 w-6 sm:h-7 sm:w-7', isMobile && 'h-8 w-8')}
                     onClick={(e) => handlePinToggle(thread._id, e)}
                   >
                     {thread.pinned ? (
-                      <PinOff className="size-2.5 sm:size-3" />
+                      <PinOff className={cn('size-2.5 sm:size-3', isMobile && 'size-3.5')} />
                     ) : (
-                      <Pin className="size-2.5 sm:size-3" />
+                      <Pin className={cn('size-2.5 sm:size-3', isMobile && 'size-3.5')} />
                     )}
                   </Button>
                 </TooltipTrigger>
@@ -282,16 +307,16 @@ function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistory
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    size="icon" 
-                    variant="ghost" 
-                    className="h-6 w-6 sm:h-7 sm:w-7"
-                    onClick={(e) => { 
-                      e.preventDefault(); 
-                      e.stopPropagation(); 
+                    size="icon"
+                    variant="ghost"
+                    className={cn('h-6 w-6 sm:h-7 sm:w-7', isMobile && 'h-8 w-8')}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
                       handleDelete(thread._id);
                     }}
                   >
-                    <X className="size-2.5 sm:size-3" />
+                    <X className={cn('size-2.5 sm:size-3', isMobile && 'size-3.5')} />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Delete</TooltipContent>
@@ -337,36 +362,41 @@ function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistory
     return (
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
         <DialogTrigger asChild>{children}</DialogTrigger>
-        <DialogContent className="max-w-md h-[80vh] flex flex-col p-0 [&>button]:top-2 [&>button]:right-2">
-          <DialogHeader className="px-4 pt-4 pb-2 flex flex-col gap-2">
-            <DialogTitle className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5" />
-              Chat History
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleNewChat}
-                className="ml-auto flex items-center gap-2 text-sm"
-              >
-                <Plus className="size-4" />
-                New chat
-              </Button>
-            </DialogTitle>
-            <DialogDescription className="sr-only">
-              Browse and search through your chat history
-            </DialogDescription>
-            <div className="relative">
-              <Input
-                placeholder="Search…"
-                className="rounded-lg py-1.5 pl-8 text-sm w-full"
-                value={searchQuery}
-                onChange={(e) => setRawQuery(e.target.value)}
-              />
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground size-3.5" />
+        <DialogContent className="max-w-4xl h-[80vh] p-0 [&>button]:top-2 [&>button]:right-2">
+          <div className="grid grid-cols-2 h-full">
+            <div className="flex flex-col">
+              <DialogHeader className="px-4 pt-4 pb-2 flex flex-col gap-2">
+              <DialogTitle className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5" />
+                Chat History
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleNewChat}
+                  className="ml-auto flex items-center gap-2 text-sm"
+                >
+                  <Plus className="size-4" />
+                  New chat
+                </Button>
+              </DialogTitle>
+              <DialogDescription className="sr-only">
+                Browse and search through your chat history
+              </DialogDescription>
+              <div className="relative">
+                <Input
+                  placeholder="Search…"
+                  className="rounded-lg py-1.5 pl-8 text-sm w-full"
+                  value={searchQuery}
+                  onChange={(e) => setRawQuery(e.target.value)}
+                />
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground size-3.5" />
+              </div>
+              </DialogHeader>
+              <div className="flex-1 min-h-0">
+                <ContentComponent />
+              </div>
             </div>
-          </DialogHeader>
-          <div className="flex-1 min-h-0">
-            <ContentComponent />
+            <ChatPreview threadId={hoveredThreadId} />
           </div>
         </DialogContent>
       </Dialog>
@@ -424,8 +454,10 @@ function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistory
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="max-w-md h-[80vh] flex flex-col p-0 [&>button]:top-2 [&>button]:right-2">
-        <DialogHeader className="px-4 pt-4 pb-2 flex flex-col gap-2">
+      <DialogContent className="max-w-4xl h-[80vh] p-0 [&>button]:top-2 [&>button]:right-2">
+        <div className="grid grid-cols-2 h-full">
+          <div className="flex flex-col">
+            <DialogHeader className="px-4 pt-4 pb-2 flex flex-col gap-2">
           <DialogTitle className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5" />
             Chat History
@@ -451,9 +483,12 @@ function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistory
             />
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground size-3.5" />
           </div>
-        </DialogHeader>
-        <div className="flex-1 min-h-0">
-          <ContentComponent />
+            </DialogHeader>
+            <div className="flex-1 min-h-0">
+              <ContentComponent />
+            </div>
+          </div>
+          <ChatPreview threadId={hoveredThreadId} />
         </div>
       </DialogContent>
     </Dialog>
