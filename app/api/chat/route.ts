@@ -1,11 +1,12 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
-import { streamText } from 'ai';
+import { streamText, StreamTextResult } from 'ai';
 import { getModelConfig, AIModel } from '@/lib/models';
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchQuery } from 'convex/nextjs';
 import { api } from '@/convex/_generated/api';
+import { LanguageModel } from 'ai';
 import type { Id } from '@/convex/_generated/dataModel';
 
 interface Attachment {
@@ -14,6 +15,19 @@ interface Attachment {
   name: string;
   type: string;
   url: string | null;
+}
+
+interface ChatMessage {
+  role: string;
+  content: string | Array<{ type: string; text?: string; image?: string }>;
+}
+
+interface StreamTextOptions {
+  model: LanguageModel;
+  messages: ChatMessage[];
+  onError?: (error: Error) => void;
+  system?: string;
+  abortSignal?: AbortSignal;
 }
 
 export const maxDuration = 60;
@@ -71,7 +85,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Преобразуем сообщения для поддержки изображений
-    const processedMessages = messages.map((message: { id: string; role: string; content: string }) => {
+    const processedMessages: ChatMessage[] = messages.map((message: { id: string; role: string; content: string }) => {
       const messageId = message.id;
       
       const messageAttachments = attachments.filter(
@@ -118,7 +132,7 @@ export async function POST(req: NextRequest) {
       return result;
     });
 
-    const options: any = {
+    const options: StreamTextOptions = {
       model: aiModel,
       messages: processedMessages,
       onError: () => {
@@ -143,7 +157,7 @@ export async function POST(req: NextRequest) {
       `,
       abortSignal: req.signal,
     };
-    const result = streamText(options);
+    const result: StreamTextResult = await streamText(options);
 
     return result.toDataStreamResponse({
       sendReasoning: true,
