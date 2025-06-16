@@ -31,6 +31,7 @@ import { toast } from 'sonner';
 import { useMessageSummary } from '../hooks/useMessageSummary';
 import QuoteDisplay from './QuoteDisplay';
 import { Input } from '@/frontend/components/ui/input';
+import { useNavigate } from 'react-router';
 
 // Helper to convert File objects to Base64 data URLs
 const fileToDataUrl = (file: File): Promise<string> => {
@@ -93,6 +94,7 @@ function PureChatInput({
   const canChat = hasRequiredKeys();
   const { currentQuote, clearQuote } = useQuoteStore();
   const [localKeys, setLocalKeys] = useState(keys);
+  const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({
     minHeight: 72,
@@ -206,18 +208,19 @@ function PureChatInput({
       // 4. Обновляем UI с реальным ID
       setMessages((prev) => prev.map((m) => (m.id === clientMsgId ? { ...m, id: dbMsgId } : m)));
 
-      // 5. Запускаем reload для ответа ИИ
-      await reload();
-
-      // 6. Навигация и генерация заголовка
-      // Выполняем переход только после успешного обновления данных,
-      // чтобы исключить гонку состояний при отправке первого сообщения.
+      // 5. Навигация и генерация заголовка
+      // Переходим на новый тред перед запуском стриминга,
+      // чтобы не прервать поток сообщений при смене маршрута
       if (!isConvexId(threadId)) {
         onThreadCreated?.(threadIdToUse as Id<'threads'>);
+        navigate(`/chat/${threadIdToUse}`, { replace: true });
         complete(finalMessage, {
           body: { threadId: threadIdToUse, messageId: dbMsgId, isTitle: true },
         });
       }
+
+      // 6. Запускаем reload для ответа ИИ
+      await reload();
     } catch (error) {
       toast.error('Failed to send message.');
       setInput(currentInput);
