@@ -10,6 +10,7 @@ import { UIMessage } from 'ai';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 import { useModelStore } from '@/frontend/stores/ModelStore';
 import SettingsButton from './SettingsButton';
+import { useNavigate } from 'react-router';
 import { useQuoteShortcuts } from '@/frontend/hooks/useQuoteShortcuts';
 import { useScrollHide } from '@/frontend/hooks/useScrollHide';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
@@ -55,6 +56,7 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
   const { keys, hasRequiredKeys, keysLoading } = useAPIKeyStore();
   const { selectedModel } = useModelStore();
   const { isMobile } = useIsMobile();
+  const navigate = useNavigate();
   const panelRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isHeaderVisible = useScrollHide<HTMLDivElement>({ threshold: 15, panelRef });
@@ -75,6 +77,7 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
 
   const sendMessage = useMutation<typeof api.messages.send>(api.messages.send);
   const patchContent = useMutation(api.messages.patchContent);
+  const finalizeMessage = useMutation(api.messages.finalize);
   const hasKeys = useMemo(() => hasRequiredKeys(), [hasRequiredKeys]);
 
   const debouncedPatch = useDebouncedCallback(
@@ -203,13 +206,14 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
           content: last.content,
           version: currentVersion + 1,
         });
+        finalizeMessage({ messageId: last.id as Id<'messages'> });
         useMessageVersionStore.getState().reset();
       }
     }
-  }, [status, messages, patchContent]);
+  }, [status, messages, patchContent, finalizeMessage]);
 
   return (
-    <div className="w-full min-h-screen flex flex-col overflow-y-auto">
+    <div className="w-full min-h-screen flex flex-col overflow-y-auto chat-smooth">
         {/* Верхние кнопки, навигация, логотип */}
         <div
           ref={panelRef}
@@ -231,7 +235,10 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
         <div className={cn("fixed left-4 top-4 z-20 transition-all duration-300 ease-in-out", isMobile && (!isHeaderVisible || isKeyboardVisible) && "transform -translate-x-full opacity-0")}>
             <div className="relative">
                 {isMobile && <div className="absolute inset-0 -m-2 bg-background/60 backdrop-blur-md rounded-lg" />}
-                <span className="relative text-xl font-bold text-foreground hover:text-primary transition-colors cursor-pointer" onClick={() => { if (window.location.pathname !== '/chat') { window.location.replace('/chat'); }}}>
+                <span
+                  className="relative text-xl font-bold text-foreground hover:text-primary transition-colors cursor-pointer"
+                  onClick={() => navigate('/chat', { state: { newChat: Date.now() } })}
+                >
                     Pak.Chat
                 </span>
             </div>

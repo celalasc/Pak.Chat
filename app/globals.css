@@ -415,6 +415,10 @@
   transition: none !important;
 }
 
+.chat-smooth {
+  transition: opacity .15s ease-in;
+}
+
 
 @supports (padding: max(0px)) {
   input,

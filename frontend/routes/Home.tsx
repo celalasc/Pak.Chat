@@ -4,7 +4,7 @@ import Chat from '@/frontend/components/Chat';
 import { useLocation } from 'react-router';
 
 export default function Home() {
-  const location = useLocation();
+  const { state } = useLocation();
   const eightDaysAgo = new Date(Date.now() - 1000 * 60 * 60 * 24 * 8);
   const welcomeMessage: UIMessage = {
     id: 'welcome',
@@ -23,7 +23,7 @@ export default function Home() {
   // Используем Chat компонент с пустым threadId для новой беседы
   return (
     <Chat
-      key={location.key}
+      key={state?.newChat ?? 'new'}
       threadId=""
       initialMessages={initialMessages}
     />

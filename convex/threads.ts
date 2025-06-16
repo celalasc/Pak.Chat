@@ -103,14 +103,35 @@ export const clone = mutation({
       .query("messages")
       .withIndex("by_thread_and_time", (q) => q.eq("threadId", args.threadId))
       .collect();
+
+    const idMap = new Map<Id<"messages">, Id<"messages">>();
+
     await Promise.all(
-      messages.map((m) =>
-        ctx.db.insert("messages", {
+      messages.map(async (m) => {
+        const newId = await ctx.db.insert("messages", {
           threadId: newThreadId,
           authorId: m.authorId,
           role: m.role,
           content: m.content,
           createdAt: m.createdAt,
+        });
+        idMap.set(m._id, newId as Id<"messages">);
+      })
+    );
+
+    const attachments = await ctx.db
+      .query("attachments")
+      .withIndex("by_thread", (q) => q.eq("threadId", args.threadId))
+      .collect();
+
+    await Promise.all(
+      attachments.map((a) =>
+        ctx.db.insert("attachments", {
+          threadId: newThreadId,
+          fileId: a.fileId,
+          name: a.name,
+          type: a.type,
+          messageId: a.messageId ? idMap.get(a.messageId) : undefined,
         })
       )
     );
