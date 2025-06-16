@@ -131,6 +131,7 @@ function Chat({ threadId, initialMessages }: ChatProps) {
     status,
     error,
   } = useChat({
+    api: '/api/llm', // Обновленный путь к API для устранения конфликта маршрутизации
     id: currentThreadId,
     initialMessages,
     body: {
@@ -176,16 +177,16 @@ function Chat({ threadId, initialMessages }: ChatProps) {
     // Этот эффект выполняется только при смене чата
     setCurrentThreadId(threadId);
     setHasInitialized(true);
-    setInput('');
-    clearQuote();
-    clearAttachments();
-    useMessageVersionStore.getState().reset();
-    // Сбрасываем состояния при смене чата
+    
+    // Сбрасываем все, только если это НОВЫЙ чат (у которого нет threadId)
+    if (!threadId) {
+      setInput('');
+      clearQuote();
+      clearAttachments();
+      useMessageVersionStore.getState().reset();
+    }
 
-    // Устанавливаем начальные сообщения для useChat
-    setMessages(prev =>
-      prev.length === 0 || initialMessages.length > 0 ? initialMessages : prev
-    );
+    setMessages(initialMessages);
   }, [threadId, setInput, clearQuote, clearAttachments, setMessages, initialMessages]);
 
   // Автозапуск генерации для любого сообщения пользователя без ответа
