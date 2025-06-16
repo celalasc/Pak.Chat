@@ -2,6 +2,7 @@ import { UIMessage } from 'ai';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 import Chat from '@/frontend/components/Chat';
 import { useLocation } from 'react-router';
+import MessageLoading from '@/frontend/components/ui/MessageLoading';
 
 export default function Home() {
   const { state } = useLocation();
@@ -14,8 +15,14 @@ export default function Home() {
     createdAt: eightDaysAgo,
   };
   const { hasRequiredKeys, keysLoading } = useAPIKeyStore();
+
+  // Render a loading indicator until the API keys are ready
   if (keysLoading) {
-    return null;
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <MessageLoading />
+      </div>
+    );
   }
   const hasKeys = hasRequiredKeys();
   const initialMessages = hasKeys ? [] : [welcomeMessage];
