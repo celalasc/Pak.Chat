@@ -79,7 +79,7 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
   }, [currentThreadId, threadId, navigate]);
   
   // Используем наш store, определенный выше
-  const { versions: messageVersions, updateVersion } = useMessageVersionStore();
+  const updateVersion = useMessageVersionStore((s) => s.updateVersion);
 
   const sendMessage = useMutation<typeof api.messages.send>(api.messages.send);
   const patchContent = useMutation(api.messages.patchContent);
@@ -197,15 +197,12 @@ export default function Chat({ threadId, initialMessages }: ChatProps) {
   useEffect(() => {
     const last = messages[messages.length - 1];
     if (last?.role === 'assistant' && status === 'streaming' && isConvexId(last.id)) {
-      const currentVersion = messageVersions[last.id] ?? 0;
+      const currentVersion = useMessageVersionStore.getState().versions[last.id] ?? 0;
       const newVersion = currentVersion + 1;
-      // Защита от лишних вызовов
-      if (newVersion > currentVersion) {
-        debouncedPatch(last.id as Id<'messages'>, last.content, newVersion);
-        updateVersion(last.id, newVersion);
-      }
+      debouncedPatch(last.id as Id<'messages'>, last.content, newVersion);
+      updateVersion(last.id, newVersion);
     }
-  }, [messages, status, debouncedPatch, messageVersions, updateVersion]);
+  }, [messages, status, debouncedPatch, updateVersion]);
 
   // Автопрокрутка
   useEffect(() => {
