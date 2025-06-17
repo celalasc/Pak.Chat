@@ -6,6 +6,7 @@ import { Dispatch, SetStateAction } from 'react';
 import { Textarea } from './ui/textarea';
 import { Button } from './ui/button';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
+import { useModelStore } from '@/frontend/stores/ModelStore';
 import { toast } from 'sonner';
 import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
@@ -31,13 +32,14 @@ export default function MessageEditor({
   stop: UseChatHelpers['stop'];
 }) {
   const [draftContent, setDraftContent] = useState(content);
-  const { getKey } = useAPIKeyStore();
+  const { keys } = useAPIKeyStore();
+  const { selectedModel } = useModelStore();
   const { settings } = useSettingsStore();
 
   const { complete } = useCompletion({
     api: '/api/completion',
-    ...(getKey('google') && {
-      headers: { 'X-Google-API-Key': getKey('google')! },
+    ...(keys.google && {
+      headers: { 'X-Google-API-Key': keys.google },
     }),
     onResponse: async (response) => {
       try {
@@ -120,9 +122,13 @@ export default function MessageEditor({
       // stop the current stream if any
       stop();
 
-      setTimeout(() => {
-        reload();
-      }, 0);
+      reload({
+        body: {
+          apiKeys: keys,
+          model: selectedModel,
+          threadId,
+        },
+      });
     } catch (error) {
       console.error('Error during message edit:', error);
       toast.error('Failed to save changes');

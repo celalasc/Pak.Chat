@@ -2,7 +2,6 @@ import { memo, useState, useEffect } from 'react';
 import MarkdownRenderer from '@/frontend/components/MemoizedMarkdown';
 import { cn } from '@/lib/utils';
 import { UIMessage } from 'ai';
-import equal from 'fast-deep-equal';
 import MessageControls from './MessageControls';
 import { UseChatHelpers } from '@ai-sdk/react';
 import dynamic from 'next/dynamic';
@@ -216,9 +215,8 @@ function PureMessage({
               )}
             </div>
           ) : (
-            <WithTooltip label={`Model: ${(message as any).model ?? 'unknown'}`}> 
-            <div 
-              key={key} 
+            <WithTooltip key={key} label={`Model: ${(message as any).model ?? 'unknown'}`}>
+            <div
               className={cn(
                 'group flex flex-col gap-2 w-full px-2 sm:px-0',
                 isMobile && 'cursor-pointer'
@@ -294,13 +292,7 @@ function PureMessage({
   );
 }
 
-const PreviewMessage = memo(PureMessage, (prevProps, nextProps) => {
-  if (prevProps.isStreaming !== nextProps.isStreaming) return false;
-  if (prevProps.message.id !== nextProps.message.id) return false;
-  if (prevProps.message.content !== nextProps.message.content) return false;
-  if (!nextProps.isStreaming && !equal(prevProps.message, nextProps.message)) return false;
-  return true;
-});
+const PreviewMessage = memo(PureMessage);
 
 PreviewMessage.displayName = 'PreviewMessage';
 
