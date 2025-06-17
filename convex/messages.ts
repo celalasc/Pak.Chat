@@ -211,18 +211,25 @@ export const saveVersion = mutation({
     if (!thread || thread.userId !== uid) throw new Error("Permission denied");
 
     const history = msg.history ?? [];
-    history.push({ content: msg.content, createdAt: Date.now(), model: msg.model ?? "unknown" });
+    // keep previous content and model in version history
+    history.push({
+      content: msg.content,
+      createdAt: Date.now(),
+      model: msg.model ?? "unknown",
+    });
+
     await ctx.db.patch(messageId, {
       history,
       isEdited: true,
       activeHistoryIndex: history.length - 1,
+      version: (msg.version ?? 0) + 1,
     });
   },
 });
 
 export const switchVersion = mutation({
   args: {
-    messageId: v.id("messages"),
+    messageId: v.id("messages"), // user message id
     direction: v.union(v.literal("next"), v.literal("prev")),
   },
   async handler(ctx, { messageId, direction }) {
@@ -230,6 +237,7 @@ export const switchVersion = mutation({
     if (!uid) throw new Error("Unauthenticated");
     const msg = await ctx.db.get(messageId);
     if (!msg || !msg.history || msg.history.length === 0) return;
+
     const thread = await ctx.db.get(msg.threadId);
     if (!thread || thread.userId !== uid) throw new Error("Permission denied");
 
@@ -240,13 +248,27 @@ export const switchVersion = mutation({
       index = Math.max(index - 1, 0);
     }
 
+    const versionToRestore = msg.history[index];
+
+    const assistantMessage = await ctx.db
+      .query("messages")
+      .withIndex("by_thread_and_time", q =>
+        q.eq("threadId", msg.threadId).gt("createdAt", msg.createdAt)
+      )
+      .first();
+
+    if (assistantMessage && assistantMessage.role === "assistant") {
+      await ctx.db.patch(assistantMessage._id, {
+        content: versionToRestore.content,
+        model: versionToRestore.model,
+      });
+    }
+
     await ctx.db.patch(messageId, {
-      content: msg.history[index].content,
-      model: msg.history[index].model ?? msg.model,
       activeHistoryIndex: index,
     });
 
-    return msg.history[index];
+    return versionToRestore;
   },
 });
 
