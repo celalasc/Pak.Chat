@@ -18,7 +18,6 @@ import { useAPIKeyStore, type APIKeys } from '@/frontend/stores/APIKeyStore';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
-import { WithTooltip } from './WithTooltip';
 
 function PureMessage({
   threadId,
@@ -215,7 +214,6 @@ function PureMessage({
               )}
             </div>
           ) : (
-            <WithTooltip key={key} label={`Model: ${(message as any).model ?? 'unknown'}`}>
             <div
               className={cn(
                 'group flex flex-col gap-2 w-full px-2 sm:px-0',
@@ -273,7 +271,6 @@ function PureMessage({
                 />
               )}
             </div>
-            </WithTooltip>
           );
         }
       })}

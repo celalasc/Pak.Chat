@@ -57,12 +57,10 @@ function ChatView({ threadId, initialMessages, showNavBars }: ChatViewProps) {
     initialMessages,
     body: {
       apiKeys: keys,
-      model: selectedModel,
       threadId: currentThreadId,
     },
     experimental_prepareRequestBody: ({ messages }) => ({
       messages: messages.map((m) => ({ ...m, id: m.id })),
-      model: selectedModel,
       apiKeys: keys,
       threadId: currentThreadId,
     }),
@@ -76,11 +74,10 @@ function ChatView({ threadId, initialMessages, showNavBars }: ChatViewProps) {
           threadId: currentThreadId as Id<'threads'>,
           role: 'assistant',
           content: finalMsg.content,
-          model: selectedModel,
         });
         setMessages((prev) =>
           prev.map((m) =>
-            m.id === finalMsg.id ? { ...(m as any), id: realId, model: selectedModel } : m,
+            m.id === finalMsg.id ? { ...(m as any), id: realId } : m,
           ),
         );
       }

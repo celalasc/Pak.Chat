@@ -40,20 +40,7 @@ export default defineSchema({
     role: v.union(v.literal("user"), v.literal("assistant")),
     content: v.string(),
     createdAt: v.number(),
-    // Optional version for concurrent-safe updates
-    version: v.optional(v.number()),
-    isEdited: v.optional(v.boolean()),
-    history: v.optional(
-      v.array(
-        v.object({
-          content: v.string(),
-          createdAt: v.number(),
-          model: v.optional(v.string()),
-        })
-      )
-    ),
-    activeHistoryIndex: v.optional(v.number()),
-    model: v.optional(v.string()),
+    // Message metadata
   }).index("by_thread_and_time", ["threadId", "createdAt"]),
 
   // Attachments for messages
@@ -67,10 +54,4 @@ export default defineSchema({
     .index("by_thread", ["threadId"])
     .index("by_message", ["messageId"]),
 
-  // Message edit history
-  messageVersions: defineTable({
-    messageId: v.id("messages"),
-    content: v.string(),
-    editedAt: v.number(),
-  }).index("by_message", ["messageId"]),
 });
