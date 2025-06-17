@@ -97,11 +97,7 @@ function PureMessage({
               <div key={key} className="w-full px-2 sm:px-0 space-y-4">
                 <h3 className="text-base font-semibold">Welcome to Pak.Chat</h3>
                 <SelectableText messageId={message.id} disabled>
-                  <MarkdownRenderer
-                    content={part.text}
-                    id={message.id}
-                    isStreaming={isStreaming}
-                  />
+                  <MarkdownRenderer content={part.text} />
                 </SelectableText>
                 <div className="space-y-6 mt-4">
                   {(['google','openrouter','openai'] as const).map(provider => (
@@ -222,11 +218,7 @@ function PureMessage({
               onClick={handleMobileMessageClick}
             >
               <SelectableText messageId={message.id} disabled={isStreaming}>
-                <MarkdownRenderer
-                  content={part.text}
-                  id={message.id}
-                  isStreaming={isStreaming}
-                />
+                <MarkdownRenderer content={part.text} />
               </SelectableText>
               {attachments && attachments.length > 0 && (
                 <div className="flex gap-2 flex-wrap mt-2">

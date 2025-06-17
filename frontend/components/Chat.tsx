@@ -297,7 +297,7 @@ function Chat({ threadId, initialMessages }: ChatProps) {
 
             <div
               className={cn(
-                "fixed left-1/2 -translate-x-1/2 w-full max-w-3xl px-4 transition-all duration-300",
+                "fixed left-1/2 -translate-x-1/2 w-full max-w-3xl px-4 transition-all duration-300 z-30",
                 messages.length > 0 ? "bottom-0" : "top-1/2 -translate-y-1/2"
               )}
             >

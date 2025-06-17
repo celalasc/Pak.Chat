@@ -1,130 +1,83 @@
-import { memo, useMemo, createContext, useContext } from 'react';
-import ReactMarkdown, { type Components } from 'react-markdown';
+// frontend/components/MemoizedMarkdown.tsx
+import { memo } from 'react';
+import ReactMarkdown, { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
-import rehypeSanitize from 'rehype-sanitize';
-import { marked } from 'marked';
-import CodeBlock from './CodeBlock';
-type MarkdownSize = 'default' | 'small';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark } from 'react-syntax-highlighter/dist/cjs/styles/prism';
+import CopyButton from './ui/CopyButton';
+import { Download } from 'lucide-react';
+import { useCallback } from 'react';
 
-// Context to pass size down to components
-const MarkdownSizeContext = createContext<MarkdownSize>('default');
+// Компонент для шапки блока кода с кнопками "Копировать" и "Скачать"
+function CodeHeader({ lang, codeString }: { lang: string; codeString: string }) {
+  const handleDownload = useCallback(() => {
+    const fileExtension = lang === 'plaintext' ? 'txt' : lang;
+    const blob = new Blob([codeString], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `code_snippet.${fileExtension}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [codeString, lang]);
 
-// Common markdown components used for rendering
-const baseComponents: Components = {
-  code: CodeBlock as Components['code'],
-  pre: ({ children }) => <>{children}</>,
-  table: ({ children }) => (
-    <div 
-      className="overflow-x-auto" 
-      style={{
-        scrollbarWidth: 'none',  // Firefox
-        msOverflowStyle: 'none', // IE and Edge
-      }}
-    >
-      <style jsx global>{`
-        /* Hide scrollbar for Chrome, Safari and Opera */
-        .overflow-x-auto::-webkit-scrollbar {
-          display: none;
-        }
-      `}</style>
-      <table className="min-w-full border-collapse">
-        {children}
-      </table>
-    </div>
-  ),
-  th: ({ children }) => (
-    <th className="border px-4 py-2 text-left bg-secondary/50">
-      {children}
-    </th>
-  ),
-  td: ({ children }) => (
-    <td className="border px-4 py-2">
-      {children}
-    </td>
-  ),
-};
-
-
-function parseMarkdownIntoBlocks(markdown: string): string[] {
-  const tokens = marked.lexer(markdown);
-  return tokens.map((token) => token.raw);
-}
-
-function PureMarkdownRendererBlock({
-  content,
-  components,
-}: {
-  content: string;
-  components: Components;
-}) {
   return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm, [remarkMath]]}
-      rehypePlugins={[rehypeKatex, rehypeSanitize]}
-      components={components}
-    >
-      {content}
-    </ReactMarkdown>
+    <div className="flex items-center justify-between px-4 py-2 bg-secondary rounded-t-lg border-b border-border">
+      <span className="text-xs font-semibold uppercase text-muted-foreground">{lang}</span>
+      <div className="flex items-center gap-2">
+        <button onClick={handleDownload} className="p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" aria-label="Скачать фрагмент кода">
+          <Download className="w-4 h-4" />
+        </button>
+        <CopyButton code={codeString} />
+      </div>
+    </div>
   );
 }
 
-const MarkdownRendererBlock = memo(
-  PureMarkdownRendererBlock,
-  (prevProps, nextProps) => {
-    if (prevProps.content !== nextProps.content) return false;
-    if (prevProps.components !== nextProps.components) return false;
-    return true;
-  }
-);
+const MemoizedMarkdown = memo(({ content }: { content: string }) => {
+  const components: Components = {
+    code({ node, inline, className, children, ...props }: any) {
+      const match = /language-(\w+)/.exec(className || '');
+      const codeString = String(children).replace(/\n$/, '');
 
-MarkdownRendererBlock.displayName = 'MarkdownRendererBlock';
+      // Если это большой блок кода (не inline и есть язык)
+      if (!inline && match) {
+        return (
+          <div className="relative my-4 rounded-lg border border-border bg-background">
+            <CodeHeader lang={match[1]} codeString={codeString} />
+            <SyntaxHighlighter
+              style={oneDark}
+              language={match[1]}
+              PreTag="div"
+              customStyle={{ margin: 0, padding: '1rem', background: 'transparent', borderRadius: '0 0 0.5rem 0.5rem', fontFamily: 'var(--font-mono)' }}
+              codeTagProps={{ style: { fontFamily: 'inherit' } }}
+              {...props}
+            >
+              {codeString}
+            </SyntaxHighlighter>
+          </div>
+        );
+      }
 
-const MemoizedMarkdown = memo(
-  ({
-    content,
-    id,
-    size = 'default',
-    isStreaming,
-  }: {
-    content: string;
-    id: string;
-    size?: MarkdownSize;
-    isStreaming?: boolean;
-  }) => {
-    const blocks = useMemo(() => parseMarkdownIntoBlocks(content), [content]);
+      // Если это простой inline-код
+      return (
+        <code className="mx-0.5 rounded-md bg-secondary px-1.5 py-1 font-mono text-sm" {...props}>
+          {children}
+        </code>
+      );
+    },
+  };
 
-    const proseClasses =
-      size === 'small'
-        ? 'prose prose-sm dark:prose-invert bread-words max-w-none w-full prose-code:before:content-none prose-code:after:content-none'
-        : 'prose prose-base dark:prose-invert bread-words max-w-none w-full prose-code:before:content-none prose-code:after:content-none';
-
-    // Components with current streaming state
-    const components = useMemo<Components>(
-      () => ({
-        ...baseComponents,
-        code: (props) => <CodeBlock {...props} isStreaming={isStreaming} />,
-      }),
-      [isStreaming]
-    );
-
-    return (
-      <MarkdownSizeContext.Provider value={size}>
-        <div className={proseClasses}>
-          {blocks.map((block, index) => (
-            <MarkdownRendererBlock
-              components={components}
-              content={block}
-              key={`${id}-block-${index}`}
-            />
-          ))}
-        </div>
-      </MarkdownSizeContext.Provider>
-    );
-  }
-);
+  return (
+    <div className="prose prose-base dark:prose-invert max-w-none prose-code:before:content-none prose-code:after:content-none">
+      <ReactMarkdown components={components} remarkPlugins={[remarkGfm]}>
+        {content}
+      </ReactMarkdown>
+    </div>
+  );
+});
 
 MemoizedMarkdown.displayName = 'MemoizedMarkdown';
-
 export default MemoizedMarkdown;

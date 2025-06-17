@@ -221,8 +221,12 @@ function PureChatInput({
       // 5. Обновляем UI с реальным ID
       setMessages((prev) => prev.map((m) => (m.id === clientMsgId ? { ...m, id: dbMsgId } : m)));
 
-      // 6. Генерация заголовка только для новых тредов
-      // Функционал отключён из-за задержки при первом сообщении
+      // 6. Генерация заголовка в фоне для нового чата
+      if (!isConvexId(threadId)) {
+        complete(finalMessage, {
+          body: { threadId: ensuredThreadId, messageId: dbMsgId, isTitle: true },
+        });
+      }
 
     } catch (error) {
       toast.error('Failed to send message.');
