@@ -61,7 +61,6 @@ export default function MessageEditor({
 
   const removeAfter = useMutation(api.messages.removeAfter);
   const editMessage = useMutation(api.messages.edit);
-  const saveVersion = useMutation(api.messages.saveVersion);
 
   const handleSave = async () => {
     if (!isConvexId(threadId)) return;
@@ -74,10 +73,6 @@ export default function MessageEditor({
     }
 
     try {
-      // Сохраняем текущую версию, если включено сохранение регенераций
-      if (settings.saveRegenerations) {
-        await saveVersion({ messageId: message.id as Id<'messages'> });
-      }
 
       await removeAfter({
         threadId: threadId as Id<'threads'>,
