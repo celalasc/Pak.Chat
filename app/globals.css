@@ -5,6 +5,24 @@
 
 @custom-variant dark (&:is(.dark *));
 
+:root {
+  --shiki-color-text: #0f172a;
+  --shiki-color-background: transparent;
+  --shiki-token-constant: #b45309;
+  --shiki-token-string: #15803d;
+  --shiki-token-comment: #64748b;
+  --shiki-token-keyword: #7c3aed;
+  --shiki-token-parameter: #b45309;
+  --shiki-token-function: #2563eb;
+  --shiki-token-string-expression: #15803d;
+  --shiki-token-punctuation: #334155;
+  --shiki-token-link: #2563eb;
+}
+
+[data-theme='dark'] {
+  --shiki-color-text: #e2e8f0;
+}
+
 /* Font faces - temporarily disabled due to corrupted font files */
 /*
 @font-face {
@@ -380,7 +398,11 @@
 }
 
 .shiki {
-  @apply !rounded-none;
+  @apply !bg-transparent !p-4 !rounded-b-lg overflow-x-auto;
+}
+
+.shiki pre {
+  @apply !m-0 !p-0;
 }
 
 /* Добавить в конец файла app/globals.css */
@@ -434,8 +456,26 @@
 
 @layer components {
   .code-block-container {
+    @apply bg-secondary border border-border rounded-lg;
     max-height: 500px;
     overflow-y: auto;
+  }
+
+  .code-block-container::-webkit-scrollbar {
+    height: 8px;
+  }
+
+  .code-block-container::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-muted;
+  }
+
+  .code-block-container:hover::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground;
+  }
+
+  .code-block-container {
+    scrollbar-width: thin;
+    scrollbar-color: var(--tw-color-muted) transparent;
   }
 }
 
