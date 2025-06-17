@@ -183,3 +183,50 @@ export const finalize = mutation({
     await Promise.all(versions.map((v) => ctx.db.delete(v._id)));
   },
 });
+
+export const saveVersion = mutation({
+  args: { messageId: v.id("messages") },
+  async handler(ctx, { messageId }) {
+    const uid = await currentUserId(ctx);
+    if (!uid) throw new Error("Unauthenticated");
+    const msg = await ctx.db.get(messageId);
+    if (!msg) throw new Error("Message not found");
+    const thread = await ctx.db.get(msg.threadId);
+    if (!thread || thread.userId !== uid) throw new Error("Permission denied");
+
+    const history = msg.history ?? [];
+    history.push({ content: msg.content, createdAt: Date.now() });
+    await ctx.db.patch(messageId, {
+      history,
+      isEdited: true,
+      activeHistoryIndex: history.length - 1,
+    });
+  },
+});
+
+export const switchVersion = mutation({
+  args: {
+    messageId: v.id("messages"),
+    direction: v.union(v.literal("next"), v.literal("prev")),
+  },
+  async handler(ctx, { messageId, direction }) {
+    const uid = await currentUserId(ctx);
+    if (!uid) throw new Error("Unauthenticated");
+    const msg = await ctx.db.get(messageId);
+    if (!msg || !msg.history || msg.history.length === 0) return;
+    const thread = await ctx.db.get(msg.threadId);
+    if (!thread || thread.userId !== uid) throw new Error("Permission denied");
+
+    let index = msg.activeHistoryIndex ?? msg.history.length - 1;
+    if (direction === "next") {
+      index = Math.min(index + 1, msg.history.length - 1);
+    } else {
+      index = Math.max(index - 1, 0);
+    }
+
+    await ctx.db.patch(messageId, {
+      content: msg.history[index].content,
+      activeHistoryIndex: index,
+    });
+  },
+});

@@ -11,6 +11,7 @@ import { api } from '@/convex/_generated/api';
 import { isConvexId } from '@/lib/ids';
 import type { Id } from '@/convex/_generated/dataModel';
 import { useRouter } from 'next/navigation';
+import { useSettingsStore } from '@/frontend/stores/SettingsStore';
 
 interface MessageControlsProps {
   threadId: string;
@@ -39,12 +40,14 @@ export default function MessageControls({
   const { hasRequiredKeys } = useAPIKeyStore();
   const canChat = hasRequiredKeys();
   const { isMobile } = useIsMobile();
+  const { settings } = useSettingsStore();
   const removeAfter = useMutation<typeof api.messages.removeAfter>(
     api.messages.removeAfter
   );
   const removeMessage = useMutation<typeof api.messages.remove>(
     api.messages.remove
   );
+  const saveVersion = useMutation(api.messages.saveVersion);
   const cloneThread = useMutation<typeof api.threads.clone>(api.threads.clone);
   const thread = useQuery(
     api.threads.get,
@@ -65,6 +68,10 @@ export default function MessageControls({
     if (!isConvexId(message.id)) {
       console.warn("Cannot regenerate a message that has not been saved to the database yet.");
       return;
+    }
+
+    if (settings.saveRegenerations) {
+      await saveVersion({ messageId: message.id as Id<'messages'> });
     }
 
     // stop the current request

@@ -20,6 +20,9 @@ import { useAPIKeyStore, type APIKeys } from '@/frontend/stores/APIKeyStore';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
+import { useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import type { Id } from '@/convex/_generated/dataModel';
 
 function PureMessage({
   threadId,
@@ -49,6 +52,7 @@ function PureMessage({
   const { keys, setKeys } = useAPIKeyStore();
   const [localKeys, setLocalKeys] = useState<APIKeys>(keys);
   const { isMobile } = useIsMobile();
+  const switchVersion = useMutation(api.messages.switchVersion);
   
   useEffect(() => { setLocalKeys(keys); }, [keys]);
   
@@ -253,16 +257,47 @@ function PureMessage({
                 </div>
               )}
               {!isStreaming && (
-                <MessageControls
-                  threadId={threadId}
-                  content={part.text}
-                  message={message}
-                  setMessages={setMessages}
-                  reload={reload}
-                  stop={stop}
-                  isVisible={mobileControlsVisible}
-                  onToggleVisibility={() => setMobileControlsVisible(!mobileControlsVisible)}
-                />
+                <>
+                  <MessageControls
+                    threadId={threadId}
+                    content={part.text}
+                    message={message}
+                    setMessages={setMessages}
+                    reload={reload}
+                    stop={stop}
+                    isVisible={mobileControlsVisible}
+                    onToggleVisibility={() => setMobileControlsVisible(!mobileControlsVisible)}
+                  />
+                  {message.history && message.history.length > 1 && (
+                    <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mt-1">
+                      <button
+                        onClick={() =>
+                          switchVersion({
+                            messageId: message.id as Id<'messages'>,
+                            direction: 'prev',
+                          })
+                        }
+                        className="px-1 hover:text-foreground"
+                      >
+                        ←
+                      </button>
+                      <span>
+                        {(message.activeHistoryIndex ?? message.history.length - 1) + 1}/{message.history.length}
+                      </span>
+                      <button
+                        onClick={() =>
+                          switchVersion({
+                            messageId: message.id as Id<'messages'>,
+                            direction: 'next',
+                          })
+                        }
+                        className="px-1 hover:text-foreground"
+                      >
+                        →
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           );

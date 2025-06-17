@@ -9,15 +9,16 @@ import { Input } from './ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Label } from '@/components/ui/label';
-import { 
-  Settings, 
-  Palette, 
-  Key, 
-  Type, 
-  Monitor, 
-  Sun, 
+import {
+  Settings,
+  Palette,
+  Key,
+  Type,
+  Monitor,
+  Sun,
   Moon,
-  User
+  User,
+  SlidersHorizontal
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSettingsStore, GENERAL_FONTS, CODE_FONTS, THEMES, GeneralFont, CodeFont, Theme } from '@/frontend/stores/SettingsStore';
@@ -29,6 +30,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { FieldError, useForm, UseFormRegister } from 'react-hook-form';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
+import { Switch } from '@/frontend/components/ui/switch';
 
 interface SettingsDrawerProps {
   children: React.ReactNode;
@@ -334,6 +336,37 @@ const CustomizationTab = () => {
               <Moon className="h-4 w-4" />
               Dark
             </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Additional Features */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <SlidersHorizontal className="h-4 w-4" />
+            Features
+          </CardTitle>
+          <CardDescription className="text-sm">
+            Enable or disable experimental options
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="navbars" className="text-sm">Show navigation bars</Label>
+            <Switch
+              id="navbars"
+              checked={settings.showNavBars}
+              onCheckedChange={(v) => setSettings({ showNavBars: v })}
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="save-regens" className="text-sm">Save regenerations</Label>
+            <Switch
+              id="save-regens"
+              checked={settings.saveRegenerations}
+              onCheckedChange={(v) => setSettings({ saveRegenerations: v })}
+            />
           </div>
         </CardContent>
       </Card>

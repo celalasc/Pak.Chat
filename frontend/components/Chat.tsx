@@ -27,6 +27,7 @@ import { useQuoteStore } from '@/frontend/stores/QuoteStore';
 import { useAttachmentsStore } from '@/frontend/stores/AttachmentsStore';
 import { create } from 'zustand'; // Импортируем Zustand
 import { useChatStore } from '@/frontend/stores/ChatStore';
+import { useSettingsStore } from '@/frontend/stores/SettingsStore';
 
 // --- НАЧАЛО: Код для Zustand Store ---
 // Мы определяем store прямо в этом файле, так как нельзя создать новый.
@@ -70,6 +71,8 @@ function Chat({ threadId, initialMessages }: ChatProps) {
   const [currentThreadId, setCurrentThreadId] = useState(threadId);
   const [hasInitialized, setHasInitialized] = useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const { settings } = useSettingsStore();
+  const submittedMessageIdRef = useRef<string | null>(null);
   // Перенос навигации осуществляется из ChatInput
   
   // Используем наш store, определенный выше
@@ -177,6 +180,7 @@ function Chat({ threadId, initialMessages }: ChatProps) {
     // Этот эффект выполняется только при смене чата
     setCurrentThreadId(threadId);
     setHasInitialized(true);
+    submittedMessageIdRef.current = null;
     
     // Сбрасываем все, только если это НОВЫЙ чат (у которого нет threadId)
     if (!threadId) {
@@ -193,18 +197,13 @@ function Chat({ threadId, initialMessages }: ChatProps) {
   useEffect(() => {
     const lastMessage = messages[messages.length - 1];
     if (
-      status === 'ready' &&
+      status === 'idle' &&
       lastMessage?.role === 'user' &&
-      isConvexId(currentThreadId)
+      isConvexId(currentThreadId) &&
+      submittedMessageIdRef.current !== lastMessage.id
     ) {
-      // Проверяем, есть ли ответ ассистента после последнего сообщения пользователя
-      const hasResponse = messages.some((msg, index) => 
-        index > messages.length - 1 && msg.role === 'assistant'
-      );
-      
-      if (!hasResponse) {
-        reload();
-      }
+      submittedMessageIdRef.current = lastMessage.id;
+      reload();
     }
   }, [messages, status, reload, currentThreadId]);
 
@@ -263,7 +262,9 @@ function Chat({ threadId, initialMessages }: ChatProps) {
             )}
           />
         </div>
-        {messages.length > 0 && <ChatNavigationBars messages={messages} scrollToMessage={scrollToMessage} />}
+        {messages.length > 0 && settings.showNavBars && (
+          <ChatNavigationBars messages={messages} scrollToMessage={scrollToMessage} />
+        )}
         <div className={cn("fixed left-4 top-4 z-20 transition-all duration-300 ease-in-out", isMobile && (!isHeaderVisible || isKeyboardVisible) && "transform -translate-x-full opacity-0")}>
             <div className="relative">
                 {isMobile && <div className="absolute inset-0 -m-2 bg-background/60 backdrop-blur-md rounded-lg" />}
