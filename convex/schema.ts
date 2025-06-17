@@ -42,6 +42,16 @@ export default defineSchema({
     createdAt: v.number(),
     // Optional version for concurrent-safe updates
     version: v.optional(v.number()),
+    isEdited: v.optional(v.boolean()),
+    history: v.optional(
+      v.array(
+        v.object({
+          content: v.string(),
+          createdAt: v.number(),
+        })
+      )
+    ),
+    activeHistoryIndex: v.optional(v.number()),
   }).index("by_thread_and_time", ["threadId", "createdAt"]),
 
   // Attachments for messages

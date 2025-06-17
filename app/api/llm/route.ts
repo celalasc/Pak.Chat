@@ -2,6 +2,7 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { streamText, convertToCoreMessages, type Message } from 'ai';
+import pdf from 'pdf-parse';
 import { getModelConfig, AIModel } from '@/lib/models';
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchQuery } from 'convex/nextjs';
@@ -102,6 +103,18 @@ export async function POST(req: NextRequest) {
         }
 
         for (const attachment of messageAttachments) {
+          if (attachment.type === 'application/pdf') {
+            try {
+              const res = await fetch(attachment.url!);
+              const buf = Buffer.from(await res.arrayBuffer());
+              const data = await pdf(buf);
+              content.push({ type: 'text', text: `PDF ${attachment.name}:\n${data.text}` });
+            } catch (e) {
+              console.error('Failed to parse PDF:', e);
+            }
+            continue;
+          }
+
           if (modelConfig.provider === 'google') {
             content.push({ type: 'image', image: attachment.url! });
           } else {

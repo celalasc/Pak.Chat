@@ -17,6 +17,8 @@ type Settings = {
   codeFont: CodeFont;
   theme: Theme;
   hidePersonal: boolean;
+  showNavBars: boolean;
+  saveRegenerations: boolean;
 };
 
 type SettingsStore = {
@@ -51,6 +53,8 @@ const defaultSettings: Settings = {
   codeFont: 'Berkeley Mono',
   theme: 'light',
   hidePersonal: false,
+  showNavBars: true,
+  saveRegenerations: true,
 };
 
 export const useSettingsStore = create<SettingsStore>()(
