@@ -48,7 +48,7 @@ export default function MessageControls({
   const { isAuthenticated } = useConvexAuth();
   const canChat = hasRequiredKeys();
   const { isMobile } = useIsMobile();
-  const removeAfter = useMutation(api.messages.removeAfter);
+  const prepareForRegenerate = useMutation(api.messages.prepareForRegeneration);
   const switchVersion = useMutation(api.messages.switchVersion);
   const cloneThread = useMutation(api.threads.clone);
   const thread = useQuery(
@@ -117,31 +117,27 @@ export default function MessageControls({
     }
 
     try {
-      await removeAfter({
+      const msgToResend = await prepareForRegenerate({
         threadId: threadId as Id<'threads'>,
-        afterMessageId: parentMessageToResend.id as Id<'messages'>,
+        userMessageId: parentMessageToResend.id as Id<'messages'>,
       });
 
-      const newMessages = messages.slice(0, parentMessageIndex + 1);
-      setMessages(newMessages);
-
-      append(
-        {
-          role: 'user',
-          content: parentMessageToResend.content,
-        },
-        {
-          body: {
-            model: selectedModel,
-            apiKeys: keys,
-            threadId: threadId,
+      if (msgToResend) {
+        await append(
+          { role: 'user', content: msgToResend.content },
+          {
+            body: {
+              model: selectedModel,
+              apiKeys: keys,
+              threadId,
+            },
           },
-        },
-      );
+        );
+      }
     } catch (error) {
       console.error('Error during regeneration:', error);
     }
-  }, [stop, threadId, message.id, messages, setMessages, append, removeAfter, selectedModel, keys]);
+  }, [stop, threadId, message.id, messages, append, prepareForRegenerate, selectedModel, keys]);
 
   const handleVersionSwitch = useCallback(async (direction: 'next' | 'prev') => {
     if (!isConvexId(message.id)) return;

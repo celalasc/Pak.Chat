@@ -31,7 +31,6 @@ function ChatView({ threadId, initialMessages, showNavBars }: ChatViewProps) {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [currentThreadId, setCurrentThreadId] = useState(threadId);
-  const submittedMessageIdRef = useRef<string | null>(null);
 
   const sendMessage = useMutation<typeof api.messages.send>(api.messages.send);
 
@@ -105,20 +104,6 @@ function ChatView({ threadId, initialMessages, showNavBars }: ChatViewProps) {
     setMessages(initialMessages);
   }, [threadId, setInput, clearQuote, clearAttachments, setMessages, initialMessages]);
 
-  // Auto-reload when a user message without assistant response appears
-  useEffect(() => {
-    const lastMessage = messages[messages.length - 1];
-    if (
-      status === 'ready' &&
-      lastMessage?.role === 'user' &&
-      isConvexId(lastMessage.id) &&
-      isConvexId(currentThreadId) &&
-      submittedMessageIdRef.current !== lastMessage.id
-    ) {
-      submittedMessageIdRef.current = lastMessage.id;
-      reload();
-    }
-  }, [messages, status, reload, currentThreadId]);
 
   return (
     <>

@@ -166,6 +166,41 @@ export const removeAfter = mutation({
   },
 });
 
+/** Atomically prepare history for regeneration */
+export const prepareForRegeneration = mutation({
+  args: {
+    threadId: v.id('threads'),
+    userMessageId: v.id('messages'),
+  },
+  async handler(ctx, { threadId, userMessageId }) {
+    const uid = await currentUserId(ctx);
+    if (!uid) throw new Error('Unauthenticated');
+
+    const thread = await ctx.db.get(threadId);
+    if (!thread || thread.userId !== uid) throw new Error('Permission denied');
+
+    const userMessage = await ctx.db.get(userMessageId);
+    if (
+      !userMessage ||
+      userMessage.threadId !== threadId ||
+      userMessage.role !== 'user'
+    ) {
+      throw new Error('User message not found or invalid.');
+    }
+
+    const toDelete = await ctx.db
+      .query('messages')
+      .withIndex('by_thread_and_time', (q) =>
+        q.eq('threadId', threadId).gt('createdAt', userMessage.createdAt)
+      )
+      .collect();
+
+    await Promise.all(toDelete.map((m) => ctx.db.delete(m._id)));
+
+    return userMessage;
+  },
+});
+
 /** Partially update message content with version check */
 export const patchContent = mutation({
   args: {
