@@ -61,6 +61,12 @@ export default function MessageControls({
   };
 
   const handleRegenerate = async () => {
+    // Проверяем, что сообщение сохранено в базе данных
+    if (!isConvexId(message.id)) {
+      console.warn("Cannot regenerate a message that has not been saved to the database yet.");
+      return;
+    }
+
     // stop the current request
     stop();
 
@@ -148,7 +154,7 @@ export default function MessageControls({
         </Button>
       )}
       {canChat && (
-        <Button variant="ghost" size="icon" onClick={handleRegenerate}>
+        <Button variant="ghost" size="icon" onClick={handleRegenerate} disabled={!isConvexId(message.id)}>
           <RefreshCcw className="w-4 h-4" />
         </Button>
       )}

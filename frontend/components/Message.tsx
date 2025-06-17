@@ -218,7 +218,7 @@ function PureMessage({
               onClick={handleMobileMessageClick}
             >
               <SelectableText messageId={message.id} disabled={isStreaming}>
-                <MarkdownRenderer content={part.text} />
+                <MarkdownRenderer content={part.text} isStreaming={isStreaming} />
               </SelectableText>
               {attachments && attachments.length > 0 && (
                 <div className="flex gap-2 flex-wrap mt-2">
