@@ -22,13 +22,23 @@ export const get = query({
 
 /** List threads for the authenticated user ordered by creation time */
 export const list = query({
-  args: {},
-  async handler(ctx) {
+  args: { searchQuery: v.optional(v.string()) },
+  async handler(ctx, args) {
     const uid = await currentUserId(ctx);
     if (uid === null) {
       // No user record yet means no threads to return
       return [];
     }
+
+    if (args.searchQuery) {
+      return ctx.db
+        .query("threads")
+        .withSearchIndex("by_title", (q) =>
+          q.search("title", args.searchQuery).eq("userId", uid)
+        )
+        .collect();
+    }
+
     return ctx.db
       .query("threads")
       .withIndex("by_user_and_time", (q) => q.eq("userId", uid))
