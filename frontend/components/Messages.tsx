@@ -13,6 +13,7 @@ function PureMessages({
   status,
   setMessages,
   reload,
+  append,
   error,
   stop,
 }: {
@@ -20,6 +21,7 @@ function PureMessages({
   messages: UIMessage[];
   setMessages: UseChatHelpers['setMessages'];
   reload: UseChatHelpers['reload'];
+  append: UseChatHelpers['append'];
   status: UseChatHelpers['status'];
   error: UseChatHelpers['error'];
   stop: UseChatHelpers['stop'];
@@ -33,11 +35,13 @@ function PureMessages({
       {messages.map((message) => (
         <PreviewMessage
           key={message.id}
+          messages={messages}
           threadId={threadId}
           message={message}
           isStreaming={
             status === 'streaming' && messages[messages.length - 1]?.id === message.id
           }
+          append={append}
           setMessages={setMessages}
           reload={reload}
           stop={stop}

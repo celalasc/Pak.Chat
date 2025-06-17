@@ -17,11 +17,13 @@ import { useSettingsStore } from '@/frontend/stores/SettingsStore';
 interface MessageControlsProps {
   threadId: string;
   message: UIMessage;
+  messages: UIMessage[];
   setMessages: UseChatHelpers['setMessages'];
   content: string;
   setMode?: Dispatch<SetStateAction<'view' | 'edit'>>;
   reload: UseChatHelpers['reload'];
   stop: UseChatHelpers['stop'];
+  append: UseChatHelpers['append'];
   isVisible?: boolean; // Для мобильных устройств
   onToggleVisibility?: () => void; // Для мобильных устройств
 }
@@ -29,24 +31,23 @@ interface MessageControlsProps {
 export default function MessageControls({
   threadId,
   message,
+  messages,
   setMessages,
   content,
   setMode,
   reload,
   stop,
+  append,
   isVisible = false,
   onToggleVisibility,
 }: MessageControlsProps) {
   const [copied, setCopied] = useState(false);
-  const { hasRequiredKeys } = useAPIKeyStore();
+  const { hasRequiredKeys, keys } = useAPIKeyStore();
   const { selectedModel } = useModelStore();
   const { settings } = useSettingsStore();
   const canChat = hasRequiredKeys();
   const { isMobile } = useIsMobile();
   const removeAfter = useMutation(api.messages.removeAfter);
-  const removeMessage = useMutation(api.messages.remove);
-  const saveVersion = useMutation(api.messages.saveVersion);
-  const saveAnswerVersion = useMutation(api.messages.saveAnswerVersion);
   const switchVersion = useMutation(api.messages.switchVersion);
   const cloneThread = useMutation(api.threads.clone);
   const thread = useQuery(
@@ -83,103 +84,92 @@ export default function MessageControls({
 
   // Regenerate the assistant answer starting from this message.
   const handleRegenerate = useCallback(async () => {
-    // Stop any ongoing request.
     stop();
 
-    if (!isConvexId(threadId)) {
+    if (!isConvexId(threadId)) return;
+
+    const currentIndex = messages.findIndex((m) => m.id === message.id);
+    if (currentIndex === -1) {
+      console.error('Could not find the current message in the messages array.');
       return;
     }
 
-    // Only handle messages with valid Convex IDs to avoid validation errors
-    if (!isConvexId(message.id)) {
-      console.warn('Cannot regenerate message with non-Convex ID:', message.id);
+    let parentMessageIndex = -1;
+    for (let i = currentIndex; i >= 0; i--) {
+      if (messages[i].role === 'user') {
+        parentMessageIndex = i;
+        break;
+      }
+    }
+
+    if (parentMessageIndex === -1) {
+      console.error('Could not find a parent user message for regeneration.');
+      return;
+    }
+
+    const parentMessageToResend = messages[parentMessageIndex];
+    if (!isConvexId(parentMessageToResend.id)) {
+      console.warn('Parent message for regeneration has a non-Convex ID:', parentMessageToResend.id);
       return;
     }
 
     try {
-      if (message.role === 'user') {
-        // Сохраняем текущую версию пользовательского сообщения, если включено сохранение регенераций
-        if (settings.saveRegenerations && messageData) {
-          await saveVersion({ messageId: message.id as Id<'messages'> });
-        }
+      await removeAfter({
+        threadId: threadId as Id<'threads'>,
+        afterMessageId: parentMessageToResend.id as Id<'messages'>,
+      });
 
-        // For user messages, remove all messages after this one and trigger reload
-        await removeAfter({
-          threadId: threadId as Id<'threads'>,
-          afterMessageId: message.id as Id<'messages'>,
-        });
+      const newMessages = messages.slice(0, parentMessageIndex + 1);
+      setMessages(newMessages);
 
-        setMessages((messages) => {
-          const index = messages.findIndex((m) => m.id === message.id);
-          if (index !== -1) {
-            return [...messages.slice(0, index + 1)];
-          }
-          return messages;
-        });
-      } else {
-        // Для ассистентских сообщений ищем предыдущее пользовательское сообщение для сохранения версии
-        const messagesSnapshot = Array.from(document.querySelectorAll('[id^="message-"]')).map(el => el.id.replace('message-', ''));
-        const currentIndex = messagesSnapshot.findIndex((id) => id === message.id);
-
-        let userMessageToVersionId: string | null = null;
-        for (let i = currentIndex - 1; i >= 0; i--) {
-          const prevMessageId = messagesSnapshot[i];
-          const prevMessageEl = document.getElementById(`message-${prevMessageId}`);
-          // Используем data-role, установленный на элементе сообщения, чтобы проверить роль автора
-          if (prevMessageEl?.getAttribute('data-role') === 'user' && isConvexId(prevMessageId)) {
-            userMessageToVersionId = prevMessageId;
-            break;
-          }
-        }
-
-        // For assistant messages, remove the message and all after it
-        await removeAfter({
-          threadId: threadId as Id<'threads'>,
-          afterMessageId: message.id as Id<'messages'>,
-        });
-        await removeMessage({ messageId: message.id as Id<'messages'> });
-
-        // Сохраняем предыдущий ответ ассистента как версию для пользовательского сообщения
-        if (settings.saveRegenerations && userMessageToVersionId) {
-          try {
-            await saveAnswerVersion({
-              userMessageId: userMessageToVersionId as Id<'messages'>,
-              answerContent: content, // content of assistant answer being regenerated
-              answerModel: (message as any).model ?? selectedModel ?? 'unknown',
-            });
-          } catch (error) {
-            console.error('Failed to save assistant version', error);
-          }
-        }
-
-        setMessages((messages) => {
-          const index = messages.findIndex((m) => m.id === message.id);
-          if (index !== -1) {
-            return [...messages.slice(0, index)];
-          }
-          return messages;
-        });
-      }
-
-      // Wait a bit to ensure the database operations complete before reloading
-      setTimeout(() => {
-        reload();
-      }, 100);
+      append(
+        {
+          role: 'user',
+          content: parentMessageToResend.content,
+        },
+        {
+          body: {
+            model: selectedModel,
+            apiKeys: keys,
+            threadId: threadId,
+          },
+        },
+      );
     } catch (error) {
       console.error('Error during regeneration:', error);
     }
-  }, [stop, threadId, message, settings.saveRegenerations, selectedModel, content, saveVersion, removeAfter, setMessages, removeMessage, saveAnswerVersion, reload, messageData]);
+  }, [stop, threadId, message.id, messages, setMessages, append, removeAfter, selectedModel, keys]);
 
   const handleVersionSwitch = useCallback(async (direction: 'next' | 'prev') => {
     if (!isConvexId(message.id)) return;
     try {
-      await switchVersion({ messageId: message.id as Id<'messages'>, direction });
-      // Reload to fetch the updated version from the backend
+      const updatedVersion = await switchVersion({ messageId: message.id as Id<'messages'>, direction });
+
+      if (updatedVersion) {
+        const userMessageIndex = messages.findIndex(m => m.id === message.id);
+        if (userMessageIndex !== -1 && userMessageIndex + 1 < messages.length) {
+          const assistantMessage = messages[userMessageIndex + 1];
+          if (assistantMessage?.role === 'assistant') {
+            setMessages(prevMessages => prevMessages.map(msg => {
+              if (msg.id === assistantMessage.id) {
+                return {
+                  ...msg,
+                  content: updatedVersion.content,
+                  parts: [{ type: 'text' as const, text: updatedVersion.content }],
+                  model: updatedVersion.model,
+                };
+              }
+              return msg;
+            }));
+            return;
+          }
+        }
+      }
       reload();
     } catch (error) {
       console.error('Error switching version:', error);
     }
-  }, [message.id, reload, switchVersion]);
+  }, [message.id, reload, switchVersion, messages, setMessages]);
 
   // Show controls on mobile only when explicitly visible.
   const shouldShowControls = useMemo(() => (isMobile ? isVisible : true), [isMobile, isVisible]);

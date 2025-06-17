@@ -49,6 +49,7 @@ function ChatView({ threadId, initialMessages, showNavBars }: ChatViewProps) {
     setMessages,
     reload,
     stop,
+    append,
     status,
     error,
   } = useChat({
@@ -135,6 +136,7 @@ function ChatView({ threadId, initialMessages, showNavBars }: ChatViewProps) {
                 status={status}
                 setMessages={setMessages}
                 reload={reload}
+                append={append}
                 error={error}
                 stop={stop}
               />

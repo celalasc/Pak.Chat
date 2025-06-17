@@ -9,6 +9,7 @@ interface Props {
   threadId: string;
   setMessages: UseChatHelpers['setMessages'];
   reload: UseChatHelpers['reload'];
+  append: UseChatHelpers['append'];
   status: UseChatHelpers['status'];
   error: UseChatHelpers['error'];
   stop: UseChatHelpers['stop'];
@@ -37,10 +38,12 @@ export default function VirtualMessages({ messages, ...rest }: Props) {
             <div style={style}>
               <PreviewMessage
                 {...rest}
+                messages={messages}
                 message={messages[index]}
                 isStreaming={
                   rest.status === 'streaming' && index === messages.length - 1
                 }
+                append={rest.append}
               />
             </div>
           )}

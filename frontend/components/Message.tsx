@@ -25,14 +25,18 @@ function PureMessage({
   threadId,
   message,
   setMessages,
+  messages,
   reload,
+  append,
   isStreaming,
   stop,
 }: {
   threadId: string;
   message: UIMessage;
   setMessages: UseChatHelpers['setMessages'];
+  messages: UIMessage[];
   reload: UseChatHelpers['reload'];
+  append: UseChatHelpers['append'];
   isStreaming: boolean;
   stop: UseChatHelpers['stop'];
 }) {
@@ -198,10 +202,12 @@ function PureMessage({
               {mode === 'view' && (
                 <MessageControls
                   threadId={threadId}
+                  messages={messages}
                   content={part.text}
                   message={message}
                   setMode={setMode}
                   setMessages={setMessages}
+                  append={append}
                   reload={reload}
                   stop={stop}
                   isVisible={mobileControlsVisible}
@@ -257,9 +263,11 @@ function PureMessage({
               {!isStreaming && (
                 <MessageControls
                   threadId={threadId}
+                  messages={messages}
                   content={part.text}
                   message={message}
                   setMessages={setMessages}
+                  append={append}
                   reload={reload}
                   stop={stop}
                   isVisible={mobileControlsVisible}
