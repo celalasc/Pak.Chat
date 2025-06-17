@@ -17,7 +17,8 @@ type MarkdownSize = 'default' | 'small';
 // Context to pass size down to components
 const MarkdownSizeContext = createContext<MarkdownSize>('default');
 
-const components: Components = {
+// Common markdown components used for rendering
+const baseComponents: Components = {
   code: CodeBlock as Components['code'],
   pre: ({ children }) => <>{children}</>,
   table: ({ children }) => (
@@ -51,10 +52,28 @@ const components: Components = {
   ),
 };
 
-function CodeBlock({ children, className, ...props }: CodeComponentProps) {
+// Render Markdown code blocks with optional streaming mode
+function CodeBlock({
+  children,
+  className,
+  isStreaming,
+  ...props
+}: CodeComponentProps & { isStreaming?: boolean }) {
   const size = useContext(MarkdownSizeContext);
   const { theme } = useTheme();
   const match = /language-(\w+)/.exec(className || '');
+
+  // If streaming, show plain text to avoid heavy syntax highlighting
+  if (isStreaming && match) {
+    return (
+      <div className="relative code-block-container rounded-md overflow-hidden border border-border">
+        <Codebar lang={match[1]} codeString={String(children)} />
+        <pre className="shiki text-sm font-mono p-4 overflow-x-auto bg-secondary">
+          <code>{String(children)}</code>
+        </pre>
+      </div>
+    );
+  }
 
   if (match) {
     const lang = match[1];
@@ -71,7 +90,7 @@ function CodeBlock({ children, className, ...props }: CodeComponentProps) {
     }, [lang, shikiTheme]);
 
     return (
-      <div className="rounded-none">
+      <div className="relative code-block-container rounded-md overflow-hidden border border-border">
         <Codebar lang={lang} codeString={codeRef.current} />
         <pre className="shiki text-sm font-mono" dangerouslySetInnerHTML={{ __html: html || '' }} />
       </div>
@@ -106,7 +125,7 @@ function Codebar({ lang, codeString }: { lang: string; codeString: string }) {
   };
 
   return (
-    <div className="flex justify-between items-center px-4 py-2 bg-secondary text-foreground rounded-t-md">
+    <div className="sticky top-0 z-10 flex justify-between items-center px-4 py-2 bg-secondary text-foreground rounded-t-md">
       <span className="text-sm font-mono">{lang}</span>
       <button onClick={copyToClipboard} className="text-sm cursor-pointer">
         {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
@@ -120,7 +139,13 @@ function parseMarkdownIntoBlocks(markdown: string): string[] {
   return tokens.map((token) => token.raw);
 }
 
-function PureMarkdownRendererBlock({ content }: { content: string }) {
+function PureMarkdownRendererBlock({
+  content,
+  components,
+}: {
+  content: string;
+  components: Components;
+}) {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm, [remarkMath]]}
@@ -136,6 +161,7 @@ const MarkdownRendererBlock = memo(
   PureMarkdownRendererBlock,
   (prevProps, nextProps) => {
     if (prevProps.content !== nextProps.content) return false;
+    if (prevProps.components !== nextProps.components) return false;
     return true;
   }
 );
@@ -147,10 +173,12 @@ const MemoizedMarkdown = memo(
     content,
     id,
     size = 'default',
+    isStreaming,
   }: {
     content: string;
     id: string;
     size?: MarkdownSize;
+    isStreaming?: boolean;
   }) => {
     const blocks = useMemo(() => parseMarkdownIntoBlocks(content), [content]);
 
@@ -159,11 +187,21 @@ const MemoizedMarkdown = memo(
         ? 'prose prose-sm dark:prose-invert bread-words max-w-none w-full prose-code:before:content-none prose-code:after:content-none'
         : 'prose prose-base dark:prose-invert bread-words max-w-none w-full prose-code:before:content-none prose-code:after:content-none';
 
+    // Components with current streaming state
+    const components = useMemo<Components>(
+      () => ({
+        ...baseComponents,
+        code: (props) => <CodeBlock {...props} isStreaming={isStreaming} />,
+      }),
+      [isStreaming]
+    );
+
     return (
       <MarkdownSizeContext.Provider value={size}>
         <div className={proseClasses}>
           {blocks.map((block, index) => (
             <MarkdownRendererBlock
+              components={components}
               content={block}
               key={`${id}-block-${index}`}
             />

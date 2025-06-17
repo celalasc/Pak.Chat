@@ -37,18 +37,24 @@ export default function CatchAllChatPage({ params }: { params: Promise<{ slug: s
   const messages = useMemo(() => {
     if (!attachments || !messagesResult) return [];
 
-    // Мы используем эту чистую и правильную версию
-    const attachmentsMap: Record<string, Doc<'attachments'>[]> = {};
-    
-    attachments.forEach(a => {
-      // Здесь был баг в типизации, исправляем его
-      const typedAttachment = a as Doc<'attachments'>;
-      if (!typedAttachment.messageId) return
-      if (!attachmentsMap[typedAttachment.messageId]) {
-        attachmentsMap[typedAttachment.messageId] = []
+    const attachmentsMap: Record<
+      string,
+      {
+        id: Id<'attachments'>;
+        messageId: Id<'messages'> | undefined;
+        name: string;
+        type: string;
+        url: string | null;
+      }[]
+    > = {};
+
+    attachments.forEach((a) => {
+      if (!a.messageId) return;
+      if (!attachmentsMap[a.messageId]) {
+        attachmentsMap[a.messageId] = [];
       }
-      attachmentsMap[typedAttachment.messageId].push(typedAttachment)
-    })
+      attachmentsMap[a.messageId].push(a);
+    });
 
     const rawMessages: Doc<'messages'>[] = Array.isArray(messagesResult)
       ? messagesResult

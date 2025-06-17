@@ -432,3 +432,10 @@
   input, textarea { font-size: 16px !important; }
 }
 
+@layer components {
+  .code-block-container {
+    max-height: 500px;
+    overflow-y: auto;
+  }
+}
+

@@ -41,7 +41,7 @@ function ChatHistoryDrawerComponent({ children, isOpen, setIsOpen }: ChatHistory
   
   const trimmedQuery = searchQuery.trim();
   const threads = useQuery(
-    trimmedQuery ? api.threads.search : api.threads.list,
+    api.threads.list,
     isAuthenticated
       ? trimmedQuery
         ? { searchQuery: trimmedQuery }
