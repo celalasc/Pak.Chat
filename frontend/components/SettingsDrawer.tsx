@@ -174,7 +174,7 @@ function SettingsDrawerComponent({ children, isOpen, setIsOpen }: SettingsDrawer
       <DialogTrigger asChild>
         {children}
       </DialogTrigger>
-      <DialogContent className="w-[85vw] sm:max-w-none max-w-[800px] h-[85vh] flex flex-col">
+      <DialogContent className="w-[55vw] sm:max-w-none max-w-[585px] h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5" />
