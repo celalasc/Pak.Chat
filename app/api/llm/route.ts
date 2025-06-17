@@ -8,21 +8,6 @@ import { fetchQuery } from 'convex/nextjs';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
 
-/**
- * Download a remote file and return it as a data URL for models that
- * require inline file contents.
- */
-async function urlToDataUrl(url: string): Promise<{ dataUrl: string; type: string }> {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch file from URL: ${url}`);
-  }
-  const blob = await response.blob();
-  const buffer = await blob.arrayBuffer();
-  const base64 = Buffer.from(buffer).toString('base64');
-  const dataUrl = `data:${blob.type};base64,${base64}`;
-  return { dataUrl, type: blob.type };
-}
 
 interface Attachment {
   id: Id<'attachments'>;
@@ -103,7 +88,7 @@ export async function POST(req: NextRequest) {
     const messageIds = new Set(messages.map((m: { id: string }) => m.id));
 
     const processedMessages: ChatMessage[] = await Promise.all(
-      messages.map(async (message: { id: string; role: string; content: string }, index: number) => {
+      messages.map(async (message: { id: string; role: string; content: string }) => {
         // Attachments may arrive slightly later than the message –
         // treat attachments that haven't been linked (messageId == null)
         // as belonging to the latest user message to avoid race conditions.
@@ -118,12 +103,6 @@ export async function POST(req: NextRequest) {
           return false;
         });
 
-        console.log('Processing message:', {
-          messageId: message.id,
-          messageRole: message.role,
-          allAttachments: attachments.map(a => ({ id: a.id, messageId: a.messageId, name: a.name, type: a.type, hasUrl: !!a.url })),
-          filteredAttachments: messageAttachments.map(a => ({ id: a.id, name: a.name, type: a.type }))
-        });
 
         if (messageAttachments.length === 0) {
           return { role: message.role, content: message.content };
@@ -138,11 +117,6 @@ export async function POST(req: NextRequest) {
         for (const attachment of messageAttachments) {
           if (!attachment.url) continue;
 
-          console.log('Processing attachment:', {
-            name: attachment.name,
-            type: attachment.type,
-            provider: modelConfig.provider,
-          });
 
           try {
             const res = await fetch(attachment.url);
@@ -168,9 +142,9 @@ export async function POST(req: NextRequest) {
             // --- PDF ------------------------------------------------------
             if (mime === 'application/pdf') {
               try {
-                // @ts-ignore - pdf-parse has no type definitions
-                const pdfModule = (await import('pdf-parse/lib/pdf-parse.js')) as any;
-                const pdf = pdfModule.default ?? pdfModule;
+                // pdf-parse is CommonJS, dynamic import returns module with default
+                const pdfModule = await import('pdf-parse');
+                const pdf = pdfModule.default as (data: Buffer) => Promise<{ text: string }>;
                 const data = await pdf(buf);
                 content.push({ type: 'text', text: `PDF ${attachment.name}:\n${data.text}` });
               } catch (err) {
@@ -213,12 +187,6 @@ export async function POST(req: NextRequest) {
           content.unshift({ type: 'text', text: 'Analyze the attached file(s).' });
         }
 
-        console.log('Final processed message:', {
-          messageId: message.id,
-          contentItems: content.length,
-          contentTypes: content.map(c => c.type),
-          hasMultipleContent: content.length > 1
-        });
 
         return {
           role: message.role as 'user' | 'assistant',
