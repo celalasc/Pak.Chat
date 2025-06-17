@@ -11,6 +11,7 @@ import { useKeyboardInsets } from '../hooks/useKeyboardInsets';
 import { cn } from '@/lib/utils';
 import React, { useEffect, useRef, useState } from 'react';
 import { useSettingsStore } from '@/frontend/stores/SettingsStore';
+import { useModelStore } from '@/frontend/stores/ModelStore';
 import type { UIMessage } from 'ai';
 
 interface ChatProps {
@@ -20,6 +21,7 @@ interface ChatProps {
 
 function Chat({ threadId, initialMessages }: ChatProps) {
   const { isMobile } = useIsMobile();
+  const { selectedModel } = useModelStore();
   const router = useRouter();
   const panelRef = useRef<HTMLDivElement>(null);
   const isHeaderVisible = useScrollHide<HTMLDivElement>({ threshold: 15, panelRef });
@@ -88,6 +90,7 @@ function Chat({ threadId, initialMessages }: ChatProps) {
 
       {/* Core chat UI */}
       <ChatView
+        key={`${threadId}-${selectedModel}`}
         threadId={threadId}
         initialMessages={initialMessages}
         showNavBars={settings.showNavBars}
