@@ -5,13 +5,13 @@ import { Check, Copy, RefreshCcw, SquarePen, GitBranch } from 'lucide-react';
 import { UIMessage } from 'ai';
 import { UseChatHelpers } from '@ai-sdk/react';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
+import { useModelStore } from '@/frontend/stores/ModelStore';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { isConvexId } from '@/lib/ids';
 import type { Id } from '@/convex/_generated/dataModel';
 import { useRouter } from 'next/navigation';
-import { useSettingsStore } from '@/frontend/stores/SettingsStore';
 
 interface MessageControlsProps {
   threadId: string;
@@ -38,16 +38,15 @@ export default function MessageControls({
 }: MessageControlsProps) {
   const [copied, setCopied] = useState(false);
   const { hasRequiredKeys } = useAPIKeyStore();
+  const { selectedModel } = useModelStore();
   const canChat = hasRequiredKeys();
   const { isMobile } = useIsMobile();
-  const { settings } = useSettingsStore();
   const removeAfter = useMutation<typeof api.messages.removeAfter>(
     api.messages.removeAfter
   );
   const removeMessage = useMutation<typeof api.messages.remove>(
     api.messages.remove
   );
-  const saveVersion = useMutation(api.messages.saveVersion);
   const cloneThread = useMutation<typeof api.threads.clone>(api.threads.clone);
   const thread = useQuery(
     api.threads.get,
@@ -64,16 +63,6 @@ export default function MessageControls({
   };
 
   const handleRegenerate = async () => {
-    // Проверяем, что сообщение сохранено в базе данных
-    if (!isConvexId(message.id)) {
-      console.warn("Cannot regenerate a message that has not been saved to the database yet.");
-      return;
-    }
-
-    if (settings.saveRegenerations) {
-      await saveVersion({ messageId: message.id as Id<'messages'> });
-    }
-
     // stop the current request
     stop();
 
@@ -81,42 +70,51 @@ export default function MessageControls({
       return;
     }
 
-    if (message.role === 'user') {
-      await removeAfter({
-        threadId: threadId as Id<'threads'>,
-        afterMessageId: message.id as Id<'messages'>,
-      });
-
-      setMessages((messages) => {
-        const index = messages.findIndex((m) => m.id === message.id);
-
-        if (index !== -1) {
-          return [...messages.slice(0, index + 1)];
-        }
-
-        return messages;
-      });
-    } else {
-      await removeAfter({
-        threadId: threadId as Id<'threads'>,
-        afterMessageId: message.id as Id<'messages'>,
-      });
-      await removeMessage({ messageId: message.id as Id<'messages'> });
-
-      setMessages((messages) => {
-        const index = messages.findIndex((m) => m.id === message.id);
-
-        if (index !== -1) {
-          return [...messages.slice(0, index)];
-        }
-
-        return messages;
-      });
+    // Only handle messages with valid Convex IDs to avoid validation errors
+    if (!isConvexId(message.id)) {
+      console.warn('Cannot regenerate message with non-Convex ID:', message.id);
+      return;
     }
 
-    setTimeout(() => {
-      reload();
-    }, 0);
+    try {
+      if (message.role === 'user') {
+        // For user messages, remove all messages after this one and trigger reload
+        await removeAfter({
+          threadId: threadId as Id<'threads'>,
+          afterMessageId: message.id as Id<'messages'>,
+        });
+
+        setMessages((messages) => {
+          const index = messages.findIndex((m) => m.id === message.id);
+          if (index !== -1) {
+            return [...messages.slice(0, index + 1)];
+          }
+          return messages;
+        });
+      } else {
+        // For assistant messages, remove the message and all after it
+        await removeAfter({
+          threadId: threadId as Id<'threads'>,
+          afterMessageId: message.id as Id<'messages'>,
+        });
+        await removeMessage({ messageId: message.id as Id<'messages'> });
+
+        setMessages((messages) => {
+          const index = messages.findIndex((m) => m.id === message.id);
+          if (index !== -1) {
+            return [...messages.slice(0, index)];
+          }
+          return messages;
+        });
+      }
+
+      // Wait a bit to ensure the database operations complete before reloading
+      setTimeout(() => {
+        reload();
+      }, 100);
+    } catch (error) {
+      console.error('Error during regeneration:', error);
+    }
   };
 
   // На мобильных устройствах показываем кнопки только когда isVisible = true
@@ -161,7 +159,7 @@ export default function MessageControls({
         </Button>
       )}
       {canChat && (
-        <Button variant="ghost" size="icon" onClick={handleRegenerate} disabled={!isConvexId(message.id)}>
+        <Button variant="ghost" size="icon" onClick={handleRegenerate}>
           <RefreshCcw className="w-4 h-4" />
         </Button>
       )}

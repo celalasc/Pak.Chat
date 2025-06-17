@@ -36,40 +36,22 @@ function CodeHeader({ lang, codeString }: { lang: string; codeString: string }) 
   );
 }
 
-// Добавляем проп isStreaming, который будет приходить из Message.tsx
-const MemoizedMarkdown = memo(({ content, isStreaming }: { content: string, isStreaming?: boolean }) => {
+const MemoizedMarkdown = memo(({ content }: { content: string }) => {
   const components: Components = {
     code({ node, inline, className, children, ...props }: any) {
       const match = /language-(\w+)/.exec(className || '');
       const codeString = String(children).replace(/\n$/, '');
 
+      // Если это большой блок кода (не inline и есть язык)
       if (!inline && match) {
-        // ЕСЛИ ИДЕТ СТРИМИНГ - ПОКАЗЫВАЕМ ПРОСТОЙ ТЕКСТ
-        if (isStreaming) {
-          return (
-            <div className="relative my-4 rounded-lg border bg-background">
-              <CodeHeader lang={match[1]} codeString={codeString} />
-              <pre className="p-4 bg-transparent text-sm font-mono overflow-x-auto">
-                <code>{codeString}</code>
-              </pre>
-            </div>
-          );
-        }
-        // ЕСЛИ СТРИМИНГ ОКОНЧЕН - ПОКАЗЫВАЕМ С ПОДСВЕТКОЙ
         return (
-          <div className="relative my-4 rounded-lg border bg-background">
+          <div className="relative my-4 rounded-lg border border-border bg-background">
             <CodeHeader lang={match[1]} codeString={codeString} />
             <SyntaxHighlighter
               style={oneDark}
               language={match[1]}
               PreTag="div"
-              customStyle={{ 
-                margin: 0, 
-                padding: '1rem', 
-                background: 'transparent', 
-                borderRadius: '0 0 0.5rem 0.5rem', 
-                fontFamily: 'var(--font-mono)' 
-              }}
+              customStyle={{ margin: 0, padding: '1rem', background: 'transparent', borderRadius: '0 0 0.5rem 0.5rem', fontFamily: 'var(--font-mono)' }}
               codeTagProps={{ style: { fontFamily: 'inherit' } }}
               {...props}
             >
@@ -79,6 +61,7 @@ const MemoizedMarkdown = memo(({ content, isStreaming }: { content: string, isSt
         );
       }
 
+      // Если это простой inline-код
       return (
         <code className="mx-0.5 rounded-md bg-secondary px-1.5 py-1 font-mono text-sm" {...props}>
           {children}

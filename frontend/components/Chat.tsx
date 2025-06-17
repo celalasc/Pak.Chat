@@ -17,7 +17,6 @@ import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { useKeyboardInsets } from '../hooks/useKeyboardInsets';
 import { cn } from '@/lib/utils';
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { useDebouncedCallback } from 'use-debounce';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { isConvexId } from '@/lib/ids';
@@ -25,27 +24,8 @@ import { toast } from 'sonner';
 import { Id } from '@/convex/_generated/dataModel';
 import { useQuoteStore } from '@/frontend/stores/QuoteStore';
 import { useAttachmentsStore } from '@/frontend/stores/AttachmentsStore';
-import { create } from 'zustand'; // Импортируем Zustand
 import { useChatStore } from '@/frontend/stores/ChatStore';
 import { useSettingsStore } from '@/frontend/stores/SettingsStore';
-
-// --- НАЧАЛО: Код для Zustand Store ---
-// Мы определяем store прямо в этом файле, так как нельзя создать новый.
-interface MessageVersionState {
-  versions: Record<string, number>;
-  updateVersion: (messageId: string, version: number) => void;
-  reset: () => void;
-}
-
-export const useMessageVersionStore = create<MessageVersionState>((set) => ({
-  versions: {},
-  updateVersion: (messageId, version) =>
-    set((state) => ({
-      versions: { ...state.versions, [messageId]: version },
-    })),
-  reset: () => set({ versions: {} }),
-}));
-// --- КОНЕЦ: Код для Zustand Store ---
 
 
 interface ChatProps {
@@ -75,22 +55,8 @@ function Chat({ threadId, initialMessages }: ChatProps) {
   const submittedMessageIdRef = useRef<string | null>(null);
   // Перенос навигации осуществляется из ChatInput
   
-  // Используем наш store, определенный выше
-  const updateVersion = useMessageVersionStore((s) => s.updateVersion);
-
   const sendMessage = useMutation<typeof api.messages.send>(api.messages.send);
-  const patchContent = useMutation(api.messages.patchContent);
-  const finalizeMessage = useMutation(api.messages.finalize);
   const hasKeys = useMemo(() => hasRequiredKeys(), [hasRequiredKeys]);
-
-  const debouncedPatch = useDebouncedCallback(
-    (id: Id<'messages'>, content: string, version: number) => {
-      patchContent({ messageId: id, content, version }).catch((err) => {
-        console.error('patchContent failed', err);
-      });
-    },
-    1000
-  );
 
   useQuoteShortcuts();
 
@@ -187,7 +153,6 @@ function Chat({ threadId, initialMessages }: ChatProps) {
       setInput('');
       clearQuote();
       clearAttachments();
-      useMessageVersionStore.getState().reset();
     }
 
     setMessages(initialMessages);
@@ -197,8 +162,9 @@ function Chat({ threadId, initialMessages }: ChatProps) {
   useEffect(() => {
     const lastMessage = messages[messages.length - 1];
     if (
-      status === 'idle' &&
+      status === 'ready' &&
       lastMessage?.role === 'user' &&
+      isConvexId(lastMessage.id) &&
       isConvexId(currentThreadId) &&
       submittedMessageIdRef.current !== lastMessage.id
     ) {
@@ -212,36 +178,8 @@ function Chat({ threadId, initialMessages }: ChatProps) {
   // Persist final assistant content to DB once generation is complete
   // Versions are incrementally patched while streaming.
 
-  // Инкрементальное сохранение с защитой от лишних вызовов
-  useEffect(() => {
-    const last = messages[messages.length - 1];
-    if (last?.role === 'assistant' && status === 'streaming' && isConvexId(last.id)) {
-      const currentVersion = useMessageVersionStore.getState().versions[last.id] ?? 0;
-      const newVersion = currentVersion + 1;
-      debouncedPatch(last.id as Id<'messages'>, last.content, newVersion);
-      updateVersion(last.id, newVersion);
-    }
-  }, [messages, status, debouncedPatch, updateVersion]);
-
-  // After generation ends, flush pending patches
-  useEffect(() => {
-    // Status 'ready' means the assistant finished responding
-    if (status === 'ready') {
-      const last = messages[messages.length - 1];
-      if (last?.role === 'assistant' && isConvexId(last.id)) {
-        const currentVersion =
-          useMessageVersionStore.getState().versions[last.id] ?? 0;
-        patchContent({
-          messageId: last.id as Id<'messages'>,
-          content: last.content,
-          version: currentVersion + 1,
-        });
-        finalizeMessage({ messageId: last.id as Id<'messages'> });
-        // Закомментируем сброс, который может вызывать перерендер
-        // useMessageVersionStore.getState().reset();
-      }
-    }
-  }, [status, messages, patchContent, finalizeMessage]);
+  // Инкрементальное сохранение отключено, используется только onFinish
+  // После завершения генерации сообщение сохраняется в onFinish
 
   return (
     <div className="w-full min-h-screen flex flex-col overflow-y-auto chat-smooth">

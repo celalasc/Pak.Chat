@@ -60,6 +60,14 @@ export default function MessageEditor({
 
   const handleSave = async () => {
     if (!isConvexId(threadId)) return;
+    
+    // Only handle messages with valid Convex IDs to avoid validation errors
+    if (!isConvexId(message.id)) {
+      console.warn('Cannot edit message with non-Convex ID:', message.id);
+      toast.error('Cannot edit this message');
+      return;
+    }
+
     try {
       await removeAfter({
         threadId: threadId as Id<'threads'>,
@@ -107,7 +115,8 @@ export default function MessageEditor({
       setTimeout(() => {
         reload();
       }, 0);
-    } catch {
+    } catch (error) {
+      console.error('Error during message edit:', error);
       toast.error('Failed to save changes');
     }
   };

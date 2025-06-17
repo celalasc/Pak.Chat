@@ -2,7 +2,6 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { streamText, convertToCoreMessages, type Message } from 'ai';
-import pdf from 'pdf-parse';
 import { getModelConfig, AIModel } from '@/lib/models';
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchQuery } from 'convex/nextjs';
@@ -35,8 +34,23 @@ interface Attachment {
 
 type ChatMessage = Omit<Message, 'id'>;
 
+/**
+ * Next.js route execution timeout. Streaming long replies or handling
+ * large (but still bounded) files can easily exceed one minute, поэтому
+ * увеличиваем лимит до 5 минут.
+ */
+export const maxDuration = 300;
 
-export const maxDuration = 60;
+// Максимальный допустимый размер загружаемого вложения (30 МБ)
+const MAX_ATTACHMENT_SIZE_BYTES = 30 * 1024 * 1024;
+// Мультимодели спокойно справляются с текстом, JSON, CSV и т. д.
+const EXTRA_TEXT_MIME_TYPES = new Set([
+  'application/json',
+  'application/xml',
+  'application/csv',
+  'application/x-yaml',
+  'application/sql',
+]);
 
 export async function POST(req: NextRequest) {
   try {
@@ -86,11 +100,30 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const messageIds = new Set(messages.map((m: { id: string }) => m.id));
+
     const processedMessages: ChatMessage[] = await Promise.all(
-      messages.map(async (message: { id: string; role: string; content: string }) => {
-        const messageAttachments = attachments.filter(
-          (a) => a.messageId === message.id && a.url
-        );
+      messages.map(async (message: { id: string; role: string; content: string }, index: number) => {
+        // Attachments may arrive slightly later than the message –
+        // treat attachments that haven't been linked (messageId == null)
+        // as belonging to the latest user message to avoid race conditions.
+        const messageAttachments = attachments.filter((a) => {
+          if (!a.url) return false;
+          if (a.messageId === message.id) return true;
+          // If attachment.messageId is null OR not part of this request (means server DB id),
+          // attach it to the nearest preceding user message without other attachments.
+          if (a.messageId == null || !messageIds.has(a.messageId as unknown as string)) {
+            return message.role === 'user';
+          }
+          return false;
+        });
+
+        console.log('Processing message:', {
+          messageId: message.id,
+          messageRole: message.role,
+          allAttachments: attachments.map(a => ({ id: a.id, messageId: a.messageId, name: a.name, type: a.type, hasUrl: !!a.url })),
+          filteredAttachments: messageAttachments.map(a => ({ id: a.id, name: a.name, type: a.type }))
+        });
 
         if (messageAttachments.length === 0) {
           return { role: message.role, content: message.content };
@@ -103,33 +136,89 @@ export async function POST(req: NextRequest) {
         }
 
         for (const attachment of messageAttachments) {
-          if (attachment.type === 'application/pdf') {
-            try {
-              const res = await fetch(attachment.url!);
-              const buf = Buffer.from(await res.arrayBuffer());
-              const data = await pdf(buf);
-              content.push({ type: 'text', text: `PDF ${attachment.name}:\n${data.text}` });
-            } catch (e) {
-              console.error('Failed to parse PDF:', e);
-            }
-            continue;
-          }
+          if (!attachment.url) continue;
 
-          if (modelConfig.provider === 'google') {
-            content.push({ type: 'image', image: attachment.url! });
-          } else {
-            try {
-              const { dataUrl } = await urlToDataUrl(attachment.url!);
-              content.push({ type: 'image', image: dataUrl });
-            } catch (e) {
-              console.error(`Failed to process attachment for ${modelConfig.provider}:`, e);
+          console.log('Processing attachment:', {
+            name: attachment.name,
+            type: attachment.type,
+            provider: modelConfig.provider,
+          });
+
+          try {
+            const res = await fetch(attachment.url);
+            if (!res.ok) throw new Error(`Failed to fetch attachment ${attachment.url}`);
+
+            const arrayBuffer = await res.arrayBuffer();
+            const sizeBytes = arrayBuffer.byteLength;
+
+            if (sizeBytes > MAX_ATTACHMENT_SIZE_BYTES) {
+              content.push({
+                type: 'text',
+                text: `Attachment ${attachment.name} skipped – file size ${(sizeBytes / (1024 * 1024)).toFixed(1)} MB exceeds 30 MB limit.`,
+              });
+              console.warn('Attachment too large – skipped:', attachment.name);
+              continue;
             }
+
+            // Convert buffer once for downstream usage
+            const buf = Buffer.from(arrayBuffer);
+
+            const mime = attachment.type;
+
+            // --- PDF ------------------------------------------------------
+            if (mime === 'application/pdf') {
+              try {
+                // @ts-ignore - pdf-parse has no type definitions
+                const pdfModule = (await import('pdf-parse/lib/pdf-parse.js')) as any;
+                const pdf = pdfModule.default ?? pdfModule;
+                const data = await pdf(buf);
+                content.push({ type: 'text', text: `PDF ${attachment.name}:\n${data.text}` });
+              } catch (err) {
+                console.error('PDF parse failed:', err);
+                content.push({ type: 'text', text: `Unable to parse PDF ${attachment.name}.` });
+              }
+              continue;
+            }
+
+            // --- Plain-text & structured text ----------------------------
+            if (mime.startsWith('text/') || EXTRA_TEXT_MIME_TYPES.has(mime)) {
+              const text = buf.toString('utf-8');
+              content.push({ type: 'text', text: `${attachment.name}:\n${text}` });
+              continue;
+            }
+
+            // --- Images ---------------------------------------------------
+            if (mime.startsWith('image/')) {
+              if (modelConfig.provider === 'google') {
+                content.push({ type: 'image', image: attachment.url });
+              } else {
+                const base64 = buf.toString('base64');
+                content.push({ type: 'image', image: `data:${mime};base64,${base64}` });
+              }
+              continue;
+            }
+
+            // --- Other binaries ------------------------------------------
+            const base64 = buf.toString('base64');
+            content.push({
+              type: 'text',
+              text: `Binary file ${attachment.name} (type ${mime}, ${(sizeBytes / 1024).toFixed(0)} KB) encoded in base64 below:\n${base64}`,
+            });
+          } catch (err) {
+            console.error('Attachment processing failed:', err);
           }
         }
 
         if (content.length > 0 && !content.some((c) => c.type === 'text')) {
           content.unshift({ type: 'text', text: 'Analyze the attached file(s).' });
         }
+
+        console.log('Final processed message:', {
+          messageId: message.id,
+          contentItems: content.length,
+          contentTypes: content.map(c => c.type),
+          hasMultipleContent: content.length > 1
+        });
 
         return {
           role: message.role as 'user' | 'assistant',
