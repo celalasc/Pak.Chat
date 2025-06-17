@@ -394,6 +394,19 @@
     select {
       font-size: 16px !important;
     }
+    
+    /* Улучшенная поддержка мобильной клавиатуры */
+    .mobile-keyboard-fix {
+      padding-bottom: calc(env(safe-area-inset-bottom) + env(keyboard-inset-height, 0px));
+      transition: padding-bottom 0.3s ease;
+    }
+    
+    /* Фиксация прыжков при появлении клавиатуры */
+    .mobile-keyboard-fix input {
+      transform: translateZ(0);
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+    }
   }
 }
 

@@ -15,6 +15,8 @@ export const save = mutation({
         name: v.string(),
         type: v.string(),
         messageId: v.union(v.string(), v.null()),
+        width: v.optional(v.number()),
+        height: v.optional(v.number()),
       })
     ),
   },
@@ -26,6 +28,8 @@ export const save = mutation({
           fileId: a.storageId,
           name: a.name,
           type: a.type,
+          width: a.width,
+          height: a.height,
           // Временные ID от клиента игнорируем, messageId будет обновлен позже
           messageId: undefined,
         });
@@ -37,6 +41,8 @@ export const save = mutation({
           url,
           name: a.name,
           type: a.type,
+          width: a.width,
+          height: a.height,
         };
       })
     );
@@ -61,6 +67,8 @@ export const byThread = query({
           messageId: a.messageId,
           name: a.name,
           type: a.type,
+          width: a.width,
+          height: a.height,
           url,
         };
       })

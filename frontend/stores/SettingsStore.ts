@@ -18,7 +18,6 @@ type Settings = {
   theme: Theme;
   hidePersonal: boolean;
   showNavBars: boolean;
-  saveRegenerations: boolean;
   showChatPreview: boolean;
 };
 
@@ -55,7 +54,6 @@ const defaultSettings: Settings = {
   theme: 'light',
   hidePersonal: false,
   showNavBars: true,
-  saveRegenerations: true,
   showChatPreview: true,
 };
 
@@ -99,43 +97,45 @@ export function useSettingsSync() {
 
   const { settings, setSettings } = useSettingsStore();
   const lastSaved = useRef<typeof settings | null>(null);
+  const isInitialized = useRef(false);
 
-  // hydrate from server
+  // hydrate from server - только один раз при инициализации
   useEffect(() => {
-    if (settingsDoc) {
+    if (settingsDoc && !isInitialized.current) {
       const { uiFont, codeFont, hidePersonal } = settingsDoc;
-      setSettings({
-        generalFont: uiFont as GeneralFont ?? 'Proxima Vara',
-        codeFont: codeFont as CodeFont ?? 'Berkeley Mono',
+      const serverSettings = {
+        generalFont: (uiFont as GeneralFont) ?? 'Proxima Vara',
+        codeFont: (codeFont as CodeFont) ?? 'Berkeley Mono',
         hidePersonal: hidePersonal ?? false,
-      });
+      };
+      
+      setSettings(serverSettings);
       lastSaved.current = {
-        generalFont: uiFont as GeneralFont ?? 'Proxima Vara',
-        codeFont: codeFont as CodeFont ?? 'Berkeley Mono',
+        ...serverSettings,
         theme: settings.theme,
-        hidePersonal: hidePersonal ?? false,
         showNavBars: settings.showNavBars,
-        saveRegenerations: settings.saveRegenerations,
         showChatPreview: settings.showChatPreview,
       };
+      isInitialized.current = true;
     }
-  }, [settingsDoc, setSettings, settings.theme]);
+  }, [settingsDoc, setSettings]); // Убираем settings.theme из зависимостей
 
-  // save to server when settings change
+  // save to server when settings change - только синхронизируемые настройки
   useEffect(() => {
-    if (!convexUser) return;
+    if (!convexUser || !isInitialized.current) return;
     if (!lastSaved.current) return;
-    if (
-      settings.generalFont !== lastSaved.current.generalFont ||
-      settings.codeFont !== lastSaved.current.codeFont ||
-      settings.hidePersonal !== lastSaved.current.hidePersonal
-    ) {
-      lastSaved.current = settings;
+    
+    const hasChanges = settings.generalFont !== lastSaved.current.generalFont ||
+                      settings.codeFont !== lastSaved.current.codeFont ||
+                      settings.hidePersonal !== lastSaved.current.hidePersonal;
+    
+    if (hasChanges) {
+      lastSaved.current = { ...lastSaved.current, ...settings };
       save({
         uiFont: settings.generalFont,
         codeFont: settings.codeFont,
         hidePersonal: settings.hidePersonal,
       });
     }
-  }, [settings, save, convexUser]);
+  }, [settings.generalFont, settings.codeFont, settings.hidePersonal, save, convexUser]); // Только конкретные поля
 }

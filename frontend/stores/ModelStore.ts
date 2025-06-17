@@ -4,13 +4,16 @@ import { AIModel, getModelConfig, ModelConfig } from '@/lib/models';
 
 type ModelStore = {
   selectedModel: AIModel;
+  favoriteModels: AIModel[];
   setModel: (model: AIModel) => void;
+  toggleFavorite: (model: AIModel) => void;
+  isFavorite: (model: AIModel) => boolean;
   getModelConfig: () => ModelConfig;
 };
 
 type StoreWithPersist = Mutate<
   StoreApi<ModelStore>,
-  [['zustand/persist', { selectedModel: AIModel }]]
+  [['zustand/persist', { selectedModel: AIModel; favoriteModels: AIModel[] }]]
 >;
 
 export const withStorageDOMEvents = (store: StoreWithPersist) => {
@@ -36,9 +39,29 @@ export const useModelStore = create<ModelStore>()(
   persist(
     (set, get) => ({
       selectedModel: 'Gemini 2.5 Flash',
+      favoriteModels: ['Gemini 2.5 Flash', 'GPT-4o', 'Deepseek R1 0528'],
 
       setModel: (model) => {
         set({ selectedModel: model });
+      },
+
+      toggleFavorite: (model) => {
+        set((state) => {
+          const isFav = state.favoriteModels.includes(model);
+          if (isFav) {
+            return {
+              favoriteModels: state.favoriteModels.filter(m => m !== model)
+            };
+          } else {
+            return {
+              favoriteModels: [...state.favoriteModels, model]
+            };
+          }
+        });
+      },
+
+      isFavorite: (model) => {
+        return get().favoriteModels.includes(model);
       },
 
       getModelConfig: () => {
@@ -48,7 +71,10 @@ export const useModelStore = create<ModelStore>()(
     }),
     {
       name: 'selected-model',
-      partialize: (state) => ({ selectedModel: state.selectedModel }),
+      partialize: (state) => ({ 
+        selectedModel: state.selectedModel,
+        favoriteModels: state.favoriteModels
+      }),
     }
   )
 );

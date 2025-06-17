@@ -50,6 +50,8 @@ export default defineSchema({
     name: v.string(),
     type: v.string(),
     messageId: v.optional(v.id("messages")),
+    width: v.optional(v.number()),
+    height: v.optional(v.number()),
   })
     .index("by_thread", ["threadId"])
     .index("by_message", ["messageId"]),

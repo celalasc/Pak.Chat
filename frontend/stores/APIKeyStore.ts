@@ -7,7 +7,7 @@ import { encryptData, decryptData } from '@/frontend/lib/crypto';
 import { useAuthStore } from './AuthStore';
 import { withStorageDOMEvents } from './ModelStore';
 
-export const PROVIDERS = ['google', 'openrouter', 'openai'] as const;
+export const PROVIDERS = ['google', 'openrouter', 'openai', 'groq'] as const;
 export type Provider = (typeof PROVIDERS)[number];
 export type APIKeys = Record<Provider, string>;
 
@@ -30,7 +30,7 @@ const deepEqual = (a: APIKeys, b: APIKeys): boolean => {
 const baseStore = create<APIKeyState>()(
   persist(
     (set, get) => ({
-      keys: { google: '', openrouter: '', openai: '' },
+      keys: { google: '', openrouter: '', openai: '', groq: '' },
       keysLoading: true,
       setLocal: (updates) =>
         set((state) => ({ keys: { ...state.keys, ...updates } })),
