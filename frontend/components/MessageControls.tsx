@@ -168,7 +168,6 @@ export default function MessageControls({
           </Button>
         )}
       </div>
-      </div>
     </div>
   );
 }
