@@ -7,7 +7,7 @@ import { UseChatHelpers } from '@ai-sdk/react';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 import { useModelStore } from '@/frontend/stores/ModelStore';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation, useQuery, useConvexAuth } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { isConvexId } from '@/lib/ids';
 import type { Id } from '@/convex/_generated/dataModel';
@@ -45,6 +45,7 @@ export default function MessageControls({
   const { hasRequiredKeys, keys } = useAPIKeyStore();
   const { selectedModel } = useModelStore();
   const { settings } = useSettingsStore();
+  const { isAuthenticated } = useConvexAuth();
   const canChat = hasRequiredKeys();
   const { isMobile } = useIsMobile();
   const removeAfter = useMutation(api.messages.removeAfter);
@@ -58,7 +59,9 @@ export default function MessageControls({
   // Получаем данные о сообщении для версий
   const messageData = useQuery(
     api.messages.getOne,
-    isConvexId(message.id) ? { messageId: message.id as Id<'messages'> } : 'skip'
+    isConvexId(message.id) && isAuthenticated
+      ? { messageId: message.id as Id<'messages'> }
+      : 'skip'
   );
   
   const router = useRouter();

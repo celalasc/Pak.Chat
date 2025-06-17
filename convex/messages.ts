@@ -35,12 +35,30 @@ export const get = query({
 export const getOne = query({
   args: { messageId: v.id("messages") },
   async handler(ctx, { messageId }) {
-    const uid = await currentUserId(ctx);
-    if (!uid) throw new Error("Unauthenticated");
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthenticated: User identity not found.");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
+      .unique();
+
+    if (!user) {
+      throw new Error("Unauthenticated: User not found in database.");
+    }
+
     const msg = await ctx.db.get(messageId);
-    if (!msg) return null;
+    if (!msg) {
+      return null;
+    }
+
     const thread = await ctx.db.get(msg.threadId);
-    if (!thread || thread.userId !== uid) throw new Error("Permission denied");
+    if (!thread || thread.userId !== user._id) {
+      throw new Error("Permission denied: User does not own this thread.");
+    }
+
     return msg;
   },
 });
@@ -260,7 +278,6 @@ export const switchVersion = mutation({
     if (assistantMessage && assistantMessage.role === "assistant") {
       await ctx.db.patch(assistantMessage._id, {
         content: versionToRestore.content,
-        model: versionToRestore.model,
       });
     }
 
