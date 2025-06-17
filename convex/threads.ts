@@ -31,12 +31,11 @@ export const list = query({
     }
 
     if (args.searchQuery) {
-      const searchQuery = args.searchQuery.toLowerCase();
-      const all = await ctx.db
+      return ctx.db
         .query("threads")
-        .withIndex("by_user_and_time", (q) => q.eq("userId", uid))
-        .collect();
-      return all.filter((t) => t.title.toLowerCase().includes(searchQuery));
+        .withSearchIndex("by_title", (q) => q.search("title", args.searchQuery!))
+        .take(20)
+        .then((res) => res.filter((t) => t.userId === uid));
     }
 
     return ctx.db

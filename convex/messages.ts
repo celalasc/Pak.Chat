@@ -31,6 +31,20 @@ export const get = query({
   },
 });
 
+/** Get a single message by ID */
+export const getOne = query({
+  args: { messageId: v.id("messages") },
+  async handler(ctx, { messageId }) {
+    const uid = await currentUserId(ctx);
+    if (!uid) throw new Error("Unauthenticated");
+    const msg = await ctx.db.get(messageId);
+    if (!msg) return null;
+    const thread = await ctx.db.get(msg.threadId);
+    if (!thread || thread.userId !== uid) throw new Error("Permission denied");
+    return msg;
+  },
+});
+
 /** Get latest messages for preview */
 export const preview = query({
   args: { threadId: v.id("threads"), limit: v.optional(v.number()) },
@@ -53,6 +67,7 @@ export const send = mutation({
     threadId: v.id("threads"),
     role: v.union(v.literal("user"), v.literal("assistant")),
     content: v.string(),
+    model: v.optional(v.string()),
   },
   async handler(ctx, args) {
     const uid = await currentUserId(ctx);
@@ -68,6 +83,7 @@ export const send = mutation({
       content: args.content,
       createdAt: Date.now(),
       version: 0,
+      model: args.model,
     });
     return id as Id<"messages">;
   },
@@ -195,7 +211,7 @@ export const saveVersion = mutation({
     if (!thread || thread.userId !== uid) throw new Error("Permission denied");
 
     const history = msg.history ?? [];
-    history.push({ content: msg.content, createdAt: Date.now() });
+    history.push({ content: msg.content, createdAt: Date.now(), model: msg.model ?? "unknown" });
     await ctx.db.patch(messageId, {
       history,
       isEdited: true,
@@ -226,7 +242,34 @@ export const switchVersion = mutation({
 
     await ctx.db.patch(messageId, {
       content: msg.history[index].content,
+      model: msg.history[index].model ?? msg.model,
       activeHistoryIndex: index,
+    });
+
+    return msg.history[index];
+  },
+});
+
+/** Save previous assistant answer as version for a user message */
+export const saveAnswerVersion = mutation({
+  args: {
+    userMessageId: v.id("messages"),
+    answerContent: v.string(),
+    answerModel: v.string(),
+  },
+  async handler(ctx, { userMessageId, answerContent, answerModel }) {
+    const uid = await currentUserId(ctx);
+    if (!uid) throw new Error("Unauthenticated");
+    const userMsg = await ctx.db.get(userMessageId);
+    if (!userMsg) throw new Error("Message not found");
+    const thread = await ctx.db.get(userMsg.threadId);
+    if (!thread || thread.userId !== uid) throw new Error("Permission denied");
+
+    const history = userMsg.history ?? [];
+    history.push({ content: answerContent, createdAt: Date.now(), model: answerModel });
+    await ctx.db.patch(userMessageId, {
+      history,
+      activeHistoryIndex: history.length - 1,
     });
   },
 });

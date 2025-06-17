@@ -1,7 +1,7 @@
 "use client";
 
 import { X } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 
 interface ImageModalProps {
   isOpen: boolean;
@@ -20,6 +20,21 @@ export default function ImageModal({
   fileType,
   fileSize
 }: ImageModalProps) {
+  const [scale, setScale] = useState(1);
+  const [translateX, setTranslateX] = useState(0);
+  const [translateY, setTranslateY] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [startY, setStartY] = useState(0);
+  const imageRef = useRef<HTMLImageElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const resetZoom = useCallback(() => {
+    setScale(1);
+    setTranslateX(0);
+    setTranslateY(0);
+  }, []);
+
   // Закрытие по Escape
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -32,13 +47,104 @@ export default function ImageModal({
       document.addEventListener('keydown', handleEscape);
       // Блокируем скролл страницы
       document.body.style.overflow = 'hidden';
+      resetZoom(); // Reset zoom when modal opens
     }
 
     return () => {
       document.removeEventListener('keydown', handleEscape);
       document.body.style.overflow = 'unset';
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, resetZoom]);
+
+  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const scaleAmount = 0.1;
+    const newScale = e.deltaY < 0 ? scale + scaleAmount : scale - scaleAmount;
+    
+    // Prevent zooming out too much or too little
+    setScale(Math.max(0.5, Math.min(newScale, 5))); 
+  }, [scale]);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (scale > 1) { // Only allow dragging if zoomed in
+      setIsDragging(true);
+      setStartX(e.clientX - translateX);
+      setStartY(e.clientY - translateY);
+    }
+  }, [scale, translateX, translateY]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDragging) return;
+    setTranslateX(e.clientX - startX);
+    setTranslateY(e.clientY - startY);
+  }, [isDragging, startX, startY]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  // Touch events for pinch-zoom and pan
+  const lastTouch = useRef<number | null>(null);
+  const lastDistance = useRef<number | null>(null);
+  const lastCentroid = useRef<{ x: number; y: number } | null>(null);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length === 2) {
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      lastDistance.current = Math.hypot(touch2.pageX - touch1.pageX, touch2.pageY - touch1.pageY);
+      lastCentroid.current = {
+        x: (touch1.pageX + touch2.pageX) / 2,
+        y: (touch1.pageY + touch2.pageY) / 2,
+      };
+    } else if (e.touches.length === 1 && scale > 1) {
+      setIsDragging(true);
+      setStartX(e.touches[0].clientX - translateX);
+      setStartY(e.touches[0].clientY - translateY);
+    }
+  }, [scale, translateX, translateY]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      const newDistance = Math.hypot(touch2.pageX - touch1.pageX, touch2.pageY - touch1.pageY);
+      const newCentroid = {
+        x: (touch1.pageX + touch2.pageX) / 2,
+        y: (touch1.pageY + touch2.pageY) / 2,
+      };
+
+      if (lastDistance.current && lastCentroid.current) {
+        // Pinch zoom
+        const scaleFactor = newDistance / lastDistance.current;
+        setScale((prevScale) => Math.max(0.5, Math.min(prevScale * scaleFactor, 5)));
+
+        // Pan based on centroid movement
+        const deltaX = newCentroid.x - lastCentroid.current.x;
+        const deltaY = newCentroid.y - lastCentroid.current.y;
+        setTranslateX((prev) => prev + deltaX);
+        setTranslateY((prev) => prev + deltaY);
+      }
+      lastDistance.current = newDistance;
+      lastCentroid.current = newCentroid;
+    } else if (e.touches.length === 1 && isDragging) {
+      e.preventDefault();
+      setTranslateX(e.touches[0].clientX - startX);
+      setTranslateY(e.touches[0].clientY - startY);
+    }
+  }, [scale, isDragging, startX, startY, translateX, translateY]);
+
+  const handleTouchEnd = useCallback(() => {
+    setIsDragging(false);
+    lastDistance.current = null;
+    lastCentroid.current = null;
+  }, []);
+
+  // Double click to reset zoom
+  const handleDoubleClick = useCallback(() => {
+    resetZoom();
+  }, [resetZoom]);
 
   if (!isOpen) return null;
 
@@ -77,12 +183,33 @@ export default function ImageModal({
         </div>
 
         {/* Image */}
-        <div className="flex items-center justify-center p-4 max-h-[calc(90vh-120px)] overflow-auto">
+        <div 
+          ref={containerRef}
+          className="flex items-center justify-center p-4 max-h-[calc(90vh-120px)] overflow-hidden relative cursor-grab"
+          onWheel={handleWheel}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp} // Stop dragging if mouse leaves container
+          onDoubleClick={handleDoubleClick}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          style={{ cursor: isDragging ? 'grabbing' : (scale > 1 ? 'grab' : 'default') }}
+        >
           <img
+            ref={imageRef}
             src={imageUrl}
             alt={fileName}
-            className="max-w-full max-h-full object-contain rounded-lg"
+            className="object-contain rounded-lg"
             loading="lazy"
+            style={{
+              transform: `scale(${scale}) translate(${translateX}px, ${translateY}px)`,
+              transition: isDragging ? 'none' : 'transform 0.1s ease-out', // Smooth transition when not dragging
+              transformOrigin: 'center center',
+              maxWidth: '100%',
+              maxHeight: '100%',
+            }}
           />
         </div>
       </div>

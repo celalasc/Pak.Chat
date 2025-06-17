@@ -19,6 +19,7 @@ type Settings = {
   hidePersonal: boolean;
   showNavBars: boolean;
   saveRegenerations: boolean;
+  showChatPreview: boolean;
 };
 
 type SettingsStore = {
@@ -55,6 +56,7 @@ const defaultSettings: Settings = {
   hidePersonal: false,
   showNavBars: true,
   saveRegenerations: true,
+  showChatPreview: true,
 };
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -112,6 +114,9 @@ export function useSettingsSync() {
         codeFont: codeFont as CodeFont ?? 'Berkeley Mono',
         theme: settings.theme,
         hidePersonal: hidePersonal ?? false,
+        showNavBars: settings.showNavBars,
+        saveRegenerations: settings.saveRegenerations,
+        showChatPreview: settings.showChatPreview,
       };
     }
   }, [settingsDoc, setSettings, settings.theme]);

@@ -15,11 +15,11 @@ import ImageModal from './ImageModal';
 import { Input } from '@/frontend/components/ui/input';
 import { Button } from '@/frontend/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/frontend/components/ui/badge';
 import { useAPIKeyStore, type APIKeys } from '@/frontend/stores/APIKeyStore';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
+import { WithTooltip } from './WithTooltip';
 
 function PureMessage({
   threadId,
@@ -72,6 +72,7 @@ function PureMessage({
     <div
       id={`message-${message.id}`}
       role="article"
+      data-role={message.role}
       className={cn(
         'flex flex-col',
         message.role === 'user' ? 'items-end' : 'items-start'
@@ -209,6 +210,7 @@ function PureMessage({
               )}
             </div>
           ) : (
+            <WithTooltip label={`Model: ${(message as any).model ?? 'unknown'}`}> 
             <div 
               key={key} 
               className={cn(
@@ -265,6 +267,7 @@ function PureMessage({
                 />
               )}
             </div>
+            </WithTooltip>
           );
         }
       })}

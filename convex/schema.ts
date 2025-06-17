@@ -48,10 +48,12 @@ export default defineSchema({
         v.object({
           content: v.string(),
           createdAt: v.number(),
+          model: v.optional(v.string()),
         })
       )
     ),
     activeHistoryIndex: v.optional(v.number()),
+    model: v.optional(v.string()),
   }).index("by_thread_and_time", ["threadId", "createdAt"]),
 
   // Attachments for messages

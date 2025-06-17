@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, memo } from 'react';
+import { useState, useEffect, useCallback, memo, useRef } from 'react';
 import { Drawer, DrawerContent, DrawerTrigger, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, DialogDescription } from '@/frontend/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -57,46 +57,61 @@ function SettingsDrawerComponent({ children, isOpen, setIsOpen }: SettingsDrawer
   }, [setIsOpen]);
 
   const ContentComponent = ({ className }: { className?: string }) => (
-    <div className={cn("flex flex-col gap-4 flex-1 min-h-0", className)}>
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-        <TabsList className={cn("grid w-full flex-shrink-0", isMobile ? "grid-cols-3" : "grid-cols-3")}>
-          <TabsTrigger value="customization" className="flex items-center gap-1 text-xs sm:text-sm">
-            <Palette className="h-3 w-3 sm:h-4 sm:w-4" />
-            <span className="hidden sm:inline">Customization</span>
-            <span className="sm:hidden">Style</span>
-          </TabsTrigger>
-          <TabsTrigger value="profile" className="flex items-center gap-1 text-xs sm:text-sm">
-            <User className="h-3 w-3 sm:h-4 sm:w-4" />
-            <span className="hidden xs:inline">Profile</span>
-            <span className="xs:hidden">User</span>
-          </TabsTrigger>
-          <TabsTrigger value="api-keys" className="flex items-center gap-1 text-xs sm:text-sm">
-            <Key className="h-3 w-3 sm:h-4 sm:w-4" />
-            <span className="hidden sm:inline">API Keys</span>
-            <span className="sm:hidden">Keys</span>
-          </TabsTrigger>
-        </TabsList>
-        
-        <div className="flex-1 mt-4 min-h-0 overflow-y-auto scrollbar-none enhanced-scroll">
-          {/* Ленивая отрисовка содержимого вкладок */}
-          {activeTab === 'customization' && (
-            <div className={cn("mt-0", isMobile ? "mobile-settings-content" : "")}>
-              <CustomizationTab />
+    <div className={cn("flex gap-4 flex-1 min-h-0", className)}>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className={cn("flex-1 flex min-h-0", isMobile ? "flex-col" : "flex-row")}>
+        {isMobile ? (
+          // Мобильная версия - горизонтальные табы сверху
+          <>
+            <TabsList className="grid w-full flex-shrink-0 grid-cols-3">
+              <TabsTrigger value="customization" className="flex items-center gap-1 text-xs">
+                <Palette className="h-3 w-3" />
+                <span className="hidden xs:inline">Style</span>
+              </TabsTrigger>
+              <TabsTrigger value="profile" className="flex items-center gap-1 text-xs">
+                <User className="h-3 w-3" />
+                <span className="hidden xs:inline">User</span>
+              </TabsTrigger>
+              <TabsTrigger value="api-keys" className="flex items-center gap-1 text-xs">
+                <Key className="h-3 w-3" />
+                <span className="hidden xs:inline">Keys</span>
+              </TabsTrigger>
+            </TabsList>
+            
+            <div className="flex-1 mt-4 min-h-0 overflow-y-auto scrollbar-none enhanced-scroll">
+              {activeTab === 'customization' && <CustomizationTab />}
+              {activeTab === 'profile' && <ProfileTab />}
+              {activeTab === 'api-keys' && <APIKeysTab />}
             </div>
-          )}
-          
-          {activeTab === 'profile' && (
-            <div className={cn("mt-0", isMobile ? "mobile-settings-content" : "")}>
-              <ProfileTab />
+          </>
+        ) : (
+          // Десктопная версия - вертикальные табы слева
+          <>
+            <div className="flex flex-col w-48 flex-shrink-0">
+              <TabsList className="grid grid-rows-3 h-auto p-1 bg-muted/50">
+                <TabsTrigger value="customization" className="flex items-center justify-start gap-3 text-sm h-11 px-4">
+                  <Palette className="h-4 w-4" />
+                  <span>Customization</span>
+                </TabsTrigger>
+                <TabsTrigger value="profile" className="flex items-center justify-start gap-3 text-sm h-11 px-4">
+                  <User className="h-4 w-4" />
+                  <span>Profile</span>
+                </TabsTrigger>
+                <TabsTrigger value="api-keys" className="flex items-center justify-start gap-3 text-sm h-11 px-4">
+                  <Key className="h-4 w-4" />
+                  <span>API Keys</span>
+                </TabsTrigger>
+              </TabsList>
             </div>
-          )}
-          
-          {activeTab === 'api-keys' && (
-            <div className={cn("mt-0", isMobile ? "mobile-settings-content" : "")}>
-              <APIKeysTab />
+            
+            <div className="flex-1 min-h-0 overflow-y-auto scrollbar-none enhanced-scroll pl-4">
+              <div className="scroll-auto" style={{ scrollBehavior: 'auto', overscrollBehavior: 'contain' }}>
+                {activeTab === 'customization' && <CustomizationTab />}
+                {activeTab === 'profile' && <ProfileTab />}
+                {activeTab === 'api-keys' && <APIKeysTab />}
+              </div>
             </div>
-          )}
-        </div>
+          </>
+        )}
       </Tabs>
     </div>
   );
@@ -159,7 +174,7 @@ function SettingsDrawerComponent({ children, isOpen, setIsOpen }: SettingsDrawer
       <DialogTrigger asChild>
         {children}
       </DialogTrigger>
-      <DialogContent className="max-w-3xl h-[80vh] flex flex-col">
+      <DialogContent className="w-[85vw] sm:max-w-none max-w-[800px] h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5" />
@@ -188,6 +203,10 @@ const CustomizationTab = () => {
     setTheme(theme);
   };
 
+  const handleSwitchChange = (setting: string, value: boolean) => {
+    setSettings({ [setting]: value });
+  };
+
   const FontPreview = ({ fontType, font }: { fontType: 'general' | 'code', font: string }) => {
     const getFontFamily = () => {
       if (fontType === 'general') {
@@ -200,24 +219,6 @@ const CustomizationTab = () => {
     const sampleText = fontType === 'general' 
       ? 'The quick brown fox jumps over the lazy dog'
       : 'function hello() {\n  console.log("Hello, World!");\n}';
-
-    // Применяем шрифт к корневому элементу для немедленного эффекта
-    useEffect(() => {
-      const root = document.documentElement;
-      if (fontType === 'general') {
-        if (font === 'Proxima Vara') {
-          root.style.setProperty('--font-sans', 'Proxima Vara, sans-serif');
-        } else {
-          root.style.setProperty('--font-sans', 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif');
-        }
-      } else {
-        if (font === 'Berkeley Mono') {
-          root.style.setProperty('--font-mono', 'Berkeley Mono, "JetBrains Mono", "Fira Code", "Cascadia Code", Consolas, monospace');
-        } else {
-          root.style.setProperty('--font-mono', 'ui-monospace, "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace');
-        }
-      }
-    }, [font, fontType]);
 
     return (
       <div 
@@ -357,7 +358,7 @@ const CustomizationTab = () => {
             <Switch
               id="navbars"
               checked={settings.showNavBars}
-              onCheckedChange={(v) => setSettings({ showNavBars: v })}
+              onCheckedChange={(v) => handleSwitchChange('showNavBars', v)}
             />
           </div>
           <div className="flex items-center justify-between">
@@ -365,7 +366,15 @@ const CustomizationTab = () => {
             <Switch
               id="save-regens"
               checked={settings.saveRegenerations}
-              onCheckedChange={(v) => setSettings({ saveRegenerations: v })}
+              onCheckedChange={(v) => handleSwitchChange('saveRegenerations', v)}
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="chat-preview" className="text-sm">Show chat preview</Label>
+            <Switch
+              id="chat-preview"
+              checked={settings.showChatPreview}
+              onCheckedChange={(v) => handleSwitchChange('showChatPreview', v)}
             />
           </div>
         </CardContent>
