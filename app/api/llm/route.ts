@@ -103,12 +103,6 @@ export async function POST(req: NextRequest) {
           return false;
         });
 
-        console.log('Processing message:', {
-          messageId: message.id,
-          messageRole: message.role,
-          allAttachments: attachments.map(a => ({ id: a.id, messageId: a.messageId, name: a.name, type: a.type, hasUrl: !!a.url })),
-          filteredAttachments: messageAttachments.map(a => ({ id: a.id, name: a.name, type: a.type }))
-        });
 
         if (messageAttachments.length === 0) {
           return { role: message.role, content: message.content };
@@ -123,11 +117,6 @@ export async function POST(req: NextRequest) {
         for (const attachment of messageAttachments) {
           if (!attachment.url) continue;
 
-          console.log('Processing attachment:', {
-            name: attachment.name,
-            type: attachment.type,
-            provider: modelConfig.provider,
-          });
 
           try {
             const res = await fetch(attachment.url);
@@ -153,9 +142,9 @@ export async function POST(req: NextRequest) {
             // --- PDF ------------------------------------------------------
             if (mime === 'application/pdf') {
               try {
-                // @ts-expect-error - pdf-parse has no type definitions
-                const pdfModule = (await import('pdf-parse/lib/pdf-parse.js')) as unknown;
-                const pdf = (pdfModule as { default?: (b: Buffer) => Promise<{ text: string }> }).default ?? (pdfModule as (b: Buffer) => Promise<{ text: string }>);
+                // pdf-parse is CommonJS, dynamic import returns module with default
+                const pdfModule = await import('pdf-parse');
+                const pdf = pdfModule.default as (data: Buffer) => Promise<{ text: string }>;
                 const data = await pdf(buf);
                 content.push({ type: 'text', text: `PDF ${attachment.name}:\n${data.text}` });
               } catch (err) {
@@ -198,12 +187,6 @@ export async function POST(req: NextRequest) {
           content.unshift({ type: 'text', text: 'Analyze the attached file(s).' });
         }
 
-        console.log('Final processed message:', {
-          messageId: message.id,
-          contentItems: content.length,
-          contentTypes: content.map(c => c.type),
-          hasMultipleContent: content.length > 1
-        });
 
         return {
           role: message.role as 'user' | 'assistant',

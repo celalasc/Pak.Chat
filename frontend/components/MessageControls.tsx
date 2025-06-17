@@ -1,4 +1,4 @@
-import { Dispatch, SetStateAction, useState } from 'react';
+import { Dispatch, SetStateAction, useState, useCallback, useMemo } from 'react';
 import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
 import { Check, Copy, RefreshCcw, SquarePen, GitBranch, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -43,20 +43,12 @@ export default function MessageControls({
   const { settings } = useSettingsStore();
   const canChat = hasRequiredKeys();
   const { isMobile } = useIsMobile();
-  const removeAfter = useMutation<typeof api.messages.removeAfter>(
-    api.messages.removeAfter
-  );
-  const removeMessage = useMutation<typeof api.messages.remove>(
-    api.messages.remove
-  );
-  const saveVersion = useMutation<typeof api.messages.saveVersion>(
-    api.messages.saveVersion
-  );
+  const removeAfter = useMutation(api.messages.removeAfter);
+  const removeMessage = useMutation(api.messages.remove);
+  const saveVersion = useMutation(api.messages.saveVersion);
   const saveAnswerVersion = useMutation(api.messages.saveAnswerVersion);
-  const switchVersion = useMutation<typeof api.messages.switchVersion>(
-    api.messages.switchVersion
-  );
-  const cloneThread = useMutation<typeof api.threads.clone>(api.threads.clone);
+  const switchVersion = useMutation(api.messages.switchVersion);
+  const cloneThread = useMutation(api.threads.clone);
   const thread = useQuery(
     api.threads.get,
     isConvexId(threadId) ? { threadId: threadId as Id<'threads'> } : 'skip'
@@ -70,16 +62,28 @@ export default function MessageControls({
   
   const router = useRouter();
 
-  const handleCopy = () => {
+  // Clone the current thread and navigate to the new one.
+  const handleBranch = useCallback(async () => {
+    if (!isConvexId(threadId)) return;
+    const title = thread?.title ?? content.slice(0, 30);
+    const newId = await cloneThread({
+      threadId: threadId as Id<'threads'>,
+      title,
+    });
+    router.push(`/chat/${newId}`);
+    onToggleVisibility?.();
+  }, [threadId, thread?.title, content, cloneThread, router, onToggleVisibility]);
+
+  // Copy message contents to clipboard.
+  const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(content);
     setCopied(true);
-    setTimeout(() => {
-      setCopied(false);
-    }, 2000);
-  };
+    setTimeout(() => setCopied(false), 2000);
+  }, [content]);
 
-  const handleRegenerate = async () => {
-    // stop the current request
+  // Regenerate the assistant answer starting from this message.
+  const handleRegenerate = useCallback(async () => {
+    // Stop any ongoing request.
     stop();
 
     if (!isConvexId(threadId)) {
@@ -164,47 +168,29 @@ export default function MessageControls({
     } catch (error) {
       console.error('Error during regeneration:', error);
     }
-  };
+  }, [stop, threadId, message, settings.saveRegenerations, selectedModel, content, saveVersion, removeAfter, setMessages, removeMessage, saveAnswerVersion, reload, messageData]);
 
-  const handleVersionSwitch = async (direction: 'next' | 'prev') => {
+  const handleVersionSwitch = useCallback(async (direction: 'next' | 'prev') => {
     if (!isConvexId(message.id)) return;
-    
     try {
-      // Затем обновляем версию на сервере
-      const newVersion = await switchVersion({
-        messageId: message.id as Id<'messages'>,
-        direction,
-      });
-
-      if (newVersion) {
-        setMessages((msgs) => {
-          const userIndex = msgs.findIndex((m) => m.id === message.id);
-          if (userIndex === -1) return msgs;
-          const assistantIndex = userIndex + 1;
-          if (assistantIndex >= msgs.length || msgs[assistantIndex].role !== 'assistant') return msgs;
-
-          const updatedAssistant = {
-            ...msgs[assistantIndex],
-            content: (newVersion as any).content,
-            parts: [{ type: 'text' as const, text: (newVersion as any).content }],
-            model: (newVersion as any).model ?? (msgs[assistantIndex] as any).model,
-          };
-
-          return msgs.map((m, idx) => (idx === assistantIndex ? updatedAssistant : m));
-        });
-      }
+      await switchVersion({ messageId: message.id as Id<'messages'>, direction });
+      // Reload to fetch the updated version from the backend
+      reload();
     } catch (error) {
       console.error('Error switching version:', error);
     }
-  };
+  }, [message.id, reload, switchVersion]);
 
-  // На мобильных устройствах показываем кнопки только когда isVisible = true
-  const shouldShowControls = isMobile ? isVisible : true;
+  // Show controls on mobile only when explicitly visible.
+  const shouldShowControls = useMemo(() => (isMobile ? isVisible : true), [isMobile, isVisible]);
 
-  // Проверяем, есть ли версии у сообщения (больше одной версии)
-  const hasVersions = messageData?.history && messageData.history.length > 0;
-  const currentVersionIndex = messageData?.activeHistoryIndex ?? (messageData?.history?.length ?? 1) - 1;
-  const totalVersions = messageData?.history?.length ?? 0;
+  // Memoize versioning info to avoid recomputation.
+  const hasVersions = useMemo(() => !!messageData?.history && messageData.history.length > 0, [messageData]);
+  const currentVersionIndex = useMemo(
+    () => messageData?.activeHistoryIndex ?? (messageData?.history?.length ?? 1) - 1,
+    [messageData]
+  );
+  const totalVersions = useMemo(() => messageData?.history?.length ?? 0, [messageData]);
 
   return (
     <div className="flex flex-col gap-2">
@@ -228,20 +214,7 @@ export default function MessageControls({
           </Button>
         )}
         {canChat && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={async () => {
-              if (!isConvexId(threadId)) return;
-              const title = thread?.title ?? message.content.slice(0, 30);
-              const newId = await cloneThread({
-                threadId: threadId as Id<'threads'>,
-                title,
-              });
-              router.push(`/chat/${newId}`);
-              onToggleVisibility?.();
-            }}
-          >
+          <Button variant="ghost" size="icon" onClick={handleBranch}>
             <GitBranch className="w-4 h-4" />
           </Button>
         )}
