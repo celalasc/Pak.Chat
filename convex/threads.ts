@@ -31,12 +31,12 @@ export const list = query({
     }
 
     if (args.searchQuery) {
-      return ctx.db
+      const searchQuery = args.searchQuery.toLowerCase();
+      const all = await ctx.db
         .query("threads")
-        .withSearchIndex("by_title", (q) =>
-          q.search("title", args.searchQuery).eq("userId", uid)
-        )
+        .withIndex("by_user_and_time", (q) => q.eq("userId", uid))
         .collect();
+      return all.filter((t) => t.title.toLowerCase().includes(searchQuery));
     }
 
     return ctx.db
@@ -60,12 +60,15 @@ export const search = query({
         .order("desc")
         .collect();
     }
-    return ctx.db
+    const searchLower = args.searchQuery.toLowerCase();
+    const all = await ctx.db
       .query("threads")
-      .withSearchIndex("by_title", (q) =>
-        q.search("title", args.searchQuery).filter(q.eq("userId", uid))
-      )
-      .take(20);
+      .withIndex("by_user_and_time", (q) => q.eq("userId", uid))
+      .order("desc")
+      .collect();
+    return all
+      .filter((t) => t.title.toLowerCase().includes(searchLower))
+      .slice(0, 20);
   },
 });
 

@@ -1,21 +1,36 @@
+'use client';
+
+import { useState, useCallback } from 'react';
 import { Check, Copy } from 'lucide-react';
-import { Button } from '@/frontend/components/ui/button';
 
 interface CopyButtonProps {
-  copied: boolean;
-  onClick: () => void;
+  /** Text that will be copied to the clipboard */
+  code: string;
 }
 
-export default function CopyButton({ copied, onClick }: CopyButtonProps) {
-  const label = copied ? 'Скопировано' : 'Скопировать';
+export default function CopyButton({ code }: CopyButtonProps) {
+  const [copied, setCopied] = useState(false);
+
+  // Copy provided code snippet to the clipboard
+  const handleCopy = useCallback(() => {
+    navigator.clipboard.writeText(code).then(() => {
+      setCopied(true);
+      // Reset indicator after a short delay
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }, [code]);
+
   return (
-    <Button
-      variant="ghost"
-      size="icon"
-      aria-label={label}
-      onClick={onClick}
+    <button
+      onClick={handleCopy}
+      className="p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+      aria-label={copied ? 'Скопировано!' : 'Копировать код'}
     >
-      {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-    </Button>
+      {copied ? (
+        <Check className="w-4 h-4 text-green-500" />
+      ) : (
+        <Copy className="w-4 h-4" />
+      )}
+    </button>
   );
 }
