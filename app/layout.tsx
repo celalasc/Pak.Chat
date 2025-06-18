@@ -3,7 +3,6 @@ import './globals.css';
 import 'katex/dist/katex.min.css';
 import { Toaster } from '@/frontend/components/ui/sonner';
 import Providers from '@/frontend/components/Providers';
-import AppShellSkeleton from '@/frontend/components/AppShellSkeleton';
 import { Suspense } from 'react';
 import AuthListener from '@/frontend/components/AuthListener';
 import ConvexClientProvider from '@/frontend/components/ConvexClientProvider';

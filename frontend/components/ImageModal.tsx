@@ -2,6 +2,7 @@
 
 import { X } from 'lucide-react';
 import { useEffect, useState, useRef, useCallback } from 'react';
+import Image from 'next/image';
 
 interface ImageModalProps {
   isOpen: boolean;
@@ -197,12 +198,14 @@ export default function ImageModal({
           onTouchEnd={handleTouchEnd}
           style={{ cursor: isDragging ? 'grabbing' : (scale > 1 ? 'grab' : 'default') }}
         >
-          <img
+          <Image
             ref={imageRef}
             src={imageUrl}
             alt={fileName}
             className="object-contain rounded-lg"
             loading="lazy"
+            width={800}
+            height={600}
             style={{
               transform: `scale(${scale}) translate(${translateX}px, ${translateY}px)`,
               transition: isDragging ? 'none' : 'transform 0.1s ease-out', // Smooth transition when not dragging

@@ -16,7 +16,8 @@ function CatchAllChatPageInner({ params }: { params: Promise<{ slug: string[] }>
   
   const router = useRouter();
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
-  const { isMobile, mounted } = useIsMobile();
+  // Track viewport size; currently not used but kept for future enhancements
+  useIsMobile();
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const isValidId = useMemo(() => isConvexId(chatId), [chatId]);

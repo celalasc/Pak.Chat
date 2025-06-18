@@ -7,7 +7,8 @@ import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 
 export default function NewChatPage() {
   const { isAuthenticated, isLoading } = useConvexAuth();
-  const { isMobile, mounted } = useIsMobile();
+  // Call the hook to init media query listeners; return values unused for now
+  useIsMobile();
   const router = useRouter();
 
   useEffect(() => {

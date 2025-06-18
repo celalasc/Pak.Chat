@@ -1,15 +1,14 @@
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '@/convex/_generated/api';
-import { NextRequest } from 'next/server';
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { storageId: string } }
+  request: Request,
+  { params }: { params: Promise<{ storageId: string }> }
 ) {
   try {
-    const { storageId } = params;
+    const { storageId } = await params;
     
     console.log('API: Getting file for storageId:', storageId);
     

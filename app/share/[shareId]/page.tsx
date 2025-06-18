@@ -8,6 +8,7 @@ import MemoizedMarkdown from '@/frontend/components/MemoizedMarkdown';
 import { Button } from '@/frontend/components/ui/button';
 import { Card } from '@/frontend/components/ui/card';
 import { MessageSquare, ArrowRight, Copy, Check } from 'lucide-react';
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import SelectableText from '@/frontend/components/SelectableText';
 import QuotedMessage from '@/frontend/components/QuotedMessage';
@@ -90,7 +91,7 @@ export default function SharePage({ params }: { params: Promise<{ shareId: strin
                   </h1>
                 <div className="flex items-center gap-2">
                     {thread.userInfo && !thread.isAnonymous && thread.userInfo.avatarUrl && (
-                      <img
+                      <Image
                         src={thread.userInfo.avatarUrl}
                         alt={sharedBy}
                         width={16}
