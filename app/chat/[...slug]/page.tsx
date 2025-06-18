@@ -36,10 +36,6 @@ export default function CatchAllChatPage({ params }: { params: Promise<{ slug: s
     isValidId ? { threadId: chatId as Id<'threads'> } : 'skip'
   );
 
-  const currentVersion = useQuery(
-    api.messages.getCurrentDialogVersion,
-    isValidId ? { threadId: chatId as Id<'threads'> } : 'skip'
-  );
   
   const messages = useMemo(() => {
     if (!attachments || !messagesResult) return [];
@@ -104,8 +100,7 @@ export default function CatchAllChatPage({ params }: { params: Promise<{ slug: s
     !isValidId ||
     thread === undefined ||
     messagesResult === undefined ||
-    attachments === undefined ||
-    currentVersion === undefined;
+    attachments === undefined;
 
   useEffect(() => {
     if (!isLoading) {
@@ -123,11 +118,10 @@ export default function CatchAllChatPage({ params }: { params: Promise<{ slug: s
 
   return (
     <Chat
-      key={`${chatId}-${currentVersion}`}
+      key={chatId}
       threadId={chatId}
       thread={thread}
       initialMessages={messages}
-      dialogVersion={currentVersion as number}
     />
   )
 }

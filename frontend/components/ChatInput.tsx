@@ -22,7 +22,6 @@ import { useModelStore, ReasoningEffort } from '@/frontend/stores/ModelStore';
 import { useModelVisibilityStore } from '@/frontend/stores/ModelVisibilityStore';
 import { useModelVisibilitySync } from '@/frontend/hooks/useModelVisibilitySync';
 import { useQuoteStore } from '@/frontend/stores/QuoteStore';
-import { useChatStore } from '@/frontend/stores/ChatStore';
 import { AI_MODELS, AIModel, getModelConfig } from '@/lib/models';
 import { UIMessage } from 'ai';
 import AttachmentsBar from './AttachmentsBar';
@@ -556,7 +555,6 @@ function PureChatInput({
   const { attachments, clear } = useAttachmentsStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { selectedModel, webSearchEnabled } = useModelStore();
-  const { consumeNextDialogVersion } = useChatStore();
 
   // Initialize input from server-side draft when thread changes
   useEffect(() => {
@@ -572,11 +570,6 @@ function PureChatInput({
     }
   }, 500);
   
-  // Get current dialog version for existing threads
-  const currentVersion = useQuery(
-    api.messages.getCurrentDialogVersion,
-    isConvexId(threadId) ? { threadId: threadId as Id<'threads'> } : 'skip'
-  );
 
   // Интеграция с недавними файлами
   useRecentFilesIntegration();
@@ -742,14 +735,10 @@ function PureChatInput({
       }
 
       // 6. Сохраняем текст сообщения в БД
-      // Определяем текущую версию диалога или используем 1 для новых тредов
-      const dialogVersion = currentVersion ?? 1;
       const dbMsgId = await sendMessage({
         threadId: ensuredThreadId,
         content: finalMessage,
         role: 'user',
-        dialogVersion: dialogVersion,
-        isActive: true,
       });
 
       if (savedAttachments.length > 0) {

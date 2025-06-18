@@ -49,7 +49,6 @@ export default defineSchema({
     pinned: v.optional(v.boolean()),
     clonedFrom: v.optional(v.id("threads")),
     forkedFromMessageId: v.optional(v.id("messages")),
-    currentDialogVersion: v.optional(v.number()),
     // Temporary unsent message text saved for this thread
     draft: v.optional(v.string()),
   })
@@ -64,10 +63,6 @@ export default defineSchema({
     content: v.string(),
     createdAt: v.number(),
     model: v.optional(v.string()),
-    // Dialog snapshot/version metadata
-    dialogVersion: v.optional(v.number()),
-    isActive: v.optional(v.boolean()),
-    regeneratedFromMessageId: v.optional(v.id("messages")),
     // Message metadata
   }).index("by_thread_and_time", ["threadId", "createdAt"]),
 

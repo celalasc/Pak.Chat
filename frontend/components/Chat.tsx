@@ -23,10 +23,9 @@ interface ChatProps {
   threadId: string;
   thread: Doc<'threads'> | null | undefined;
   initialMessages: UIMessage[];
-  dialogVersion: number;
 }
 
-function Chat({ threadId, thread, initialMessages, dialogVersion }: ChatProps) {
+function Chat({ threadId, thread, initialMessages }: ChatProps) {
   const { isMobile } = useIsMobile();
   const { selectedModel } = useModelStore();
   const router = useRouter();
@@ -137,11 +136,10 @@ function Chat({ threadId, thread, initialMessages, dialogVersion }: ChatProps) {
 
       {/* Core chat UI */}
       <ChatView
-        key={`${threadId}-${dialogVersion}`}
+        key={threadId}
         threadId={threadId}
         thread={thread}
         initialMessages={initialMessages}
-        dialogVersion={dialogVersion}
         showNavBars={settings.showNavBars}
       />
     </div>

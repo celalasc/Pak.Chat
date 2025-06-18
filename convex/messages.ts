@@ -20,24 +20,11 @@ export const get = query({
     const thread = await ctx.db.get(args.threadId);
     if (!thread || thread.userId !== uid)
       throw new Error("Thread not found or permission denied");
-    const q = ctx.db
+    return ctx.db
       .query("messages")
       .withIndex("by_thread_and_time", (q) => q.eq("threadId", args.threadId))
-      .order("asc");
-
-    const all = await q.collect();
-    
-    // Use thread's currentDialogVersion as the source of truth
-    let currentDialogVersion = thread.currentDialogVersion ?? 1;
-    
-    // Filter messages for the current dialog version
-    return all.filter((m) => {
-      // Legacy messages without dialogVersion are always shown (backward compatibility)
-      if (m.dialogVersion === undefined) return true;
-      
-      // Both assistant and user messages: only show if they belong to current version and are active
-      return m.dialogVersion === currentDialogVersion && (m.isActive ?? true);
-    });
+      .order("asc")
+      .collect();
   },
 });
 
@@ -87,20 +74,8 @@ export const preview = query({
       .withIndex("by_thread_and_time", (q) => q.eq("threadId", threadId))
       .order("desc")
       .collect();
-    
-    // Use thread's currentDialogVersion as the source of truth
-    let currentDialogVersion = thread.currentDialogVersion ?? 1;
-    
-    // Filter and take latest messages
-    return msgs
-      .filter((m) => {
-        // Legacy messages without dialogVersion are always shown
-        if (m.dialogVersion === undefined) return true;
-        
-        // Both assistant and user messages: only show if they belong to current version and are active
-        return m.dialogVersion === currentDialogVersion && (m.isActive ?? true);
-      })
-      .slice(0, limit ?? 4);
+
+    return msgs.slice(0, limit ?? 4);
   },
 });
 
@@ -111,9 +86,6 @@ export const send = mutation({
     role: v.union(v.literal("user"), v.literal("assistant")),
     content: v.string(),
     model: v.optional(v.string()),
-    dialogVersion: v.optional(v.number()),
-    regeneratedFromMessageId: v.optional(v.id("messages")),
-    isActive: v.optional(v.boolean()),
   },
   async handler(ctx, args) {
     const uid = await currentUserId(ctx);
@@ -129,9 +101,6 @@ export const send = mutation({
       content: args.content,
       createdAt: Date.now(),
       model: args.model,
-      dialogVersion: args.dialogVersion,
-      isActive: args.isActive ?? true,
-      regeneratedFromMessageId: args.regeneratedFromMessageId,
     });
     // Clear saved draft after successful send
     await ctx.db.patch(args.threadId, { draft: "" });
@@ -225,121 +194,5 @@ export const prepareForRegeneration = mutation({
     await Promise.all(toDelete.map((m) => ctx.db.delete(m._id)));
 
     return userMessage;
-  },
-});
-
-/** Create new dialog snapshot: mark current assistant messages inactive and return next dialog version */
-export const createDialogSnapshot = mutation({
-  args: { threadId: v.id("threads") },
-  async handler(ctx, { threadId }) {
-    const uid = await currentUserId(ctx);
-    if (!uid) throw new Error("Unauthenticated");
-    const thread = await ctx.db.get(threadId);
-    if (!thread || thread.userId !== uid)
-      throw new Error("Permission denied");
-
-    const msgs = await ctx.db
-      .query("messages")
-      .withIndex("by_thread_and_time", (q) => q.eq("threadId", threadId))
-      .collect();
-
-    let maxVersion = 1;
-    // Mark ALL current active messages inactive (both user and assistant)
-    await Promise.all(
-      msgs.map(async (m) => {
-        const v = m.dialogVersion ?? 1;
-        if (v > maxVersion) maxVersion = v;
-        // Deactivate all messages with defined dialogVersion that are currently active
-        if (m.dialogVersion !== undefined && (m.isActive ?? true)) {
-          await ctx.db.patch(m._id, { isActive: false });
-        }
-      })
-    );
-
-    const nextVersion = maxVersion + 1;
-    // Update thread record with new current version
-    await ctx.db.patch(threadId, { currentDialogVersion: nextVersion });
-    return { dialogVersion: nextVersion } as const;
-  },
-});
-
-/** Switch active dialog version */
-export const switchDialogVersion = mutation({
-  args: { threadId: v.id("threads"), dialogVersion: v.number() },
-  async handler(ctx, { threadId, dialogVersion }) {
-    const uid = await currentUserId(ctx);
-    if (!uid) throw new Error("Unauthenticated");
-    const thread = await ctx.db.get(threadId);
-    if (!thread || thread.userId !== uid)
-      throw new Error("Permission denied");
-
-    const msgs = await ctx.db
-      .query("messages")
-      .withIndex("by_thread_and_time", (q) => q.eq("threadId", threadId))
-      .collect();
-
-    await Promise.all(
-      msgs.map(async (m) => {
-        if (m.dialogVersion === undefined) return; // shared/legacy messages - leave unchanged
-        
-        // Both assistant and user messages: active only if they belong to the selected version
-        const shouldBeActive = m.dialogVersion === dialogVersion;
-        if ((m.isActive ?? true) !== shouldBeActive) {
-          await ctx.db.patch(m._id, { isActive: shouldBeActive });
-        }
-      })
-    );
-
-    // Persist selected version on thread record
-    await ctx.db.patch(threadId, { currentDialogVersion: dialogVersion });
-  },
-});
-
-/** Get available dialog versions with counts */
-export const getDialogVersions = query({
-  args: { threadId: v.id("threads") },
-  async handler(ctx, { threadId }) {
-    const uid = await currentUserId(ctx);
-    if (!uid) return [];
-    const thread = await ctx.db.get(threadId);
-    if (!thread || thread.userId !== uid) return [];
-
-    const msgs = await ctx.db
-      .query("messages")
-      .withIndex("by_thread_and_time", (q) => q.eq("threadId", threadId))
-      .collect();
-
-    const map = new Map<number, { count: number; latest: number }>();
-    msgs.forEach((m) => {
-      const v = m.dialogVersion ?? 1;
-      const entry = map.get(v) ?? { count: 0, latest: 0 };
-      entry.count += 1;
-      if (m.createdAt > entry.latest) entry.latest = m.createdAt;
-      map.set(v, entry);
-    });
-
-    const versions = Array.from(map.entries()).map(([version, meta]) => ({
-      version,
-      messageCount: meta.count,
-      latestAt: meta.latest,
-    }));
-
-    // sort ascending
-    versions.sort((a, b) => a.version - b.version);
-    return versions;
-  },
-});
-
-/** Get current active dialog version for a thread */
-export const getCurrentDialogVersion = query({
-  args: { threadId: v.id("threads") },
-  async handler(ctx, { threadId }) {
-    const uid = await currentUserId(ctx);
-    if (!uid) return 1;
-    
-    const thread = await ctx.db.get(threadId);
-    if (!thread || thread.userId !== uid) return 1;
-
-    return thread.currentDialogVersion ?? 1;
   },
 });
