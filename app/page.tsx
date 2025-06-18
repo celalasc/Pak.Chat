@@ -9,14 +9,15 @@ import { Button } from '@/frontend/components/ui/button';
 export default function IndexPage() {
   const { user, loading, login } = useAuthStore();
   const router = useRouter();
-  const { isMobile } = useIsMobile();
+  const { isMobile, mounted } = useIsMobile();
 
   useEffect(() => {
-    if (!loading && user) {
+    // Ждем пока mounted станет true, чтобы избежать неправильного перенаправления
+    if (!loading && user && mounted) {
       // ПК - сразу в чат, мобильные - в home с историей
       router.push(isMobile ? '/home' : '/chat');
     }
-  }, [user, loading, router, isMobile]);
+  }, [user, loading, router, isMobile, mounted]);
 
   if (loading || (!loading && user)) {
     // Показываем пустой div, чтобы избежать моргания контента при редиректе

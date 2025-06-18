@@ -16,7 +16,7 @@ import type { Id } from '@/convex/_generated/dataModel';
 export default function HomePage() {
   const { isAuthenticated, isLoading } = useConvexAuth();
   const router = useRouter();
-  const { isMobile } = useIsMobile();
+  const { isMobile, mounted } = useIsMobile();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
@@ -27,11 +27,12 @@ export default function HomePage() {
   }, [isLoading, isAuthenticated, router]);
 
   // Автоматическое переключение на ПК версию при увеличении размера экрана
+  // Но только если пользователь уже находится на /home, не перенаправляем из чата
   useEffect(() => {
-    if (!isLoading && isAuthenticated && !isMobile) {
+    if (!isLoading && isAuthenticated && mounted && !isMobile && window.location.pathname === '/home') {
       router.push('/chat');
     }
-  }, [isMobile, isLoading, isAuthenticated, router]);
+  }, [isMobile, mounted, isLoading, isAuthenticated, router]);
 
   const handleSelectThread = (threadId: Id<'threads'>) => {
     router.push(`/chat/${threadId}`);

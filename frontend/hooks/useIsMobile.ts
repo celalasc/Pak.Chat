@@ -5,17 +5,23 @@ export function useIsMobile(breakpoint: number = 768) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-    
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < breakpoint);
+      const isMobileDevice = window.innerWidth < breakpoint;
+      setIsMobile(isMobileDevice);
+      
+      // Устанавливаем mounted только после первой проверки
+      if (!mounted) {
+        setMounted(true);
+      }
     };
     
+    // Немедленно проверяем при монтировании
     checkMobile();
+    
     window.addEventListener('resize', checkMobile);
     
     return () => window.removeEventListener('resize', checkMobile);
-  }, [breakpoint]);
+  }, [breakpoint, mounted]);
 
   return { isMobile: mounted ? isMobile : false, mounted };
 } 

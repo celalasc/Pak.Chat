@@ -17,12 +17,7 @@ export default function NewChatPage() {
     }
   }, [isLoading, isAuthenticated, router]);
 
-  // Автоматическое переключение между версиями при изменении размера экрана
-  useEffect(() => {
-    if (mounted && isAuthenticated && isMobile) {
-      router.push('/home');
-    }
-  }, [isMobile, mounted, isAuthenticated, router]);
+  // Убираем автоматическое перенаправление - пользователи должны иметь возможность заходить в чат с мобильных
 
   if (isLoading || !isAuthenticated) {
     return <AppShellSkeleton />;

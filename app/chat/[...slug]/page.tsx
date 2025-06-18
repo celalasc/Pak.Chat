@@ -9,8 +9,9 @@ import { isConvexId } from '@/lib/ids';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import Chat from '@/frontend/components/Chat';
 import AppShellSkeleton from '@/frontend/components/AppShellSkeleton';
+import ErrorBoundary from '@/frontend/components/ErrorBoundary';
 
-export default function CatchAllChatPage({ params }: { params: Promise<{ slug: string[] }> }) {
+function CatchAllChatPageInner({ params }: { params: Promise<{ slug: string[] }> }) {
   const resolvedParams = use(params);
   const chatId = resolvedParams.slug?.[0];
   
@@ -26,19 +27,22 @@ export default function CatchAllChatPage({ params }: { params: Promise<{ slug: s
     isValidId ? { threadId: chatId as Id<'threads'> } : 'skip'
   );
 
+  // Выполняем остальные запросы только если thread существует и доступен
+  const shouldRunQueries = isValidId && thread !== null && thread !== undefined;
+
   const messagesResult = useQuery(
     api.messages.get,
-    isValidId ? { threadId: chatId as Id<'threads'> } : 'skip'
+    shouldRunQueries ? { threadId: chatId as Id<'threads'> } : 'skip'
   );
 
   const attachments = useQuery(
     api.attachments.byThread,
-    isValidId ? { threadId: chatId as Id<'threads'> } : 'skip'
+    shouldRunQueries ? { threadId: chatId as Id<'threads'> } : 'skip'
   );
 
   const currentVersion = useQuery(
     api.messages.getCurrentDialogVersion,
-    isValidId ? { threadId: chatId as Id<'threads'> } : 'skip'
+    shouldRunQueries ? { threadId: chatId as Id<'threads'> } : 'skip'
   );
   
   const messages = useMemo(() => {
@@ -92,20 +96,17 @@ export default function CatchAllChatPage({ params }: { params: Promise<{ slug: s
     }
   }, [authLoading, isAuthenticated, isValidId, router, chatId, thread]);
 
-  // Автоматическое переключение между версиями при изменении размера экрана
-  useEffect(() => {
-    if (mounted && isAuthenticated && isMobile && isValidId) {
-      router.push('/home');
-    }
-  }, [isMobile, mounted, isAuthenticated, isValidId, router]);
-  
+  // Убираем автоматическое перенаправление - пользователи должны иметь возможность заходить в чат с мобильных
+
   const isLoading =
     authLoading ||
     !isValidId ||
     thread === undefined ||
-    messagesResult === undefined ||
-    attachments === undefined ||
-    currentVersion === undefined;
+    (shouldRunQueries && (
+      messagesResult === undefined ||
+      attachments === undefined ||
+      currentVersion === undefined
+    ));
 
   useEffect(() => {
     if (!isLoading) {
@@ -118,7 +119,8 @@ export default function CatchAllChatPage({ params }: { params: Promise<{ slug: s
   }
 
   if (thread === null) {
-    return null;
+    // Thread не найден или нет доступа - показываем заглушку, перенаправление в useEffect
+    return <div className="w-full h-screen bg-background" />;
   }
 
   return (
@@ -130,4 +132,12 @@ export default function CatchAllChatPage({ params }: { params: Promise<{ slug: s
       dialogVersion={currentVersion as number}
     />
   )
+}
+
+export default function CatchAllChatPage({ params }: { params: Promise<{ slug: string[] }> }) {
+  return (
+    <ErrorBoundary fallbackRedirect="/chat">
+      <CatchAllChatPageInner params={params} />
+    </ErrorBoundary>
+  );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Clock, FileIcon, X, Image, FileText, File, ChevronRight } from 'lucide-react';
+import { Clock, FileIcon, X, Image, FileText, File, ChevronRight, Brush } from 'lucide-react';
 import { Button } from './ui/button';
 import {
   DropdownMenu,
@@ -65,6 +65,12 @@ export default function RecentFilesDropdown({ children, onFileSelect, messageCou
             if (!file || typeof file !== 'object') return false;
             if (!file.id || !file.name || !file.type || typeof file.size !== 'number') return false;
             
+            // Удаляем старые рисунки без storageId (они неработающие)
+            if (file.name.startsWith('drawing-') && file.name.endsWith('.png') && !file.storageId) {
+              console.log('Removing old drawing without storageId during load:', file.name);
+              return false;
+            }
+            
             // Проверка возраста файла (удаляем файлы старше 30 дней)
             const lastUsed = new Date(file.lastUsed);
             const daysDiff = Math.floor((Date.now() - lastUsed.getTime()) / (1000 * 60 * 60 * 24));
@@ -102,15 +108,59 @@ export default function RecentFilesDropdown({ children, onFileSelect, messageCou
     try {
       if (recentFile.storageId) {
         // Build remote attachment object and add to store
+        console.log('Reattaching file from recent:', {
+          name: recentFile.name,
+          storageId: recentFile.storageId,
+          previewId: recentFile.previewId,
+          hasPreview: !!recentFile.preview
+        });
+        
+        // Для изображений пытаемся получить актуальный URL
+        let previewUrl = recentFile.preview;
+        
+        // Если это изображение и у нас есть previewId или storageId, 
+        // создаем URL к Convex Storage
+        if (recentFile.type.startsWith('image/')) {
+          if (recentFile.previewId) {
+            // Для превью используем URL к preview файлу
+            previewUrl = `/api/files/${recentFile.previewId}`;
+            console.log('Using previewId for image:', recentFile.name, previewUrl);
+          } else if (recentFile.storageId) {
+            // Если нет превью, используем оригинальный файл
+            previewUrl = `/api/files/${recentFile.storageId}`;
+            console.log('Using storageId for image:', recentFile.name, previewUrl);
+          }
+        } else {
+          // Для не-изображений не используем preview URL (он не нужен для иконок)
+          previewUrl = '';
+          console.log('Non-image file, no preview URL:', recentFile.name);
+        }
+        
         addRemote({
           storageId: recentFile.storageId,
           previewId: recentFile.previewId,
           name: recentFile.name,
           type: recentFile.type,
           size: recentFile.size,
-          preview: recentFile.preview ?? undefined,
+          preview: previewUrl,
           remote: true,
         });
+        
+        // Обновляем время последнего использования
+        const updated = recentFiles.map(f => 
+          f.id === recentFile.id 
+            ? { ...f, lastUsed: new Date() } 
+            : f
+        ).sort((a, b) => b.lastUsed.getTime() - a.lastUsed.getTime());
+        
+        setRecentFiles(updated);
+        
+        try {
+          localStorage.setItem(RECENT_FILES_KEY, JSON.stringify(updated));
+        } catch (e) {
+          console.error('Failed to save updated recent files:', e);
+        }
+        
         toast.success(`Reattached "${recentFile.name}"`);
       } else {
         toast.info(
@@ -126,7 +176,7 @@ export default function RecentFilesDropdown({ children, onFileSelect, messageCou
       console.error('Failed to handle recent file selection:', error);
       toast.error('An error occurred while handling the recent file selection.');
     }
-  }, []);
+  }, [recentFiles, addRemote]);
 
   const removeFromRecent = useCallback((fileId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -162,22 +212,38 @@ export default function RecentFilesDropdown({ children, onFileSelect, messageCou
     return date.toLocaleDateString();
   }, []);
 
-  const getFileIcon = useCallback((type: string) => {
-    if (type.startsWith('image/')) return Image;
+  const getFileIcon = useCallback((type: string, name?: string) => {
+    if (type.startsWith('image/')) {
+      // Специальная иконка для рисунков
+      if (name?.startsWith('drawing-') && name.endsWith('.png')) {
+        return Brush;
+      }
+      return Image;
+    }
     if (type.includes('pdf')) return FileText;
     if (type.startsWith('text/')) return FileText;
     return File;
   }, []);
 
-  const getFileColor = useCallback((type: string) => {
-    if (type.startsWith('image/')) return 'text-blue-500';
+  const getFileColor = useCallback((type: string, name?: string) => {
+    if (type.startsWith('image/')) {
+      // Специальный цвет для рисунков
+      if (name?.startsWith('drawing-') && name.endsWith('.png')) {
+        return 'text-purple-500';
+      }
+      return 'text-blue-500';
+    }
     if (type.includes('pdf')) return 'text-red-500';
     if (type.startsWith('text/')) return 'text-green-500';
     return 'text-muted-foreground';
   }, []);
 
-  const getFileTypeLabel = useCallback((type: string): string => {
+  const getFileTypeLabel = useCallback((type: string, name?: string): string => {
     if (type.startsWith('image/')) {
+      // Специальная метка для рисунков
+      if (name?.startsWith('drawing-') && name.endsWith('.png')) {
+        return 'DRAW';
+      }
       const subType = type.split('/')[1]?.toUpperCase();
       return subType || 'IMAGE';
     }
@@ -221,9 +287,9 @@ export default function RecentFilesDropdown({ children, onFileSelect, messageCou
               Recent Files
             </div>
             {displayedFiles.map((file) => {
-              const IconComponent = getFileIcon(file.type);
-              const iconColor = getFileColor(file.type);
-              const fileTypeLabel = getFileTypeLabel(file.type);
+              const IconComponent = getFileIcon(file.type, file.name);
+              const iconColor = getFileColor(file.type, file.name);
+              const fileTypeLabel = getFileTypeLabel(file.type, file.name);
               
               return (
                 <DropdownMenuItem
@@ -280,11 +346,8 @@ export function addFileToRecent(file: File): boolean {
       return false;
     }
 
-    // Исключаем рисунки из recent files (они основаны на blob URLs и не могут быть переиспользованы)
-    if (file.name.startsWith('drawing-') && file.name.endsWith('.png')) {
-      console.log('Skipping drawing file from recent files:', file.name);
-      return true; // Возвращаем true чтобы не показывать ошибку
-    }
+    // Примечание: раньше рисунки исключались из recent files, но теперь они сохраняются в Convex Storage
+    // и могут быть переиспользованы через storageId, поэтому добавляем их в recent
 
     // Проверка размера файла (максимум 100MB для хранения метаданных)
     if (file.size > 100 * 1024 * 1024) {
@@ -293,7 +356,7 @@ export function addFileToRecent(file: File): boolean {
     }
 
     const recentFile: RecentFile = {
-      id: Date.now().toString(),
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       name: file.name,
       type: file.type,
       size: file.size,
@@ -328,8 +391,8 @@ export function addFileToRecent(file: File): boolean {
       }
     }
 
-    // Удаляем дубликаты по имени и типу
-    const filtered = recentFiles.filter(f => !(f.name === file.name && f.type === file.type));
+    // Удаляем дубликаты по имени, типу и размеру
+    const filtered = recentFiles.filter(f => !(f.name === file.name && f.type === file.type && f.size === file.size));
     const updated = [recentFile, ...filtered].slice(0, MAX_RECENT_FILES);
     
     localStorage.setItem(RECENT_FILES_KEY, JSON.stringify(updated));
@@ -352,27 +415,93 @@ export function useRecentFilesIntegration() {
 // Called after successful upload to Convex to enrich recent entry with storageId etc.
 export function addUploadedFileMetaToRecent(meta: { storageId: string; previewId?: string; name: string; type: string; size: number; previewUrl?: string; }) {
   try {
-    const saved = localStorage.getItem(RECENT_FILES_KEY);
-    if (!saved) return;
-    const parsed: RecentFile[] = JSON.parse(saved);
-    const idx = parsed.findIndex(r => r.name === meta.name && r.type === meta.type && !r.storageId);
-    const base: RecentFile = {
-      id: Date.now().toString(),
+    console.log('Adding uploaded file meta to recent:', {
       name: meta.name,
-      type: meta.type,
-      size: meta.size,
-      lastUsed: new Date(),
       storageId: meta.storageId,
       previewId: meta.previewId,
-      preview: meta.previewUrl,
-    };
+      hasPreviewUrl: !!meta.previewUrl
+    });
+    const saved = localStorage.getItem(RECENT_FILES_KEY);
+    if (!saved) return;
+    
+    const parsed: RecentFile[] = JSON.parse(saved).map((item: any) => ({
+      ...item,
+      lastUsed: new Date(item.lastUsed) // Конвертируем строку в Date
+    }));
+    
+    // Ищем существующую запись без storageId (недавно добавленную)
+    const idx = parsed.findIndex(r => 
+      r.name === meta.name && 
+      r.type === meta.type && 
+      r.size === meta.size &&
+      !r.storageId
+    );
+    
     if (idx !== -1) {
-      parsed[idx] = { ...parsed[idx], ...base };
+      // Обновляем существующую запись
+      parsed[idx] = {
+        ...parsed[idx],
+        storageId: meta.storageId,
+        previewId: meta.previewId,
+        preview: meta.previewUrl,
+        lastUsed: new Date(),
+      };
     } else {
-      parsed.unshift(base);
+      // Создаем новую запись, если не нашли существующую
+      const newEntry: RecentFile = {
+        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        name: meta.name,
+        type: meta.type,
+        size: meta.size,
+        lastUsed: new Date(),
+        storageId: meta.storageId,
+        previewId: meta.previewId,
+        preview: meta.previewUrl,
+      };
+      parsed.unshift(newEntry);
     }
-    localStorage.setItem(RECENT_FILES_KEY, JSON.stringify(parsed.slice(0, MAX_RECENT_FILES)));
+    
+    // Удаляем дубликаты по storageId (если есть) И старые рисунки без storageId
+    const uniqueParsed = parsed.filter((item, index, arr) => {
+      // Удаляем старые рисунки без storageId (они неработающие)
+      if (item.name.startsWith('drawing-') && item.name.endsWith('.png') && !item.storageId) {
+        console.log('Removing old drawing without storageId:', item.name);
+        return false;
+      }
+      
+      // Удаляем дубликаты по storageId
+      if (!item.storageId) return true;
+      return arr.findIndex(other => other.storageId === item.storageId) === index;
+    });
+    
+    localStorage.setItem(RECENT_FILES_KEY, JSON.stringify(uniqueParsed.slice(0, MAX_RECENT_FILES)));
   } catch (e) {
     console.error('Failed to add uploaded file meta to recent:', e);
+  }
+}
+
+// Функция для очистки старых неработающих записей (можно вызвать вручную в консоли)
+export function cleanupOldDrawings() {
+  try {
+    const saved = localStorage.getItem(RECENT_FILES_KEY);
+    if (!saved) return;
+    
+    const parsed: RecentFile[] = JSON.parse(saved).map((item: any) => ({
+      ...item,
+      lastUsed: new Date(item.lastUsed)
+    }));
+    
+    const cleaned = parsed.filter(item => {
+      if (item.name.startsWith('drawing-') && item.name.endsWith('.png') && !item.storageId) {
+        console.log('Cleaning up old drawing:', item.name);
+        return false;
+      }
+      return true;
+    });
+    
+    localStorage.setItem(RECENT_FILES_KEY, JSON.stringify(cleaned));
+    console.log(`Cleaned up ${parsed.length - cleaned.length} old drawing entries`);
+  } catch (e) {
+    console.error('Failed to cleanup old drawings:', e);
   }
 } 

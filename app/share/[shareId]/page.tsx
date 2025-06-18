@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useConvexAuth } from 'convex/react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import { use } from 'react';
 import { api } from '@/convex/_generated/api';
 import MemoizedMarkdown from '@/frontend/components/MemoizedMarkdown';
@@ -91,12 +90,12 @@ export default function SharePage({ params }: { params: Promise<{ shareId: strin
                   </h1>
                 <div className="flex items-center gap-2">
                     {thread.userInfo && !thread.isAnonymous && thread.userInfo.avatarUrl && (
-                      <Image
+                      <img
                         src={thread.userInfo.avatarUrl}
                         alt={sharedBy}
                         width={16}
                         height={16}
-                        className="w-4 h-4 rounded-full"
+                        className="w-4 h-4 rounded-full object-cover"
                       />
                     )}
                   <p className="text-sm text-muted-foreground">

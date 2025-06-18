@@ -127,3 +127,12 @@ export const getUrl = query({
     return url;
   },
 });
+
+// Return a signed URL directly by storage ID
+export const getUrlByStorageId = query({
+  args: { storageId: v.string() },
+  async handler(ctx, { storageId }) {
+    const url = await ctx.storage.getUrl(storageId);
+    return url;
+  },
+});

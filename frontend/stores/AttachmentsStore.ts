@@ -58,7 +58,7 @@ export const useAttachmentsStore = create<AttachmentState>((set) => ({
         ...state.attachments,
         {
           id: uuid(),
-          preview: info.preview ?? '',
+          preview: info.preview || '', // Пустая строка для не-изображений
           name: info.name.length > 24 ? info.name.slice(0, 21) + '...' : info.name,
           ext: info.name.split('.').pop() ?? '',
           type: info.type,

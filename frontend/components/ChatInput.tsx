@@ -681,17 +681,34 @@ function PureChatInput({
 
           // 2. Create preview if needed and upload it
           let previewId: string | undefined = undefined;
-          const previewFile = await createImagePreview(attachment.file);
-          if (previewFile) {
+          
+          // Для рисунков используем оригинальный файл как preview (они обычно маленькие)
+          if (attachment.file.name.startsWith('drawing-') && attachment.file.name.endsWith('.png')) {
             const previewUploadUrl = await generateUploadUrl();
             const resPrev = await fetch(previewUploadUrl, {
               method: 'POST',
-              headers: { 'Content-Type': previewFile.type },
-              body: previewFile,
+              headers: { 'Content-Type': attachment.file.type },
+              body: attachment.file,
             });
             if (resPrev.ok) {
               const { storageId: pId } = await resPrev.json();
               previewId = pId;
+              console.log('Created preview for drawing:', attachment.file.name, 'previewId:', pId);
+            }
+          } else {
+            // Для обычных изображений используем сжатый preview
+            const previewFile = await createImagePreview(attachment.file);
+            if (previewFile) {
+              const previewUploadUrl = await generateUploadUrl();
+              const resPrev = await fetch(previewUploadUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': previewFile.type },
+                body: previewFile,
+              });
+              if (resPrev.ok) {
+                const { storageId: pId } = await resPrev.json();
+                previewId = pId;
+              }
             }
           }
 
@@ -760,21 +777,58 @@ function PureChatInput({
       }
 
       // 7. Добавляем файлы в recent ТОЛЬКО после успешной отправки (F1.2 + F1.4)
+      // НО: для рисунков пропускаем этот шаг, потому что они будут добавлены в шаге 8 с правильными storageId
       if (localAttachments.length > 0) {
         localAttachments.forEach(attachment => {
+          // Пропускаем рисунки - они будут добавлены в шаге 8 с storageId
+          if (attachment.file.name.startsWith('drawing-') && attachment.file.name.endsWith('.png')) {
+            console.log('Skipping drawing from step 7, will be added in step 8 with storageId');
+            return;
+          }
+          
           const success = addFileToRecent(attachment.file);
           if (!success) {
             console.warn(`Failed to add file "${attachment.file.name}" to recent files`);
           }
         });
-        
-
       }
 
-      // 8. Обновляем UI с реальным ID
+      // 8. Обновляем записи в Recent Files с информацией о загруженных файлах
+      if (savedAttachments.length > 0) {
+        savedAttachments.forEach((savedAttachment, index) => {
+          // Находим соответствующий локальный файл по индексу или имени/типу/размеру
+          let localAttachment: LocalAttachment | undefined = localAttachments[index];
+          
+          // Дополнительная проверка по имени, типу и размеру для безопасности
+          if (!localAttachment || 
+              localAttachment.name !== savedAttachment.name || 
+              localAttachment.type !== savedAttachment.type) {
+            localAttachment = localAttachments.find(local => 
+              local.name === savedAttachment.name && 
+              local.type === savedAttachment.type &&
+              local.size === savedAttachment.size
+            );
+          }
+          
+          if (localAttachment) {
+            addUploadedFileMetaToRecent({
+              storageId: savedAttachment.fileId,
+              previewId: savedAttachment.previewId,
+              name: savedAttachment.name,
+              type: savedAttachment.type,
+              size: savedAttachment.size,
+              previewUrl: savedAttachment.url,
+            });
+          } else {
+            console.warn(`Could not find matching local attachment for ${savedAttachment.name}`);
+          }
+        });
+      }
+
+      // 9. Обновляем UI с реальным ID
       setMessages((prev) => prev.map((m) => (m.id === clientMsgId ? { ...m, id: dbMsgId } : m)));
 
-      // 9. Генерация заголовка в фоне для нового чата
+      // 10. Генерация заголовка в фоне для нового чата
       if (!isConvexId(threadId)) {
         complete(finalMessage, {
           body: { threadId: ensuredThreadId, messageId: dbMsgId, isTitle: true },

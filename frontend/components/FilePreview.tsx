@@ -12,6 +12,8 @@ interface FilePreviewProps {
     size: number;
     preview: string;
     ext: string;
+    storageId?: string; // Для remote файлов
+    remote?: boolean;   // Флаг remote файла
   };
   onRemove: (id: string) => void;
   showPreview?: boolean;
@@ -51,6 +53,13 @@ export default function FilePreview({ file, onRemove, showPreview = true }: File
 
   // Для изображений с превью при наведении
   if (file.type.startsWith('image/')) {
+    const hasValidPreview = file.preview && 
+                            file.preview !== '' && 
+                            file.preview.length > 5 && // Минимальная длина URL
+                            (file.preview.startsWith('blob:') || 
+                             file.preview.startsWith('http') || 
+                             file.preview.startsWith('/api/'));
+    
     return (
       <div 
         className="relative flex-shrink-0 group"
@@ -58,19 +67,21 @@ export default function FilePreview({ file, onRemove, showPreview = true }: File
         onMouseLeave={() => setIsHovered(false)}
       >
         <div className="relative">
-          <img 
-            src={file.preview} 
-            className="h-16 w-16 object-cover rounded-lg border-2 border-blue-200 dark:border-blue-800 shadow-sm" 
-            alt={file.name}
-          />
+                    {hasValidPreview ? (
+            <img 
+              src={file.preview} 
+              className="h-16 w-16 object-cover rounded-lg border-2 border-blue-200 dark:border-blue-800 shadow-sm" 
+              alt={file.name}
+            />
+          ) : (
+            <div className="h-16 w-16 bg-blue-50 border-2 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800 rounded-lg flex items-center justify-center">
+              <ImageIcon className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+            </div>
+          )}
           
-          {/* Превью при наведении - показываем выше поля ввода */}
-          {showPreview && isHovered && (
-            <div className="fixed z-[200] pointer-events-none" style={{
-              left: '50%',
-              top: '20%',
-              transform: 'translateX(-50%)'
-            }}>
+          {/* Превью при наведении - показываем под файлом */}
+          {showPreview && isHovered && hasValidPreview && (
+            <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 z-[200] pointer-events-none">
               <div className="bg-background border border-border rounded-lg shadow-xl p-3">
                 <img
                   src={file.preview}
@@ -105,12 +116,30 @@ export default function FilePreview({ file, onRemove, showPreview = true }: File
   // Для других типов файлов - только название и размер, без превью
   const IconComponent = getFileIcon();
   
+  // Функция для открытия файла (для PDF и других не-изображений)
+  const handleFileClick = () => {
+    if (file.storageId) {
+      // Открываем файл через наш API
+      console.log('Opening remote file:', file.name, 'storageId:', file.storageId);
+      window.open(`/api/files/${file.storageId}`, '_blank');
+    } else if (file.preview && file.preview.startsWith('blob:')) {
+      // Для локальных файлов используем blob URL
+      console.log('Opening local file:', file.name, 'blob URL');
+      window.open(file.preview, '_blank');
+    } else {
+      console.warn('Cannot open file - no storageId or blob URL:', file.name);
+    }
+  };
+  
   return (
     <div className="relative flex-shrink-0 group">
-      <div className={cn(
-        "h-16 w-20 rounded-lg border-2 flex flex-col items-center justify-center text-[10px] px-1 shadow-sm transition-all duration-200 hover:shadow-md",
-        getFileColor()
-      )}>
+      <div 
+        className={cn(
+          "h-16 w-20 rounded-lg border-2 flex flex-col items-center justify-center text-[10px] px-1 shadow-sm transition-all duration-200 hover:shadow-md cursor-pointer",
+          getFileColor()
+        )}
+        onClick={handleFileClick}
+      >
         <IconComponent className={cn("w-5 h-5 mb-1", getIconColor())} />
         <span className="line-clamp-1 text-center font-medium text-foreground leading-tight">{file.name}</span>
         <span className="text-muted-foreground mt-0.5">{formatFileSize(file.size)}</span>
