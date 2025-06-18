@@ -119,7 +119,6 @@ function ChatHistoryList({
   const [hoveredThreadId, setHoveredThreadId] = useState<Id<"threads"> | null>(null);
   const [longPressThreadId, setLongPressThreadId] = useState<Id<"threads"> | null>(null);
   const [selectedThreadIndex, setSelectedThreadIndex] = useState<number>(-1);
-  const [mobileMenuThreadId, setMobileMenuThreadId] = useState<Id<"threads"> | null>(null);
   const itemRefs = useRef<Map<number, HTMLDivElement | null>>(new Map());
 
   const { isMobile, mounted } = useIsMobile(600);
@@ -252,32 +251,28 @@ function ChatHistoryList({
         onMouseLeave={() => {
           setHoveredThreadId(null);
           setLongPressThreadId(null);
-          if (isMobile) {
-            setMobileMenuThreadId(null);
-          }
         }}
         onContextMenu={(e) => {
           if (isMobile) {
             e.preventDefault();
-            setLongPressThreadId(thread._id);
-            setMobileMenuThreadId(thread._id);
           }
         }}
         onTouchStart={(e) => {
           if (isMobile) {
+            // Prevent triggering the browser context menu on long press
             const touchStartTime = Date.now();
             const touchTimer = setTimeout(() => {
-              setLongPressThreadId(thread._id);
-              setMobileMenuThreadId(thread._id);
+              /* noop - long press disabled on mobile */
             }, 500);
-            
+
             const handleTouchEnd = () => {
               clearTimeout(touchTimer);
-              if (Date.now() - touchStartTime < 500) {
-                setMobileMenuThreadId(null);
+              const duration = Date.now() - touchStartTime;
+              if (duration >= 500) {
+                e.preventDefault();
               }
             };
-            
+
             e.currentTarget.addEventListener('touchend', handleTouchEnd, { once: true });
           }
         }}
@@ -346,69 +341,17 @@ function ChatHistoryList({
           </div>
         </div>
         {/* Right side buttons */}
+        {!isMobile && (
         <div
           className={cn(
             "flex gap-0.5 sm:gap-1 shrink-0",
-            isMobile
-              ? longPressThreadId === thread._id ? "opacity-100" : "opacity-0"
-              : longPressThreadId === thread._id ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+            longPressThreadId === thread._id
+              ? "opacity-100"
+              : "opacity-0 group-hover:opacity-100",
           )}
         >
           {!editingThreadId && (
             <>
-              {/* Mobile action menu */}
-              {isMobile && mobileMenuThreadId === thread._id && (
-                <div
-                  id={`mobile-menu-${thread._id}`}
-                  className="absolute right-2 top-0 bottom-0 flex items-center bg-background shadow-lg rounded-lg p-1 z-10"
-                >
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-8 w-8 p-0"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handlePinToggle(thread._id, e);
-                      setMobileMenuThreadId(null);
-                    }}
-                  >
-                    {thread.pinned ? (
-                      <PinOff className="size-4" />
-                    ) : (
-                      <Pin className="size-4" />
-                    )}
-                  </Button>
-                  {onShare && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 w-8 p-0"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleShare(thread);
-                        setMobileMenuThreadId(null);
-                      }}
-                    >
-                      <Share2 className="size-4" />
-                    </Button>
-                  )}
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-8 w-8 p-0"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleDelete(thread._id);
-                      setMobileMenuThreadId(null);
-                    }}
-                  >
-                    <X className="size-4" />
-                  </Button>
-                </div>
-              )}
               {deletingThreadId === thread._id ? (
                 <>
                   <Button
@@ -512,9 +455,10 @@ function ChatHistoryList({
               )}
             </>
           )}
+          </div>
+        )}
         </div>
-      </div>
-    ),
+      ),
     [
       isMobile,
       id,
@@ -522,7 +466,6 @@ function ChatHistoryList({
       editingTitle,
       deletingThreadId,
       longPressThreadId,
-      mobileMenuThreadId,
       selectedThreadIndex,
       handleThreadClick,
       handleEdit,
