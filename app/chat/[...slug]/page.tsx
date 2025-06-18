@@ -8,6 +8,7 @@ import { Id, Doc } from '@/convex/_generated/dataModel';
 import { isConvexId } from '@/lib/ids';
 import Chat from '@/frontend/components/Chat';
 import ErrorBoundary from '@/frontend/components/ErrorBoundary';
+import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 
 function CatchAllChatPageInner({ params }: { params: Promise<{ slug: string[] }> }) {
   const resolvedParams = use(params);
