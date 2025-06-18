@@ -96,12 +96,12 @@ export default function PWAInstallPrompt() {
         
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-sm text-foreground">
-            Установить Pak.Chat
+            Install Pak.Chat
           </h3>
           <p className="text-xs text-muted-foreground mt-1">
             {isIOS 
-              ? "Нажмите Share → Add to Home Screen для установки"
-              : "Установите приложение для лучшего опыта"
+              ? "Press Share → Add to Home Screen to install"
+              : "Install the app for a better experience"
             }
           </p>
           
@@ -112,7 +112,7 @@ export default function PWAInstallPrompt() {
                 onClick={handleInstall}
                 className="h-8 px-3 text-xs"
               >
-                Установить
+                Install
               </Button>
             )}
             
@@ -122,7 +122,7 @@ export default function PWAInstallPrompt() {
               onClick={handleDismiss}
               className="h-8 px-3 text-xs"
             >
-              Не сейчас
+              Not now
             </Button>
           </div>
         </div>
