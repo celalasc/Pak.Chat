@@ -7,7 +7,9 @@ import { z } from 'zod';
 export const customTool = tool({
   description: 'A placeholder for future custom tools',
   parameters: z.object({ query: z.string() }),
-  execute: async ({ query }) => {
+  execute: async ({ query: _query }) => {
+    // Parameter `_query` reserved for future use
+    void _query;
     return { message: 'Custom tool placeholder' };
   },
 });
