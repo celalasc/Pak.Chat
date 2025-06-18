@@ -20,9 +20,10 @@ import type { UIMessage } from 'ai';
 interface ChatProps {
   threadId: string;
   initialMessages: UIMessage[];
+  dialogVersion: number;
 }
 
-function Chat({ threadId, initialMessages }: ChatProps) {
+function Chat({ threadId, initialMessages, dialogVersion }: ChatProps) {
   const { isMobile } = useIsMobile();
   const { selectedModel } = useModelStore();
   const router = useRouter();
@@ -133,9 +134,10 @@ function Chat({ threadId, initialMessages }: ChatProps) {
 
       {/* Core chat UI */}
       <ChatView
-        key={threadId}
+        key={`${threadId}-${dialogVersion}`}
         threadId={threadId}
         initialMessages={initialMessages}
+        dialogVersion={dialogVersion}
         showNavBars={settings.showNavBars}
       />
     </div>

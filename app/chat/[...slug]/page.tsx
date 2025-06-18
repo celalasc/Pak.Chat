@@ -33,6 +33,11 @@ export default function CatchAllChatPage({ params }: { params: Promise<{ slug: s
     api.attachments.byThread,
     isValidId ? { threadId: chatId as Id<'threads'> } : 'skip'
   );
+
+  const currentVersion = useQuery(
+    api.messages.getCurrentDialogVersion,
+    isValidId ? { threadId: chatId as Id<'threads'> } : 'skip'
+  );
   
   const messages = useMemo(() => {
     if (!attachments || !messagesResult) return [];
@@ -85,7 +90,13 @@ export default function CatchAllChatPage({ params }: { params: Promise<{ slug: s
     }
   }, [authLoading, isAuthenticated, isValidId, router, chatId, thread]);
   
-  const isLoading = authLoading || !isValidId || thread === undefined || messagesResult === undefined || attachments === undefined;
+  const isLoading =
+    authLoading ||
+    !isValidId ||
+    thread === undefined ||
+    messagesResult === undefined ||
+    attachments === undefined ||
+    currentVersion === undefined;
 
   useEffect(() => {
     if (!isLoading) {
@@ -103,9 +114,10 @@ export default function CatchAllChatPage({ params }: { params: Promise<{ slug: s
 
   return (
     <Chat
-      key={chatId}
+      key={`${chatId}-${currentVersion}`}
       threadId={chatId}
       initialMessages={messages}
+      dialogVersion={currentVersion as number}
     />
   )
 }

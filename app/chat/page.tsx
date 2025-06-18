@@ -25,6 +25,7 @@ export default function NewChatPage() {
       key="new-draft"
       threadId=""
       initialMessages={[]}
+      dialogVersion={1}
     />
   );
 }

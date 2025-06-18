@@ -5,13 +5,12 @@ import { useEffect, useState } from 'react';
 import { useConvexAuth } from 'convex/react';
 import { Button } from '@/frontend/components/ui/button';
 import { MessageSquare, Plus, Settings } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import ChatHistoryList from '@/frontend/components/ChatHistoryList';
 import SettingsDrawer from '@/frontend/components/SettingsDrawer';
 import AppShellSkeleton from '@/frontend/components/AppShellSkeleton';
 import { WithTooltip } from '@/frontend/components/WithTooltip';
-import type { Doc, Id } from '@/convex/_generated/dataModel';
+import type { Id } from '@/convex/_generated/dataModel';
 
 export default function HomePage() {
   const { isAuthenticated, isLoading } = useConvexAuth();
