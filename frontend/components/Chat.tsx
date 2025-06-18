@@ -5,7 +5,6 @@ import NewChatButton from './NewChatButton';
 import SettingsDrawer from './SettingsDrawer';
 import MobileChatMenu from './MobileChatMenu';
 import ChatView from './ChatView';
-import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { Button } from './ui/button';
 import { WithTooltip } from './WithTooltip';
@@ -68,39 +67,12 @@ function Chat({ threadId, thread, initialMessages }: ChatProps) {
       "relative h-screen overflow-hidden bg-background",
       isMobile && "mobile-fullscreen touch-target"
     )}>
-      {/* Background overlay for mobile settings */}
-      {isMobile && (
-        <motion.div
-          className="fixed inset-0 bg-black z-40"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: isSettingsOpen ? 0.5 : 0 }}
-          transition={{
-            duration: 0.4,
-            ease: [0.25, 0.8, 0.25, 1],
-          }}
-          style={{
-            pointerEvents: isSettingsOpen ? 'auto' : 'none',
-          }}
-        />
+      {/* Static overlay displayed when settings drawer is open on mobile */}
+      {isMobile && isSettingsOpen && (
+        <div className="fixed inset-0 bg-black z-40 opacity-50" />
       )}
       
-      <motion.div
-        className="w-full min-h-screen flex flex-col overflow-y-auto chat-smooth origin-top"
-        animate={{
-          scale: isSettingsOpen ? 0.95 : 1,
-          y: isSettingsOpen ? (isMobile ? '20px' : '10px') : '0px',
-          filter: isSettingsOpen ? 'brightness(0.7)' : 'brightness(1)',
-        }}
-        transition={{
-          type: 'spring',
-          stiffness: 300,
-          damping: 30,
-        }}
-        style={{
-          borderRadius: isSettingsOpen ? '15px' : '0px',
-          overflow: 'hidden',
-        }}
-      >
+      <div className="w-full min-h-screen flex flex-col overflow-y-auto">
         {/* Header for new chat vs existing chat */}
         {isMobile ? (
         // МОБИЛЬНАЯ версия - только меню с тремя точками для существующих чатов
@@ -197,7 +169,7 @@ function Chat({ threadId, thread, initialMessages }: ChatProps) {
           initialMessages={initialMessages}
           showNavBars={settings.showNavBars}
         />
-      </motion.div>
+      </div>
     </div>
   );
 }
