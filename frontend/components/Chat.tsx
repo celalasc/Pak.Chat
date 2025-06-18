@@ -64,7 +64,7 @@ function Chat({ threadId, thread, initialMessages }: ChatProps) {
 
   return (
     <div className={cn(
-      "relative h-screen overflow-hidden bg-background",
+      "relative min-h-screen bg-background overflow-y-auto",
       isMobile && "mobile-fullscreen touch-target"
     )}>
       {/* Static overlay displayed when settings drawer is open on mobile */}

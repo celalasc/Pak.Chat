@@ -47,7 +47,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="w-full min-h-screen flex flex-col overflow-hidden bg-background">
+    <div className="w-full min-h-screen flex flex-col overflow-y-auto bg-background">
       {/* Header with logo and settings */}
       <div className="flex items-center justify-between p-4 border-b border-border/50">
         {/* Left: Settings button */}
