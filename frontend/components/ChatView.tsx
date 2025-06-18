@@ -25,16 +25,14 @@ interface ChatViewProps {
   thread: Doc<'threads'> | null | undefined;
   initialMessages: UIMessage[];
   showNavBars: boolean;
-  dialogVersion: number;
 }
 
-function ChatView({ threadId, thread, initialMessages, showNavBars, dialogVersion }: ChatViewProps) {
+function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewProps) {
   const { keys } = useAPIKeyStore();
   const { selectedModel, webSearchEnabled } = useModelStore();
   const { clearQuote } = useQuoteStore();
   const { clear: clearAttachments } = useAttachmentsStore();
   const { isMobile } = useIsMobile();
-  const { consumeNextDialogVersion } = useChatStore();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [currentThreadId, setCurrentThreadId] = useState(threadId);
@@ -101,15 +99,11 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, dialogVersio
         // Persist the assistant message with the **model actually used**.
         const { selectedModel: currentModel } = useModelStore.getState();
 
-        const dlgVersion = consumeNextDialogVersion() ?? 1;
-
         const realId = await sendMessage({
           threadId: latestThreadId as Id<'threads'>,
           role: 'assistant',
           content: finalMsg.content,
           model: currentModel,
-          dialogVersion: dlgVersion,
-          isActive: true,
         });
 
         // Replace the temporary message ID with the real Convex ID
@@ -191,27 +185,27 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, dialogVersio
     }
     setMessages(initialMessages);
 
-    const draft = loadDraft(threadId, dialogVersion);
+    const draft = loadDraft(threadId);
     if (draft) {
       if (draft.input) setInput(draft.input);
       if (draft.messages.length > 0) {
         setMessages((prev) => [...prev, ...draft.messages]);
       }
     }
-  }, [threadId, dialogVersion, setInput, clearQuote, clearAttachments, setMessages, initialMessages]);
+  }, [threadId, setInput, clearQuote, clearAttachments, setMessages, initialMessages]);
 
   // Persist unsent messages and input as a draft
   useEffect(() => {
     const unsent = messages.filter((m) => !isConvexId(m.id));
     if (unsent.length === 0 && !input.trim()) {
-      clearDraft(threadIdRef.current, dialogVersion);
+      clearDraft(threadIdRef.current);
       return;
     }
-    saveDraft(threadIdRef.current, dialogVersion, {
+    saveDraft(threadIdRef.current, {
       input,
       messages: unsent,
     });
-  }, [messages, input, dialogVersion]);
+  }, [messages, input]);
 
   return (
     <>

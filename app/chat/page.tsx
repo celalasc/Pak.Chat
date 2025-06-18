@@ -35,7 +35,6 @@ export default function NewChatPage() {
       threadId=""
       thread={null}
       initialMessages={[]}
-      dialogVersion={1}
     />
   );
 }

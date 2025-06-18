@@ -13,8 +13,6 @@ import { isConvexId } from '@/lib/ids';
 import type { Id } from '@/convex/_generated/dataModel';
 import { useRouter } from 'next/navigation';
 import { useSettingsStore } from '@/frontend/stores/SettingsStore';
-import { useChatStore } from '@/frontend/stores/ChatStore';
-import DialogVersionNavigation from './DialogVersionNavigation';
 
 interface MessageControlsProps {
   threadId: string;
@@ -50,9 +48,7 @@ export default function MessageControls({
   const canChat = hasRequiredKeys();
   const { isMobile } = useIsMobile();
   const prepareForRegenerate = useMutation(api.messages.prepareForRegeneration);
-  const createSnapshot = useMutation(api.messages.createDialogSnapshot);
   const { settings } = useSettingsStore();
-  const { setNextDialogVersion } = useChatStore();
   const cloneThread = useMutation(api.threads.clone);
   const thread = useQuery(
     api.threads.get,
@@ -113,27 +109,14 @@ export default function MessageControls({
     const messagesUpToParent = messages.slice(0, parentMessageIndex + 1);
     setMessages(messagesUpToParent);
 
-    if (settings.saveRegenerationHistory) {
-      // Create snapshot to keep history and obtain new dialogVersion
+    if (isConvexId(parentMessageToResend.id)) {
       try {
-        const res = await createSnapshot({
+        await prepareForRegenerate({
           threadId: threadId as Id<'threads'>,
+          userMessageId: parentMessageToResend.id as Id<'messages'>,
         });
-        setNextDialogVersion(res.dialogVersion);
-      } catch (err) {
-        console.error('Snapshot creation failed', err);
-      }
-    } else {
-      // fallback to legacy deletion behaviour
-      if (isConvexId(parentMessageToResend.id)) {
-        try {
-          await prepareForRegenerate({
-            threadId: threadId as Id<'threads'>,
-            userMessageId: parentMessageToResend.id as Id<'messages'>,
-          });
-        } catch (error) {
-          console.error('Error during regeneration cleanup:', error);
-        }
+      } catch (error) {
+        console.error('Error during regeneration cleanup:', error);
       }
     }
 
@@ -153,7 +136,7 @@ export default function MessageControls({
         search: currentSearch,
       },
     });
-  }, [stop, threadId, message.id, messages, setMessages, reload, prepareForRegenerate, keys, createSnapshot, settings, setNextDialogVersion]);
+  }, [stop, threadId, message.id, messages, setMessages, reload, prepareForRegenerate, keys]);
 
   // Show controls on mobile only when explicitly visible.
   const shouldShowControls = useMemo(() => (isMobile ? isVisible : true), [isMobile, isVisible]);
@@ -191,10 +174,7 @@ export default function MessageControls({
           </Button>
         )}
 
-        {/* Dialog version navigation for user messages */}
-        {message.role === 'user' && (
-          <DialogVersionNavigation threadId={threadId} />
-        )}
+
 
         {/* Model label for assistant messages */}
         {message.role === 'assistant' && (message as any).model && (
