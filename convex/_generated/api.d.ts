@@ -13,9 +13,11 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+import type * as apiKeys from "../apiKeys.js";
 import type * as attachments from "../attachments.js";
 import type * as http from "../http.js";
 import type * as messages from "../messages.js";
+import type * as modelVisibility from "../modelVisibility.js";
 import type * as threads from "../threads.js";
 import type * as userSettings from "../userSettings.js";
 import type * as users from "../users.js";
@@ -30,9 +32,11 @@ import type * as utils from "../utils.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  apiKeys: typeof apiKeys;
   attachments: typeof attachments;
   http: typeof http;
   messages: typeof messages;
+  modelVisibility: typeof modelVisibility;
   threads: typeof threads;
   userSettings: typeof userSettings;
   users: typeof users;

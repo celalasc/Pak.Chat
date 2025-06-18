@@ -20,6 +20,23 @@ export default defineSchema({
     hidePersonal: v.optional(v.boolean()),
   }).index("by_user", ["userId"]),
 
+  // API Keys stored securely in Convex
+  apiKeys: defineTable({
+    userId: v.id("users"),
+    google: v.optional(v.string()),
+    openrouter: v.optional(v.string()),
+    openai: v.optional(v.string()),
+    groq: v.optional(v.string()),
+    encryptedAt: v.number(),
+  }).index("by_user", ["userId"]),
+
+  // Model visibility settings
+  modelVisibility: defineTable({
+    userId: v.id("users"),
+    favoriteModels: v.array(v.string()),
+    enabledProviders: v.array(v.string()),
+  }).index("by_user", ["userId"]),
+
   // Chat threads
   threads: defineTable({
     userId: v.id("users"),

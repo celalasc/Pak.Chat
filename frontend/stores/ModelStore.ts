@@ -2,18 +2,22 @@ import { create, Mutate, StoreApi } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { AIModel, getModelConfig, ModelConfig } from '@/lib/models';
 
+export type ReasoningEffort = "medium" | "low" | "high";
+
 type ModelStore = {
   selectedModel: AIModel;
   favoriteModels: AIModel[];
+  modelSpecificSettings: Partial<Record<AIModel, { reasoningEffort?: ReasoningEffort }>>;
   setModel: (model: AIModel) => void;
   toggleFavorite: (model: AIModel) => void;
   isFavorite: (model: AIModel) => boolean;
   getModelConfig: () => ModelConfig;
+  setReasoningEffort: (model: AIModel, effort: ReasoningEffort) => void;
 };
 
 type StoreWithPersist = Mutate<
   StoreApi<ModelStore>,
-  [['zustand/persist', { selectedModel: AIModel; favoriteModels: AIModel[] }]]
+  [['zustand/persist', { selectedModel: AIModel; favoriteModels: AIModel[]; modelSpecificSettings: Partial<Record<AIModel, { reasoningEffort?: ReasoningEffort }>> }]]
 >;
 
 export const withStorageDOMEvents = (store: StoreWithPersist) => {
@@ -40,6 +44,7 @@ export const useModelStore = create<ModelStore>()(
     (set, get) => ({
       selectedModel: 'Gemini 2.5 Flash',
       favoriteModels: ['Gemini 2.5 Flash', 'GPT-4o', 'Deepseek R1 0528'],
+      modelSpecificSettings: {},
 
       setModel: (model) => {
         set({ selectedModel: model });
@@ -65,15 +70,32 @@ export const useModelStore = create<ModelStore>()(
       },
 
       getModelConfig: () => {
-        const { selectedModel } = get();
-        return getModelConfig(selectedModel);
+        const { selectedModel, modelSpecificSettings } = get();
+        const baseConfig = getModelConfig(selectedModel);
+        return {
+          ...baseConfig,
+          reasoningEffort: modelSpecificSettings[selectedModel]?.reasoningEffort || baseConfig.reasoningEffort,
+        };
+      },
+
+      setReasoningEffort: (model, effort) => {
+        set(state => ({
+          modelSpecificSettings: {
+            ...state.modelSpecificSettings,
+            [model]: {
+              ...state.modelSpecificSettings[model],
+              reasoningEffort: effort,
+            },
+          },
+        }));
       },
     }),
     {
       name: 'selected-model',
-      partialize: (state) => ({ 
+      partialize: (state) => ({
         selectedModel: state.selectedModel,
-        favoriteModels: state.favoriteModels
+        favoriteModels: state.favoriteModels,
+        modelSpecificSettings: state.modelSpecificSettings,
       }),
     }
   )

@@ -50,6 +50,7 @@ export async function POST(req: NextRequest) {
 
     const modelConfig = getModelConfig(model as AIModel);
     const apiKey = apiKeys[modelConfig.provider];
+    const reasoningEffort = modelConfig.reasoningEffort;
 
     if (!apiKey) {
       return new NextResponse(JSON.stringify({ error: 'Missing API key' }), {
@@ -64,7 +65,9 @@ export async function POST(req: NextRequest) {
         aiModel = createGoogleGenerativeAI({ apiKey })(modelConfig.modelId);
         break;
       case 'openai':
-        aiModel = createOpenAI({ apiKey })(modelConfig.modelId);
+        aiModel = createOpenAI({ apiKey })(modelConfig.modelId, {
+          reasoningEffort: reasoningEffort,
+        });
         break;
       case 'openrouter':
         aiModel = createOpenRouter({ apiKey })(modelConfig.modelId);
