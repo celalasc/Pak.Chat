@@ -70,7 +70,7 @@ interface ContentComponentProps {
   isMobile: boolean;
   tabs: { value: string; label: string; icon: string }[];
   getTabIcon: (iconName: string) => React.ReactNode;
-  scrollRef: React.RefObject<HTMLDivElement>;
+  scrollRef: React.RefObject<HTMLDivElement | null>;
 }
 
 const ContentComponent = memo(function ContentComponent({
