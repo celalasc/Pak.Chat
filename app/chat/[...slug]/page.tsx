@@ -56,9 +56,8 @@ export default function CatchAllChatPage({ params }: { params: Promise<{ slug: s
       attachmentsMap[a.messageId].push(a);
     });
 
-    const rawMessages: Doc<'messages'>[] = Array.isArray(messagesResult)
-      ? messagesResult
-      : messagesResult?.page || []
+    // Handle case where the query might still be loading.
+    const rawMessages: Doc<'messages'>[] = messagesResult ?? []
 
     return rawMessages.map(m => ({
       id: m._id,
