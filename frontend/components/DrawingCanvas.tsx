@@ -86,6 +86,9 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     redrawCanvas();
+
+    // Canvas is fully controlled via React handlers, no extra listeners
+    return () => {};
   }, [isOpen]);
 
   const redrawCanvas = useCallback(() => {
@@ -184,15 +187,15 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
     setHistoryIndex(newHistory.length - 1);
   }, [history, historyIndex]);
 
-  const getMousePos = useCallback((e: React.MouseEvent<HTMLCanvasElement>): Point => {
+  const getCoords = useCallback((e: MouseEvent | TouchEvent): Point => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
-    
     const rect = canvas.getBoundingClientRect();
-    return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
-    };
+    if (e instanceof TouchEvent) {
+      const touch = e.touches[0];
+      return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+    }
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   }, []);
 
   const findElementAtPoint = useCallback((point: Point): DrawingElement | null => {
@@ -227,8 +230,9 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
     return null;
   }, [elements]);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    const pos = getMousePos(e);
+  const startDrawing = useCallback((e: MouseEvent | TouchEvent) => {
+    e.preventDefault();
+    const pos = getCoords(e);
     setIsDrawing(true);
     setDragStart(pos);
 
@@ -264,12 +268,13 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
     }
 
     setElements(prev => [...prev, newElement]);
-  }, [tool, color, strokeWidth, getMousePos, findElementAtPoint]);
+  }, [tool, color, strokeWidth, getCoords, findElementAtPoint]);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+  const draw = useCallback((e: MouseEvent | TouchEvent) => {
+    e.preventDefault();
     if (!isDrawing || !dragStart) return;
 
-    const pos = getMousePos(e);
+    const pos = getCoords(e);
 
     if (tool === 'move' && selectedElement) {
       const dx = pos.x - dragStart.x;
@@ -306,9 +311,9 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
 
       return newElements;
     });
-  }, [isDrawing, dragStart, tool, selectedElement, getMousePos]);
+  }, [isDrawing, dragStart, tool, selectedElement, getCoords]);
 
-  const handleMouseUp = useCallback(() => {
+  const stopDrawing = useCallback(() => {
     if (isDrawing) {
       addToHistory(elements);
     }
@@ -527,10 +532,13 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
             <canvas
               ref={canvasRef}
               className="border border-border rounded-lg shadow-sm cursor-crosshair bg-white"
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
+              onMouseDown={(e) => startDrawing(e.nativeEvent)}
+              onMouseMove={(e) => draw(e.nativeEvent)}
+              onMouseUp={stopDrawing}
+              onMouseLeave={stopDrawing}
+              onTouchStart={(e) => startDrawing(e.nativeEvent)}
+              onTouchMove={(e) => draw(e.nativeEvent)}
+              onTouchEnd={stopDrawing}
             />
             
             {/* Text Input Overlay */}

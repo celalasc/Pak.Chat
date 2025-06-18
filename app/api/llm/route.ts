@@ -1,7 +1,8 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
-import { streamText, convertToCoreMessages, type Message } from 'ai';
+import { streamText, convertToCoreMessages, type Message, type ToolSet } from 'ai';
+import { webSearchTool } from '@/lib/tools';
 import { getModelConfig, AIModel } from '@/lib/models';
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchQuery } from 'convex/nextjs';
@@ -39,7 +40,7 @@ const EXTRA_TEXT_MIME_TYPES = new Set([
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, model, apiKeys, threadId } = await req.json();
+    const { messages, model, apiKeys, threadId, search } = await req.json();
 
     if (!threadId) {
       return NextResponse.json(
@@ -200,9 +201,15 @@ export async function POST(req: NextRequest) {
 
     const coreMessages = convertToCoreMessages(processedMessages);
 
+    const tools: ToolSet = {};
+    if (search) {
+      tools.webSearch = webSearchTool;
+    }
+
     const result = await streamText({
       model: aiModel,
       messages: coreMessages,
+      tools,
       onError: (e) => {
         console.error('AI SDK streamText Error:', e);
       },

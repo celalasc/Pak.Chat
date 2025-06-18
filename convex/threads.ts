@@ -3,6 +3,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { currentUserId } from "./utils";
+import crypto from "node:crypto";
 
 /** Get a single thread by ID */
 export const get = query({
@@ -213,6 +214,45 @@ export const setParent = mutation({
     if (!thread || thread.userId !== uid)
       throw new Error("Thread not found or permission denied");
     await ctx.db.patch(args.threadId, { clonedFrom: args.parentId });
+  },
+});
+
+/** Create a public share link for a thread */
+export const createShareLink = mutation({
+  args: { threadId: v.id("threads") },
+  async handler(ctx, { threadId }) {
+    const uid = await currentUserId(ctx);
+    const thread = await ctx.db.get(threadId);
+    if (!uid || !thread || thread.userId !== uid) throw new Error("Access denied");
+
+    const messages = await ctx.db
+      .query("messages")
+      .withIndex("by_thread_and_time", (q) => q.eq("threadId", threadId))
+      .order("asc")
+      .collect();
+
+    const shareId = crypto.randomUUID().slice(0, 8);
+
+    await ctx.db.insert("sharedThreads", {
+      shareId,
+      originalThreadId: threadId,
+      userId: uid,
+      title: thread.title,
+      messages: messages.map((m) => ({ role: m.role, content: m.content })),
+    });
+
+    return shareId;
+  },
+});
+
+/** Retrieve a shared thread by its public ID */
+export const getSharedThread = query({
+  args: { shareId: v.string() },
+  async handler(ctx, { shareId }) {
+    return await ctx.db
+      .query("sharedThreads")
+      .withIndex("by_share_id", (q) => q.eq("shareId", shareId))
+      .unique();
   },
 });
 
