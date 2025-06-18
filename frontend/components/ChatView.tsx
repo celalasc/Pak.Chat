@@ -18,14 +18,16 @@ import { Id } from '@/convex/_generated/dataModel';
 import type { UIMessage } from 'ai';
 import { useDebounceCallback } from 'usehooks-ts';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
+import { loadDraft, saveDraft, clearDraft } from '@/frontend/lib/drafts';
 
 interface ChatViewProps {
   threadId: string;
   initialMessages: UIMessage[];
   showNavBars: boolean;
+  dialogVersion: number;
 }
 
-function ChatView({ threadId, initialMessages, showNavBars }: ChatViewProps) {
+function ChatView({ threadId, initialMessages, showNavBars, dialogVersion }: ChatViewProps) {
   const { keys } = useAPIKeyStore();
   const { selectedModel, webSearchEnabled } = useModelStore();
   const { clearQuote } = useQuoteStore();
@@ -178,7 +180,7 @@ function ChatView({ threadId, initialMessages, showNavBars }: ChatViewProps) {
     registerInputSetter(setInput);
   }, [setInput, registerInputSetter]);
 
-  // Sync when navigating between chats
+  // Sync when navigating between chats or dialog versions
   useEffect(() => {
     setCurrentThreadId(threadId);
     if (!threadId) {
@@ -187,7 +189,28 @@ function ChatView({ threadId, initialMessages, showNavBars }: ChatViewProps) {
       clearAttachments();
     }
     setMessages(initialMessages);
-  }, [threadId, setInput, clearQuote, clearAttachments, setMessages, initialMessages]);
+
+    const draft = loadDraft(threadId, dialogVersion);
+    if (draft) {
+      if (draft.input) setInput(draft.input);
+      if (draft.messages.length > 0) {
+        setMessages((prev) => [...prev, ...draft.messages]);
+      }
+    }
+  }, [threadId, dialogVersion, setInput, clearQuote, clearAttachments, setMessages, initialMessages]);
+
+  // Persist unsent messages and input as a draft
+  useEffect(() => {
+    const unsent = messages.filter((m) => !isConvexId(m.id));
+    if (unsent.length === 0 && !input.trim()) {
+      clearDraft(threadIdRef.current, dialogVersion);
+      return;
+    }
+    saveDraft(threadIdRef.current, dialogVersion, {
+      input,
+      messages: unsent,
+    });
+  }, [messages, input, dialogVersion]);
 
   return (
     <>
