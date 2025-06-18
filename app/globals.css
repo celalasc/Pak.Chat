@@ -248,6 +248,8 @@
     -webkit-tap-highlight-color: transparent;
     -webkit-text-size-adjust: 100%;
     -ms-text-size-adjust: 100%;
+    /* Ensure base scrolling always works */
+    overflow-y: auto;
     /* PWA полноэкранный режим с безопасными зонами */
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
