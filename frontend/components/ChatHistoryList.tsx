@@ -290,9 +290,9 @@ function ChatHistoryList({
           }
         }}
         className={cn(
-          "group flex items-center justify-between rounded-lg px-2 py-1.5 cursor-pointer",
+          "group flex items-center justify-between rounded-lg px-2 py-2 min-h-12 cursor-pointer",
           id === thread._id
-            ? "bg-primary/10 border border-primary/20" 
+            ? "bg-primary/10 border border-primary/20"
             : (!isMobile && threadIndex === selectedThreadIndex)
             ? "bg-accent"
             : "hover:bg-accent",

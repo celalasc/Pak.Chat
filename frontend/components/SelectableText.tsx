@@ -64,25 +64,31 @@ function PureSelectableText({
             const buttonWidth = 80; // приблизительная ширина кнопки
 
             let posX = left + width / 2 - buttonWidth / 2;
-            
+
             // Горизонтальное ограничение с учетом мобильных устройств
             const margin = isMobile ? 16 : 8;
             posX = Math.max(margin, Math.min(posX, window.innerWidth - buttonWidth - margin));
 
             // Вертикальное позиционирование
             let posY = top - buttonHeight - 8;
-            
+
+            // Минимальный отступ от верхнего края на мобильных устройствах
+            const safeTop = isMobile ? 24 : 0;
+
             // Если не помещается сверху, показываем снизу
-            if (posY < margin) {
+            if (posY < margin + safeTop) {
               posY = bottom + 8;
             }
-            
+
             // Последняя проверка для нижнего края
             posY = Math.min(posY, window.innerHeight - buttonHeight - margin);
 
+            // Гарантируем отступ от верхней системной панели
+            posY = Math.max(posY, safeTop);
+
             // На мобильных устройствах добавляем дополнительный отступ снизу
             if (isMobile && posY > window.innerHeight - buttonHeight - 60) {
-              posY = top - buttonHeight - 8;
+              posY = Math.max(top - buttonHeight - 8, safeTop);
             }
 
             return { x: posX, y: posY };
