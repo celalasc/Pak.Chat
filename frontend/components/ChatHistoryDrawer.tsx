@@ -157,7 +157,6 @@ function ChatHistoryDrawerComponent({
   const renameThread = useMutation(api.threads.rename);
   const togglePin = useMutation(api.threads.togglePin);
   const createShareLink = useMutation(api.threads.createShareLink);
-  const createShareLink = useMutation(api.threads.createShareLink);
 
   const handleOpenChange = useCallback(
     (open: boolean) => {

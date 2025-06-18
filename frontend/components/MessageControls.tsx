@@ -12,7 +12,6 @@ import { api } from '@/convex/_generated/api';
 import { isConvexId } from '@/lib/ids';
 import type { Id } from '@/convex/_generated/dataModel';
 import { useRouter } from 'next/navigation';
-import { useSettingsStore } from '@/frontend/stores/SettingsStore';
 
 interface MessageControlsProps {
   threadId: string;
@@ -43,8 +42,7 @@ export default function MessageControls({
 }: MessageControlsProps) {
   const [copied, setCopied] = useState(false);
   const { hasRequiredKeys, keys } = useAPIKeyStore();
-  const { selectedModel } = useModelStore();
-  const { settings } = useSettingsStore();
+  const { selectedModel, webSearchEnabled } = useModelStore();
   const { isAuthenticated } = useConvexAuth();
   const canChat = hasRequiredKeys();
   const { isMobile } = useIsMobile();
@@ -104,33 +102,35 @@ export default function MessageControls({
     }
 
     const parentMessageToResend = messages[parentMessageIndex];
-    if (!isConvexId(parentMessageToResend.id)) {
-      console.warn('Parent message for regeneration has a non-Convex ID:', parentMessageToResend.id);
-      return;
-    }
 
-    try {
-      const msgToResend = await prepareForRegenerate({
-        threadId: threadId as Id<'threads'>,
-        userMessageId: parentMessageToResend.id as Id<'messages'>,
-      });
+    // Trim in-memory messages up to the parent user prompt (inclusive)
+    const messagesUpToParent = messages.slice(0, parentMessageIndex + 1);
+    setMessages(messagesUpToParent);
 
-      if (msgToResend) {
-        await append(
-          { role: 'user', content: msgToResend.content },
-          {
-            body: {
-              model: selectedModel,
-              apiKeys: keys,
-              threadId,
-            },
-          },
-        );
+    // If the parent message already exists in Convex, clean up server-side history so that
+    // regeneration starts from a clean slate. When the message hasn't been persisted yet
+    // (e.g. due to network hiccups) we simply skip this step.
+    if (isConvexId(parentMessageToResend.id)) {
+      try {
+        await prepareForRegenerate({
+          threadId: threadId as Id<'threads'>,
+          userMessageId: parentMessageToResend.id as Id<'messages'>,
+        });
+      } catch (error) {
+        console.error('Error during regeneration cleanup:', error);
       }
-    } catch (error) {
-      console.error('Error during regeneration:', error);
     }
-  }, [stop, threadId, message.id, messages, append, prepareForRegenerate, selectedModel, keys]);
+
+    // Finally, request a fresh completion from the model.
+    reload({
+      body: {
+        model: selectedModel,
+        apiKeys: keys,
+        threadId,
+        search: webSearchEnabled,
+      },
+    });
+  }, [stop, threadId, message.id, messages, setMessages, reload, prepareForRegenerate, selectedModel, keys, webSearchEnabled]);
 
   // Show controls on mobile only when explicitly visible.
   const shouldShowControls = useMemo(() => (isMobile ? isVisible : true), [isMobile, isVisible]);
@@ -140,7 +140,7 @@ export default function MessageControls({
     <div className="flex flex-col gap-2">
       <div
         className={cn(
-          'transition-opacity duration-100 flex gap-1',
+          'transition-opacity duration-100 flex items-center gap-1',
           {
             'absolute mt-5 right-2': message.role === 'user',
             'opacity-0 group-hover:opacity-100': !isMobile && shouldShowControls,
@@ -166,6 +166,13 @@ export default function MessageControls({
           <Button variant="ghost" size="icon" onClick={handleRegenerate}>
             <RefreshCcw className="w-4 h-4" />
           </Button>
+        )}
+
+        {/* Model label for assistant messages */}
+        {message.role === 'assistant' && (message as any).model && (
+          <span className="text-[10px] text-muted-foreground ml-2">
+            {(message as any).model}
+          </span>
         )}
       </div>
     </div>

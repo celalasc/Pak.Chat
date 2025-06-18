@@ -64,10 +64,14 @@ export function useScrollHide<T extends HTMLElement = HTMLElement>({
     setLastScrollY(currentScrollY);
   }, [lastScrollY, threshold, hideOnScrollDown, showOnScrollUp, panelRef]);
 
+  // Захватываем начальное значение scrollY только один раз при монтировании
   useEffect(() => {
-    // Инициализируем начальную позицию
     setLastScrollY(window.scrollY);
-    
+  }, []);
+
+  // Регистрируем и снимаем обработчик прокрутки. Зависим от handleScroll, но этот
+  // эффект больше не изменяет состояние, поэтому не вызывает бесконечные циклы.
+  useEffect(() => {
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => {
       window.removeEventListener('scroll', handleScroll);

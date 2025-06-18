@@ -1,13 +1,13 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
-import { streamText, convertToCoreMessages, type Message, type ToolSet } from 'ai';
-import { webSearchTool } from '@/lib/tools';
+import { streamText, convertToCoreMessages, type Message } from 'ai';
 import { getModelConfig, AIModel } from '@/lib/models';
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchQuery } from 'convex/nextjs';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
+import { isConvexId } from '@/lib/ids';
 
 
 interface Attachment {
@@ -42,9 +42,11 @@ export async function POST(req: NextRequest) {
   try {
     const { messages, model, apiKeys, threadId, search } = await req.json();
 
-    if (!threadId) {
+    // Для нового чата threadId может быть пустым - это нормально
+    // Проверяем только если есть сообщения, которые нужно сохранить в БД
+    if (!threadId && messages.length > 1) {
       return NextResponse.json(
-        { error: 'threadId required' },
+        { error: 'threadId required for existing conversations' },
         { status: 400 }
       );
     }
@@ -61,9 +63,17 @@ export async function POST(req: NextRequest) {
     }
 
     let aiModel;
+    
     switch (modelConfig.provider) {
       case 'google':
-        aiModel = createGoogleGenerativeAI({ apiKey })(modelConfig.modelId);
+        // Для Google моделей настраиваем Search Grounding согласно документации AI SDK
+        if (search) {
+          aiModel = createGoogleGenerativeAI({ apiKey })(modelConfig.modelId, {
+            useSearchGrounding: true
+          });
+        } else {
+          aiModel = createGoogleGenerativeAI({ apiKey })(modelConfig.modelId);
+        }
         break;
       case 'openai':
         aiModel = createOpenAI({ apiKey })(modelConfig.modelId, {
@@ -73,6 +83,17 @@ export async function POST(req: NextRequest) {
       case 'openrouter':
         aiModel = createOpenRouter({ apiKey })(modelConfig.modelId);
         break;
+      case 'groq':
+        /*
+         * The Groq API is OpenAI-compatible, therefore we can reuse the
+         * OpenAI provider from the AI SDK by specifying a custom baseURL.
+         * See: https://console.groq.com/docs for details.
+         */
+        aiModel = createOpenAI({
+          apiKey,
+          baseURL: 'https://api.groq.com/openai/v1',
+        })(modelConfig.modelId);
+        break;
       default:
         return new Response(JSON.stringify({ error: 'Unsupported model provider' }), {
           status: 400,
@@ -81,7 +102,7 @@ export async function POST(req: NextRequest) {
     }
 
     let attachments: Attachment[] = [];
-    if (threadId) {
+    if (threadId && isConvexId(threadId)) {
       try {
         attachments = await fetchQuery(api.attachments.byThread, { threadId });
       } catch (e) {
@@ -201,16 +222,12 @@ export async function POST(req: NextRequest) {
 
     const coreMessages = convertToCoreMessages(processedMessages);
 
-    const tools: ToolSet = {};
-    if (search) {
-      tools.webSearch = webSearchTool;
-    }
-
     const result = await streamText({
       model: aiModel,
       messages: coreMessages,
-      tools,
-      onError: (e) => {
+      // Для Google моделей useSearchGrounding уже установлен при создании модели,
+      // поэтому дополнительные tools не передаём.
+      onError: (e: any) => {
         console.error('AI SDK streamText Error:', e);
       },
       system: `
@@ -231,11 +248,11 @@ export async function POST(req: NextRequest) {
       When analyzing images or files, be descriptive and helpful. Explain what you see in detail and answer any questions about the content.
       `,
       abortSignal: req.signal,
-    });
+        });
 
     return result.toDataStreamResponse({
       sendReasoning: true,
-      getErrorMessage: (error) => (error as { message: string }).message,
+      getErrorMessage: (error: any) => (error as { message: string }).message,
     });
   } catch (error) {
     console.error('Chat API Error:', error);

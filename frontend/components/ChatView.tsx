@@ -10,7 +10,7 @@ import { useQuoteStore } from '@/frontend/stores/QuoteStore';
 import { useAttachmentsStore } from '@/frontend/stores/AttachmentsStore';
 import { useChatStore } from '@/frontend/stores/ChatStore';
 import { cn } from '@/lib/utils';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { isConvexId } from '@/lib/ids';
@@ -25,12 +25,19 @@ interface ChatViewProps {
 
 function ChatView({ threadId, initialMessages, showNavBars }: ChatViewProps) {
   const { keys } = useAPIKeyStore();
-  const { selectedModel } = useModelStore();
+  const { selectedModel, webSearchEnabled } = useModelStore();
   const { clearQuote } = useQuoteStore();
   const { clear: clearAttachments } = useAttachmentsStore();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [currentThreadId, setCurrentThreadId] = useState(threadId);
+  const [currentMessageId, setCurrentMessageId] = useState<string | undefined>();
+
+  // Keep latest thread ID in a ref to avoid stale closures in callbacks
+  const threadIdRef = useRef<string>(threadId);
+  useEffect(() => {
+    threadIdRef.current = currentThreadId;
+  }, [currentThreadId]);
 
   const sendMessage = useMutation<typeof api.messages.send>(api.messages.send);
 
@@ -40,6 +47,25 @@ function ChatView({ threadId, initialMessages, showNavBars }: ChatViewProps) {
       element.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   };
+
+  // Memoize body and request preparation to avoid creating new references
+  const requestBody = React.useMemo(
+    () => ({
+      model: selectedModel,
+      apiKeys: keys,
+      threadId: currentThreadId,
+      search: webSearchEnabled,
+    }),
+    [selectedModel, keys, currentThreadId, webSearchEnabled]
+  );
+
+  const prepareRequestBody = React.useCallback(
+    ({ messages }: { messages: UIMessage[] }) => ({
+      messages: messages.map((m) => ({ ...m, id: m.id })),
+      ...requestBody,
+    }),
+    [requestBody]
+  );
 
   const {
     messages,
@@ -55,34 +81,75 @@ function ChatView({ threadId, initialMessages, showNavBars }: ChatViewProps) {
     api: '/api/llm',
     id: currentThreadId,
     initialMessages,
-    body: {
-      apiKeys: keys,
-      threadId: currentThreadId,
-    },
-    experimental_prepareRequestBody: ({ messages }) => ({
-      messages: messages.map((m) => ({ ...m, id: m.id })),
-      apiKeys: keys,
-      threadId: currentThreadId,
-    }),
+    body: requestBody,
+    experimental_prepareRequestBody: prepareRequestBody,
     onFinish: async (finalMsg) => {
+      const latestThreadId = threadIdRef.current;
       if (
         finalMsg.role === 'assistant' &&
+        finalMsg.content.trim() !== '' &&
         !isConvexId(finalMsg.id) &&
-        isConvexId(currentThreadId)
+        isConvexId(latestThreadId)
       ) {
         const realId = await sendMessage({
-          threadId: currentThreadId as Id<'threads'>,
+          threadId: latestThreadId as Id<'threads'>,
           role: 'assistant',
           content: finalMsg.content,
+          model: selectedModel,
         });
         setMessages((prev) =>
           prev.map((m) =>
-            m.id === finalMsg.id ? { ...(m as any), id: realId } : m,
+            m.id === finalMsg.id
+              ? { ...(m as any), id: realId, model: selectedModel }
+              : m,
           ),
         );
       }
     },
   });
+
+  // Функция для отслеживания видимых сообщений
+  const updateCurrentMessage = useCallback(() => {
+    const userMessages = messages.filter(message => message.role === 'user');
+    if (userMessages.length === 0) return;
+
+    let currentMsg = userMessages[0];
+    let minDistance = Infinity;
+
+    userMessages.forEach(message => {
+      const element = document.getElementById(`message-${message.id}`);
+      if (element) {
+        const rect = element.getBoundingClientRect();
+        const center = window.innerHeight / 2;
+        const distance = Math.abs(rect.top + rect.height / 2 - center);
+        
+        if (distance < minDistance) {
+          minDistance = distance;
+          currentMsg = message;
+        }
+      }
+    });
+
+    setCurrentMessageId(currentMsg.id);
+  }, [messages]);
+
+  // Добавляем обработчик скролла
+  useEffect(() => {
+    const scrollArea = document.getElementById('messages-scroll-area');
+    if (!scrollArea) return;
+
+    const handleScroll = () => {
+      updateCurrentMessage();
+    };
+
+    scrollArea.addEventListener('scroll', handleScroll);
+    // Также обновляем при изменении сообщений
+    updateCurrentMessage();
+
+    return () => {
+      scrollArea.removeEventListener('scroll', handleScroll);
+    };
+  }, [updateCurrentMessage]);
 
   // Register setter so that other components can alter the input value
   const registerInputSetter = useChatStore((s) => s.registerInputSetter);
@@ -101,11 +168,14 @@ function ChatView({ threadId, initialMessages, showNavBars }: ChatViewProps) {
     setMessages(initialMessages);
   }, [threadId, setInput, clearQuote, clearAttachments, setMessages, initialMessages]);
 
-
   return (
     <>
       {messages.length > 0 && showNavBars && (
-        <ChatNavigationBars messages={messages} scrollToMessage={scrollToMessage} />
+        <ChatNavigationBars 
+          messages={messages} 
+          scrollToMessage={scrollToMessage} 
+          currentMessageId={currentMessageId}
+        />
       )}
 
       <div className="flex-1 flex flex-col relative">
@@ -140,6 +210,7 @@ function ChatView({ threadId, initialMessages, showNavBars }: ChatViewProps) {
             reload={reload}
             setInput={setInput}
             setMessages={setMessages}
+            append={append}
             stop={stop}
             error={error}
             messageCount={messages.length}

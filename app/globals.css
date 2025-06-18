@@ -411,11 +411,30 @@
 }
 
 .shiki {
-  @apply !bg-transparent !p-4 !rounded-b-lg overflow-x-auto;
+  @apply !bg-transparent overflow-x-auto;
 }
 
 .shiki pre {
   @apply !m-0 !p-0;
+}
+
+/* Принудительно убираем фон у SyntaxHighlighter */
+div[class*="language-"] pre,
+div[class*="language-"] code,
+pre[class*="language-"],
+code[class*="language-"] {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* Убираем фон у всех элементов синтаксического выделения */
+.token.comment,
+.token.block-comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  background: transparent !important;
+  background-color: transparent !important;
 }
 
 /* Добавить в конец файла app/globals.css */
@@ -490,5 +509,49 @@
     scrollbar-width: thin;
     scrollbar-color: var(--tw-color-muted) transparent;
   }
+}
+
+/* Shine text animation */
+.shine-text {
+  background: linear-gradient(
+    90deg,
+    #9ca3af 0%,
+    #f9fafb 20%,
+    #9ca3af 40%,
+    #9ca3af 60%,
+    #f9fafb 80%,
+    #9ca3af 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shine 2s ease-in-out infinite;
+}
+
+@keyframes shine {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+:root.dark .shine-text {
+  background: linear-gradient(
+    90deg,
+    #6b7280 0%,
+    #ffffff 20%,
+    #6b7280 40%,
+    #6b7280 60%,
+    #ffffff 80%,
+    #6b7280 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shine 2s ease-in-out infinite;
 }
 

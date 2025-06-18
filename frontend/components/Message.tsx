@@ -1,4 +1,4 @@
-import { memo, useState, useEffect } from 'react';
+import { memo, useState, useEffect, useMemo } from 'react';
 import MarkdownRenderer from '@/frontend/components/MemoizedMarkdown';
 import { cn } from '@/lib/utils';
 import { UIMessage } from 'ai';
@@ -18,6 +18,7 @@ import { useAPIKeyStore, type APIKeys } from '@/frontend/stores/APIKeyStore';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
+import { SearchIcon } from 'lucide-react';
 
 function PureMessage({
   threadId,
@@ -69,6 +70,34 @@ function PureMessage({
     }
   };
 
+  // Извлекаем reasoning из первой текстовой части с мемоизацией
+  const reasoningData = useMemo(() => {
+    const extractReasoning = (text: string) => {
+      const openTag = text.indexOf('<think>');
+      const closeTag = text.indexOf('</think>');
+      
+      if (openTag === -1) return null;
+      
+      const startIndex = openTag + 7;
+      const endIndex = closeTag > -1 ? closeTag : text.length;
+      const rawReasoning = text.slice(startIndex, endIndex);
+      const cleanReasoning = rawReasoning.replace(/g:"([^"]*)"/g, '$1');
+      
+      return {
+        reasoning: cleanReasoning,
+        isComplete: closeTag > -1
+      };
+    };
+
+    // Находим первую текстовую часть с рассуждениями
+    for (const part of message.parts) {
+      if (part.type === 'text' && (part as any).text?.includes('<think>')) {
+        return extractReasoning((part as any).text);
+      }
+    }
+    return null;
+  }, [message.id, message.parts.length, message.parts.map(p => p.type === 'text' ? (p as any).text : '').join('')]);
+
   return (
     <>
     <div
@@ -80,19 +109,26 @@ function PureMessage({
         message.role === 'user' ? 'items-end' : 'items-start'
       )}
     >
+      {/*
+       * Препроцессинг частей сообщения.
+       * 1. Если в текстовой части присутствует блок <think>…</think>,
+       *    выносим его в отдельную часть type='reasoning'.
+       * 2. Аналогично обрабатываем вывод в формате g:"…" (строки DeepSeek).
+       */}
+
+       {/* Показываем reasoning отдельно если найден */}
+      {reasoningData && reasoningData.reasoning.trim() && (
+        <MessageReasoning
+          key={`reasoning-${message.id}`}
+          reasoning={reasoningData.reasoning}
+          id={message.id}
+          isComplete={reasoningData.isComplete}
+        />
+      )}
+
       {message.parts.map((part, index) => {
         const { type } = part;
         const key = `message-${message.id}-part-${index}`;
-
-        if (type === 'reasoning') {
-          return (
-            <MessageReasoning
-              key={key}
-              reasoning={part.reasoning}
-              id={message.id}
-            />
-          );
-        }
 
         if (type === 'text') {
           if (isWelcome && message.role === 'assistant') {
@@ -100,7 +136,7 @@ function PureMessage({
               <div key={key} className="w-full px-2 sm:px-0 space-y-4">
                 <h3 className="text-base font-semibold">Welcome to Pak.Chat</h3>
                 <SelectableText messageId={message.id} disabled>
-                  <MarkdownRenderer content={part.text} />
+                  <MarkdownRenderer content={part.text} streaming={isStreaming} />
                 </SelectableText>
                 <div className="space-y-6 mt-4">
                   {(['google','openrouter','openai'] as const).map(provider => (
@@ -151,10 +187,10 @@ function PureMessage({
             >
               {attachments && attachments.length > 0 && (
                 <div className="flex gap-2 flex-wrap mb-3">
-                  {attachments.map((a) =>
+                  {attachments.map((a, index) =>
                     a.type.startsWith('image') ? (
                       <img
-                        key={a.id}
+                        key={`${a.id}-${index}`}
                         src={a.url}
                         className="h-32 w-32 rounded cursor-pointer hover:scale-105 transition object-cover"
                         onClick={() => setLightbox({
@@ -169,7 +205,7 @@ function PureMessage({
                       />
                     ) : (
                       <a
-                        key={a.id}
+                        key={`${a.id}-${index}`}
                         href={a.url}
                         target="_blank"
                         className="h-10 w-28 bg-muted rounded flex flex-col items-center justify-center text-[10px] px-1 hover:bg-accent"
@@ -215,6 +251,7 @@ function PureMessage({
             </div>
           ) : (
             <div
+              key={key}
               className={cn(
                 'group flex flex-col gap-2 w-full px-2 sm:px-0',
                 isMobile && 'cursor-pointer'
@@ -222,14 +259,14 @@ function PureMessage({
               onClick={handleMobileMessageClick}
             >
               <SelectableText messageId={message.id} disabled={isStreaming}>
-                <MarkdownRenderer content={part.text} />
+                <MarkdownRenderer content={part.text} streaming={isStreaming} />
               </SelectableText>
               {attachments && attachments.length > 0 && (
                 <div className="flex gap-2 flex-wrap mt-2">
-                  {attachments.map((a) =>
+                  {attachments.map((a, index) =>
                     a.type.startsWith('image') ? (
                       <img
-                        key={a.id}
+                        key={`${a.id}-${index}`}
                         src={a.url}
                         className="h-24 w-24 rounded cursor-pointer hover:scale-105 transition"
                         onClick={() => setLightbox({
@@ -244,7 +281,7 @@ function PureMessage({
                       />
                     ) : (
                       <a
-                        key={a.id}
+                        key={`${a.id}-${index}`}
                         href={a.url}
                         target="_blank"
                         className="h-10 w-28 bg-muted rounded flex flex-col items-center justify-center text-[10px] px-1 hover:bg-accent"
@@ -273,16 +310,25 @@ function PureMessage({
             </div>
           );
         }
+
+        if (type === 'tool-invocation') {
+          const inv = part.toolInvocation as any;
+          if (!inv) return null;
+          if (inv.state === 'call' || inv.state === 'result') {
+            return null;
+          }
+        }
+
       })}
     </div>
     {lightbox && (
       <ImageModal
         isOpen={Boolean(lightbox)}
         onClose={() => setLightbox(null)}
-        imageUrl={lightbox.url}
-        fileName={lightbox.name}
-        fileType={lightbox.type}
-        fileSize={lightbox.size}
+        imageUrl={lightbox!.url}
+        fileName={lightbox!.name}
+        fileType={lightbox!.type}
+        fileSize={lightbox!.size}
       />
     )}
     </>

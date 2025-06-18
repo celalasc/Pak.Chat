@@ -1,42 +1,102 @@
-import { memo, useState } from 'react';
-import MemoizedMarkdown from './MemoizedMarkdown';
-import { ChevronDownIcon, ChevronUpIcon } from 'lucide-react';
+"use client"
 
-function PureMessageReasoning({
-  reasoning,
-  id,
-}: {
-  reasoning: string;
-  id: string;
-}) {
-  const [isExpanded, setIsExpanded] = useState(false);
+import { Maximize2, Minimize2 } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
+import { cn } from "@/lib/utils"
 
-  return (
-    <div className="flex flex-col gap-2 pb-2 max-w-3xl w-full">
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="flex items-center gap-2 text-muted-foreground cursor-pointer"
-      >
-        {isExpanded ? (
-          <span>
-            <ChevronUpIcon className="w-4 h-4" />
-          </span>
-        ) : (
-          <span>
-            <ChevronDownIcon className="w-4 h-4" />
-          </span>
-        )}
-        <span>Reasoning</span>
-      </button>
-      {isExpanded && (
-        <div className="p-4 rounded-md bg-secondary/10 text-xs border">
-          <MemoizedMarkdown content={reasoning} />
-        </div>
-      )}
-    </div>
-  );
+interface MessageReasoningProps {
+  reasoning: string
+  id: string
+  isComplete?: boolean
 }
 
-export default memo(PureMessageReasoning, (prev, next) => {
-  return prev.reasoning === next.reasoning && prev.id === next.id;
-});
+export default function MessageReasoning({ reasoning, id, isComplete = false }: MessageReasoningProps) {
+  const [isExpanded, setIsExpanded] = useState(false)
+  const contentRef = useRef<HTMLDivElement>(null)
+
+  // Автопрокрутка в режиме предпросмотра
+  useEffect(() => {
+    if (!isExpanded && contentRef.current) {
+      const element = contentRef.current
+      element.scrollTop = element.scrollHeight
+    }
+  }, [reasoning, isExpanded])
+
+  if (!reasoning.trim()) return null
+
+  return (
+    <div className="w-full my-4 bg-background dark:bg-background rounded-2xl border border-border/40 shadow-sm overflow-hidden">
+      {/* Header - sticky в развернутом режиме */}
+      <div className={cn(
+        "flex items-center justify-between px-6 py-4 border-b border-border/40 bg-muted/80 dark:bg-muted/60 backdrop-blur-sm",
+        isExpanded && "sticky top-0 z-10"
+      )}>
+        <div className="flex items-center gap-3">
+          <h2 className="text-xl font-medium text-foreground">
+            {!isComplete ? (
+              <span className="shine-text font-semibold">Thinking</span>
+            ) : (
+              <span className="text-foreground">Reasoned</span>
+            )}
+          </h2>
+        </div>
+
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="hover:bg-accent/20 p-2 rounded-lg transition-colors"
+        >
+          {isExpanded ? (
+            <Minimize2 className="w-5 h-5 text-muted-foreground" />
+          ) : (
+            <Maximize2 className="w-5 h-5 text-muted-foreground" />
+          )}
+        </button>
+      </div>
+
+      {/* Content */}
+      <div className="relative">
+        <div
+          ref={contentRef}
+          className={cn(
+            "px-6 py-4 text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap",
+            !isExpanded
+              ? "h-48 overflow-y-auto"
+              : "overflow-y-visible"
+          )}
+          style={!isExpanded ? {
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none'
+          } : {}}
+        >
+          {!isExpanded && (
+            <style jsx>{`
+              div::-webkit-scrollbar {
+                display: none;
+              }
+            `}</style>
+          )}
+          
+          {reasoning}
+          {!isComplete && (
+            <span className="animate-pulse text-primary font-bold ml-1">|</span>
+          )}
+        </div>
+
+        {/* Gradient fade overlays только в режиме предпросмотра */}
+        {!isExpanded && (
+          <>
+            {/* Top fade */}
+            <div className="absolute top-0 left-0 right-0 h-12 bg-gradient-to-b from-background via-background/80 to-transparent pointer-events-none" />
+            {/* Bottom fade */}
+            <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none" />
+          </>
+        )}
+
+        {/* Top fade для развернутого режима */}
+        {isExpanded && (
+          <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-background via-background/60 to-transparent pointer-events-none z-5" />
+        )}
+      </div>
+    </div>
+  )
+}

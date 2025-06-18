@@ -86,10 +86,7 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     redrawCanvas();
-
-    // Canvas is fully controlled via React handlers, no extra listeners
-    return () => {};
-  }, [isOpen]);
+  }, [isOpen]); // Убираем зависимости от обработчиков
 
   const redrawCanvas = useCallback(() => {
     const canvas = canvasRef.current;

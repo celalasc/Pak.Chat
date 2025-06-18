@@ -66,7 +66,8 @@ export default function CatchAllChatPage({ params }: { params: Promise<{ slug: s
       content: m.content,
       createdAt: new Date(m._creationTime),
       parts: [{ type: 'text' as const, text: m.content }],
-      attachments: attachmentsMap[m._id] ?? []
+      attachments: attachmentsMap[m._id] ?? [],
+      model: m.model,
     }))
   }, [messagesResult, attachments]);
 

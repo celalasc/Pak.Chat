@@ -90,7 +90,7 @@ function Chat({ threadId, initialMessages }: ChatProps) {
 
       {/* Core chat UI */}
       <ChatView
-        key={`${threadId}-${selectedModel}`}
+        key={threadId}
         threadId={threadId}
         initialMessages={initialMessages}
         showNavBars={settings.showNavBars}

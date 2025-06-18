@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, Check, ArrowUpIcon, Star, ChevronUp, ChevronLeft } from 'lucide-react';
+import { ChevronDown, Check, ArrowUpIcon, Star, ChevronUp, ChevronLeft, Globe } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Textarea } from '@/frontend/components/ui/textarea';
 import ScrollToBottomButton from './ScrollToBottomButton';
@@ -80,6 +80,7 @@ interface ChatInputProps {
   /** Reload chat with current messages without appending */
   reload: UseChatHelpers['reload'];
   setMessages: UseChatHelpers['setMessages'];
+  append: UseChatHelpers['append'];
   stop: UseChatHelpers['stop'];
   messageCount: number;
   onThreadCreated?: (id: Id<'threads'>) => void;
@@ -116,6 +117,9 @@ const PureChatModelDropdown = ({ messageCount = 0 }: ChatModelDropdownProps) => 
     setModel,
     getModelConfig: getModelConfigFromStore,
     setReasoningEffort,
+    webSearchEnabled,
+    setWebSearchEnabled,
+    supportsWebSearch,
   } = useModelStore();
   const {
     getVisibleFavoriteModels,
@@ -130,6 +134,7 @@ const PureChatModelDropdown = ({ messageCount = 0 }: ChatModelDropdownProps) => 
 
   const currentModelConfig = getModelConfigFromStore();
   const showReasoningEffortButton = selectedModel === 'o4-mini';
+  const showWebSearchButton = supportsWebSearch();
 
   const reasoningEfforts: ReasoningEffort[] = ['high', 'medium', 'low'];
 
@@ -148,35 +153,22 @@ const PureChatModelDropdown = ({ messageCount = 0 }: ChatModelDropdownProps) => 
     [getKey, isProviderEnabled]
   );
 
-  const visibleFavoriteModels = useMemo(
-    () => getVisibleFavoriteModels(),
-    [getVisibleFavoriteModels]
-  );
+  // We call the selectors on each render so that UI reacts immediately to
+  // store updates (e.g. when the user toggles a provider or favourites in
+  // the Settings screen). Memoising only on the function reference caused
+  // stale values because the function reference is stable between renders.
 
-  const visibleGeneralModels = useMemo(
-    () => getVisibleGeneralModels().filter((m) => !isFavoriteModel(m)),
-    [getVisibleGeneralModels, isFavoriteModel]
-  );
+  const visibleFavoriteModels = getVisibleFavoriteModels();
 
-  const enabledFavorites = useMemo(
-    () => visibleFavoriteModels.filter(isModelEnabled),
-    [visibleFavoriteModels, isModelEnabled]
-  );
+  const visibleGeneralModels = getVisibleGeneralModels().filter((m) => !isFavoriteModel(m));
 
-  const disabledModels = useMemo(
-    () => visibleGeneralModels.filter((m) => !isModelEnabled(m)),
-    [visibleGeneralModels, isModelEnabled]
-  );
+  const enabledFavorites = visibleFavoriteModels.filter(isModelEnabled);
 
-  const enabledNonFavorites = useMemo(
-    () => visibleGeneralModels.filter(isModelEnabled),
-    [visibleGeneralModels, isModelEnabled]
-  );
+  const disabledModels = visibleGeneralModels.filter((m) => !isModelEnabled(m));
 
-  const allOtherModelsSorted = useMemo(
-    () => [...enabledNonFavorites, ...disabledModels],
-    [enabledNonFavorites, disabledModels]
-  );
+  const enabledNonFavorites = visibleGeneralModels.filter(isModelEnabled);
+
+  const allOtherModelsSorted = [...enabledNonFavorites, ...disabledModels];
 
   const handleModelSelect = useCallback(
     (model: AIModel) => {
@@ -306,7 +298,7 @@ const PureChatModelDropdown = ({ messageCount = 0 }: ChatModelDropdownProps) => 
                 </div>
                 {enabledFavorites.length > 0 && (
                   <div className="mb-6">
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-3 gap-2 overflow-visible">
                       {enabledFavorites.map((model) => {
                         const enabled = isModelEnabled(model);
                         return (
@@ -354,7 +346,7 @@ const PureChatModelDropdown = ({ messageCount = 0 }: ChatModelDropdownProps) => 
                       Others
                     </div>
                     <div className="max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted-foreground/30 scrollbar-thumb-rounded-full">
-                      <div className="grid grid-cols-3 gap-2 pr-2">
+                      <div className="grid grid-cols-3 gap-2 pr-2 overflow-visible">
                         {allOtherModelsSorted.map((model) => {
                           const enabled = isModelEnabled(model);
                           const isFav = isFavoriteModel(model);
@@ -444,6 +436,22 @@ const PureChatModelDropdown = ({ messageCount = 0 }: ChatModelDropdownProps) => 
           </DropdownMenuContent>
         </DropdownMenu>
       )}
+      {showWebSearchButton && (
+        <Button
+          variant={webSearchEnabled ? "default" : "ghost"}
+          size="icon"
+          onClick={() => setWebSearchEnabled(!webSearchEnabled)}
+          className={cn(
+            "h-8 w-8 rounded-lg transition-colors",
+            webSearchEnabled 
+              ? "bg-primary text-primary-foreground hover:bg-primary/90" 
+              : "text-foreground hover:bg-accent/50"
+          )}
+          aria-label={`Web search: ${webSearchEnabled ? 'enabled' : 'disabled'}`}
+        >
+          <Globe className="w-4 h-4" />
+        </Button>
+      )}
     </div>
   );
 };
@@ -490,6 +498,7 @@ function PureChatInput({
   setInput,
   reload,
   setMessages,
+  append,
   stop,
   messageCount,
   onThreadCreated,
@@ -513,6 +522,7 @@ function PureChatInput({
   const { complete } = useMessageSummary();
   const { attachments, clear } = useAttachmentsStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { selectedModel, webSearchEnabled } = useModelStore();
 
   // Интеграция с недавними файлами
   useRecentFilesIntegration();
@@ -578,7 +588,14 @@ function PureChatInput({
         finalMessage,
         attachmentsForMessage,
       );
-      setMessages((prev) => [...prev, userMessage]);
+      append(userMessage, {
+        body: {
+          model: selectedModel,
+          apiKeys: keys,
+          threadId: ensuredThreadId,
+          search: webSearchEnabled,
+        },
+      });
       clear();
 
       // 4. Сохраняем сообщение в БД
@@ -667,6 +684,10 @@ function PureChatInput({
     complete,
     router,
     onThreadCreated,
+    append,
+    selectedModel,
+    webSearchEnabled,
+    keys,
   ]);
 
   const handleKeyDown = useCallback(

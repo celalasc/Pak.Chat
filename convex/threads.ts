@@ -3,7 +3,6 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { currentUserId } from "./utils";
-import crypto from "node:crypto";
 
 /** Get a single thread by ID */
 export const get = query({
@@ -166,6 +165,7 @@ export const clone = mutation({
           role: m.role,
           content: m.content,
           createdAt: m.createdAt,
+          model: (m as any).model,
         });
         idMap.set(m._id, newId as Id<"messages">);
       })

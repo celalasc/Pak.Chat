@@ -8,16 +8,19 @@ type ModelStore = {
   selectedModel: AIModel;
   favoriteModels: AIModel[];
   modelSpecificSettings: Partial<Record<AIModel, { reasoningEffort?: ReasoningEffort }>>;
+  webSearchEnabled: boolean;
   setModel: (model: AIModel) => void;
   toggleFavorite: (model: AIModel) => void;
   isFavorite: (model: AIModel) => boolean;
   getModelConfig: () => ModelConfig;
   setReasoningEffort: (model: AIModel, effort: ReasoningEffort) => void;
+  setWebSearchEnabled: (enabled: boolean) => void;
+  supportsWebSearch: (model?: AIModel) => boolean;
 };
 
 type StoreWithPersist = Mutate<
   StoreApi<ModelStore>,
-  [['zustand/persist', { selectedModel: AIModel; favoriteModels: AIModel[]; modelSpecificSettings: Partial<Record<AIModel, { reasoningEffort?: ReasoningEffort }>> }]]
+  [['zustand/persist', { selectedModel: AIModel; favoriteModels: AIModel[]; modelSpecificSettings: Partial<Record<AIModel, { reasoningEffort?: ReasoningEffort }>>; webSearchEnabled: boolean }]]
 >;
 
 export const withStorageDOMEvents = (store: StoreWithPersist) => {
@@ -45,6 +48,7 @@ export const useModelStore = create<ModelStore>()(
       selectedModel: 'Gemini 2.5 Flash',
       favoriteModels: ['Gemini 2.5 Flash', 'GPT-4o', 'Deepseek R1 0528'],
       modelSpecificSettings: {},
+      webSearchEnabled: false,
 
       setModel: (model) => {
         set({ selectedModel: model });
@@ -89,6 +93,17 @@ export const useModelStore = create<ModelStore>()(
           },
         }));
       },
+
+      setWebSearchEnabled: (enabled) => {
+        set({ webSearchEnabled: enabled });
+      },
+
+      supportsWebSearch: (model) => {
+        const targetModel = model || get().selectedModel;
+        const config = getModelConfig(targetModel);
+        // Веб-поиск поддерживают модели Google (Gemini)
+        return config.provider === 'google';
+      },
     }),
     {
       name: 'selected-model',
@@ -96,6 +111,7 @@ export const useModelStore = create<ModelStore>()(
         selectedModel: state.selectedModel,
         favoriteModels: state.favoriteModels,
         modelSpecificSettings: state.modelSpecificSettings,
+        webSearchEnabled: state.webSearchEnabled,
       }),
     }
   )

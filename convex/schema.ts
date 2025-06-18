@@ -57,6 +57,7 @@ export default defineSchema({
     role: v.union(v.literal("user"), v.literal("assistant")),
     content: v.string(),
     createdAt: v.number(),
+    model: v.optional(v.string()),
     // Message metadata
   }).index("by_thread_and_time", ["threadId", "createdAt"]),
 

@@ -29,7 +29,8 @@ import {
   Copy,
   Check,
   ExternalLink,
-  Bot
+  Bot,
+  Star
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSettingsStore, GENERAL_FONTS, CODE_FONTS, THEMES, GeneralFont, CodeFont, Theme } from '@/frontend/stores/SettingsStore';
@@ -148,7 +149,10 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
 
   const handleOpenChange = useCallback((open: boolean) => {
     setIsOpen(open);
-  }, [setIsOpen]);
+    if (!open) {
+      setActiveTab('customization');
+    }
+  }, [setIsOpen, setActiveTab]);
 
   // Prevent body scroll when drawer is open
   useEffect(() => {
@@ -161,9 +165,6 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
       document.body.style.overflow = '';
     };
   }, [isOpen]);
-
-  // Стабилизируем состояние диалога
-  const dialogKey = useMemo(() => `settings-dialog-${isOpen}`, [isOpen]);
 
   // Мемоизируем tabs чтобы они не пересоздавались при каждом рендере
   const tabs = useMemo(() => [
@@ -274,7 +275,7 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange} key={dialogKey}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {children}
       </DialogTrigger>
@@ -595,16 +596,16 @@ const APIKeysTab = memo(() => {
     defaultValues: keys,
   });
 
-  const { register, handleSubmit, formState: { errors, isDirty }, reset } = form;
+  const { register, handleSubmit, formState: { errors, isDirty } } = form;
 
-  // Сбрасываем форму ОДИН раз - когда загрузились ключи
+  // Сбрасываем форму только при первой загрузке ключей, предотвращаем циклические обновления
+  const isInitializedRef = useRef(false);
   useEffect(() => {
-    if (!keysLoading) {
+    if (!keysLoading && !isInitializedRef.current) {
       form.reset(keys);
+      isInitializedRef.current = true;
     }
-    // зависим только от keysLoading
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [keysLoading]);
+  }, [keysLoading, keys, form]);
 
   const onSubmit = useCallback(
     (values: FormValues) => {
@@ -615,7 +616,7 @@ const APIKeysTab = memo(() => {
   );
 
   return (
-    <div className="space-y-6 pb-4" key={keysLoading ? 'loading' : 'ready'}>
+    <div className="space-y-6 pb-4">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
@@ -826,16 +827,24 @@ const ModelsTab = memo(() => {
   
   const { saveToConvex } = useModelVisibilitySync();
 
-  // Обработчики с автосохранением
-  const handleToggleProvider = async (provider: Provider) => {
-    toggleProvider(provider);
-    await saveToConvex();
-  };
+  // Обработчики с автосохранением и предотвращением дублирования вызовов
+  const handleToggleProvider = useCallback((provider: Provider) => {
+    try {
+      toggleProvider(provider);
+      saveToConvex();
+    } catch (error) {
+      console.error('Failed to toggle provider:', error);
+    }
+  }, [toggleProvider, saveToConvex]);
 
-  const handleToggleFavoriteModel = async (model: AIModel) => {
-    toggleFavoriteModel(model);
-    await saveToConvex();
-  };
+  const handleToggleFavoriteModel = useCallback((model: AIModel) => {
+    try {
+      toggleFavoriteModel(model);
+      saveToConvex();
+    } catch (error) {
+      console.error('Failed to toggle favorite model:', error);
+    }
+  }, [toggleFavoriteModel, saveToConvex]);
 
   return (
     <div className="space-y-6 pb-4">
@@ -974,14 +983,14 @@ const ModelRow = memo(({
 }: ModelRowProps) => {
   const isDisabled = !isProviderEnabled;
 
-  // Debounce toggling to avoid rapid state thrashing on fast clicks
-  const debouncedToggle = useDebouncedCallback(onToggleFavoriteModel, 300);
+  // Убираем дебаунсинг - он вызывает проблемы с отменой выбора
+  // const debouncedToggle = useDebouncedCallback(onToggleFavoriteModel, 300);
 
-  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
     if (isDisabled) return;
-    debouncedToggle();
-  };
+    onToggleFavoriteModel();
+  }, [isDisabled, onToggleFavoriteModel]);
 
   return (
     <div
@@ -1000,7 +1009,28 @@ const ModelRow = memo(({
       }}
     >
       <span className="text-sm font-medium">{model}</span>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1">
+        {/* Favourite toggle */}
+        {isProviderEnabled && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-5 w-5 p-0"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleFavoriteModel();
+            }}
+            aria-label={isFavoriteModel ? 'Remove from favourites' : 'Add to favourites'}
+          >
+            <Star
+              className={cn(
+                'w-3.5 h-3.5 transition-colors',
+                isFavoriteModel ? 'text-yellow-500' : 'text-muted-foreground hover:text-yellow-500'
+              )}
+              fill={isFavoriteModel ? 'currentColor' : 'none'}
+            />
+          </Button>
+        )}
         {isFavoriteModel && isProviderEnabled && (
           <Check className="h-4 w-4 text-primary" />
         )}

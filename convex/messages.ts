@@ -24,10 +24,10 @@ export const get = query({
       .query("messages")
       .withIndex("by_thread_and_time", (q) => q.eq("threadId", args.threadId))
       .order("asc");
-      return await q.paginate({
-        cursor: args.cursor ?? null,
-        numItems: args.limit ?? 50,
-      });
+
+    // Always return the full message history in chronological order. If the client needs
+    // pagination it can be implemented client-side in the future.
+    return await q.collect();
   },
 });
 
@@ -85,6 +85,7 @@ export const send = mutation({
     threadId: v.id("threads"),
     role: v.union(v.literal("user"), v.literal("assistant")),
     content: v.string(),
+    model: v.optional(v.string()),
   },
   async handler(ctx, args) {
     const uid = await currentUserId(ctx);
@@ -99,7 +100,8 @@ export const send = mutation({
       role: args.role,
       content: args.content,
       createdAt: Date.now(),
-  });
+      model: args.model,
+    });
     return id as Id<"messages">;
   },
 });
