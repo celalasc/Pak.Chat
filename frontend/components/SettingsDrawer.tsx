@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, memo, useRef, useMemo } from 'react';
+import { useDebounceCallback } from 'use-debounce';
 import { Drawer, DrawerContent, DrawerTrigger, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, DialogDescription } from '@/frontend/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -847,7 +848,7 @@ const ModelsTab = memo(() => {
             Select which models appear in your favorites and which providers are enabled
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6 max-h-[400px] overflow-y-auto">
+        <CardContent className="space-y-6">
           {Object.entries(modelsByProvider).map(([provider, models]) => (
             <ProviderSection
               key={provider}
@@ -884,7 +885,8 @@ const ProviderSection = memo(({
   onToggleFavoriteModel,
   isFavoriteModel,
 }: ProviderSectionProps) => {
-  const [isExpanded, setIsExpanded] = useState(true);
+  // Provider sections start collapsed to avoid a cluttered UI
+  const [isExpanded, setIsExpanded] = useState(false);
   const { getKey } = useAPIKeyStore();
   // Provider is considered active only when user has an API key for it
   const providerHasKey = !!getKey(provider);
@@ -899,10 +901,12 @@ const ProviderSection = memo(({
   return (
     <div className="space-y-3">
       {/* Закрепленный заголовок провайдера */}
-      <div className={cn(
-        "sticky top-0 bg-background/95 backdrop-blur-sm z-10 pb-2",
-        !providerHasKey && "opacity-60"
-      )}>
+      <div
+        className={cn(
+          "bg-background/95 backdrop-blur-sm z-10 pb-2",
+          !providerHasKey && "opacity-60"
+        )}
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <ProviderIcon provider={provider} className="h-4 w-4" />
@@ -936,7 +940,7 @@ const ProviderSection = memo(({
 
       {/* Скроллируемый список моделей */}
       {isExpanded && (
-        <div className="ml-6 space-y-2 max-h-[200px] overflow-y-auto">
+        <div className="ml-6 space-y-2">
           {models.map((model) => (
             <ModelRow
               key={model}
@@ -969,14 +973,30 @@ const ModelRow = memo(({
 }: ModelRowProps) => {
   const isDisabled = !isProviderEnabled;
 
+  // Debounce toggling to avoid rapid state thrashing on fast clicks
+  const debouncedToggle = useDebounceCallback(onToggleFavoriteModel, 300);
+
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (isDisabled) return;
+    debouncedToggle();
+  };
+
   return (
-    <div 
+    <div
+      role="button"
+      tabIndex={isDisabled ? -1 : 0}
       className={cn(
         "flex items-center justify-between p-2 rounded-md border cursor-pointer transition-colors",
         isFavoriteModel && isProviderEnabled && "bg-primary/10 border-primary/20",
         isDisabled && "opacity-50 cursor-not-allowed"
       )}
-      onClick={isDisabled ? undefined : onToggleFavoriteModel}
+      onClick={handleClick}
+      onKeyDown={(e) => {
+        if ((e.key === 'Enter' || e.key === ' ') && !isDisabled) {
+          handleClick(e as any);
+        }
+      }}
     >
       <span className="text-sm font-medium">{model}</span>
       <div className="flex items-center gap-2">
