@@ -109,6 +109,379 @@ const createUserMessage = (id: string, text: string, attachments?: any[]): UIMes
   };
 };
 
+const PureChatModelDropdown = ({ messageCount = 0 }: ChatModelDropdownProps) => {
+  const { getKey } = useAPIKeyStore();
+  const {
+    selectedModel,
+    setModel,
+    getModelConfig: getModelConfigFromStore,
+    setReasoningEffort,
+  } = useModelStore();
+  const {
+    getVisibleFavoriteModels,
+    getVisibleGeneralModels,
+    isFavoriteModel,
+    toggleFavoriteModel,
+    isProviderEnabled,
+  } = useModelVisibilityStore();
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isReasoningEffortOpen, setIsReasoningEffortOpen] = useState(false);
+
+  const currentModelConfig = getModelConfigFromStore();
+  const showReasoningEffortButton = selectedModel === 'o4-mini';
+
+  const reasoningEfforts: ReasoningEffort[] = ['high', 'medium', 'low'];
+
+  // Helper to render provider icon
+  const getProviderIcon = useCallback((model: AIModel) => {
+    const config = getModelConfig(model);
+    return getCompanyIcon(config.company, 'h-3 w-3');
+  }, []);
+
+  const isModelEnabled = useCallback(
+    (model: AIModel) => {
+      const config = getModelConfig(model);
+      const apiKey = getKey(config.provider);
+      return Boolean(apiKey) && isProviderEnabled(config.provider as any);
+    },
+    [getKey, isProviderEnabled]
+  );
+
+  const visibleFavoriteModels = useMemo(
+    () => getVisibleFavoriteModels(),
+    [getVisibleFavoriteModels]
+  );
+
+  const visibleGeneralModels = useMemo(
+    () => getVisibleGeneralModels().filter((m) => !isFavoriteModel(m)),
+    [getVisibleGeneralModels, isFavoriteModel]
+  );
+
+  const enabledFavorites = useMemo(
+    () => visibleFavoriteModels.filter(isModelEnabled),
+    [visibleFavoriteModels, isModelEnabled]
+  );
+
+  const disabledModels = useMemo(
+    () => visibleGeneralModels.filter((m) => !isModelEnabled(m)),
+    [visibleGeneralModels, isModelEnabled]
+  );
+
+  const enabledNonFavorites = useMemo(
+    () => visibleGeneralModels.filter(isModelEnabled),
+    [visibleGeneralModels, isModelEnabled]
+  );
+
+  const allOtherModelsSorted = useMemo(
+    () => [...enabledNonFavorites, ...disabledModels],
+    [enabledNonFavorites, disabledModels]
+  );
+
+  const handleModelSelect = useCallback(
+    (model: AIModel) => {
+      if (isModelEnabled(model)) {
+        setModel(model);
+        setIsOpen(false);
+        setIsExpanded(false);
+      }
+    },
+    [isModelEnabled, setModel]
+  );
+
+  const handleToggleFavorite = useCallback(
+    (model: AIModel, e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (isModelEnabled(model)) {
+        toggleFavoriteModel(model);
+      }
+    },
+    [toggleFavoriteModel, isModelEnabled]
+  );
+
+  const handleShowAll = useCallback(() => {
+    setIsExpanded(true);
+  }, []);
+
+  const handleBackToFavorites = useCallback(() => {
+    setIsExpanded(false);
+  }, []);
+
+  return (
+    <div className="flex items-center gap-2">
+      <DropdownMenu
+        open={isOpen}
+        onOpenChange={(open) => {
+          setIsOpen(open);
+          if (!open) {
+            setIsExpanded(false);
+          }
+        }}
+      >
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            className="flex items-center gap-1 h-8 pl-3 pr-2 text-xs rounded-lg text-foreground hover:bg-accent/50 focus-visible:ring-1 focus-visible:ring-offset-0 focus-visible:ring-blue-500 transition-colors"
+            aria-label={`Selected model: ${selectedModel}`}
+          >
+            <div className="flex items-center gap-1">
+              {selectedModel}
+              <ChevronDown className="w-3 h-3 opacity-50" />
+            </div>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          className={cn(
+            !isExpanded ? 'w-64' : 'w-80',
+            'border border-border/50 bg-popover/95 backdrop-blur-sm shadow-xl rounded-xl overflow-hidden max-h-[60vh]'
+          )}
+          align="center"
+          side="top"
+          sideOffset={12}
+          avoidCollisions
+        >
+          <div className="overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted-foreground/30 scrollbar-thumb-rounded-full max-h-[55vh]">
+            {!isExpanded ? (
+              <div className="p-3">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="px-2 py-1 text-xs font-semibold text-muted-foreground/80 uppercase tracking-wide flex items-center gap-2">
+                    <Star className="w-3 h-3" />
+                    Favorites
+                  </div>
+                  <button
+                    onClick={handleShowAll}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg hover:scale-105"
+                  >
+                    Show all
+                    <ChevronUp className="w-3 h-3" />
+                  </button>
+                </div>
+                {enabledFavorites.length === 0 ? (
+                  <div className="text-center py-8 text-sm text-muted-foreground">
+                    No favorite models
+                  </div>
+                ) : (
+                  <div className="space-y-2 mb-4">
+                    {enabledFavorites.map((model) => {
+                      const enabled = isModelEnabled(model);
+                      return (
+                        <div
+                          key={model}
+                          onClick={enabled ? () => handleModelSelect(model) : undefined}
+                          className={cn(
+                            'relative flex items-center justify-between p-3 rounded-xl border-2 cursor-pointer group hover:scale-[1.02] transition-all',
+                            selectedModel === model
+                              ? 'border-primary bg-primary/10 shadow-md'
+                              : 'border-border/60 hover:border-primary/40 hover:bg-accent hover:shadow-md',
+                            !enabled && 'opacity-50 cursor-not-allowed pointer-events-none bg-muted/20 border-border/30'
+                          )}
+                        >
+                          <div className="flex items-center gap-2">
+                            {getProviderIcon(model)}
+                            <div className="text-sm font-medium">{model}</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {selectedModel === model && <Check className="w-4 h-4 text-primary" />}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="p-3">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="px-2 py-1 text-xs font-semibold text-muted-foreground/80 uppercase tracking-wide flex items-center gap-2">
+                    <Star className="w-3 h-3" />
+                    Favorites
+                  </div>
+                  <button
+                    onClick={handleBackToFavorites}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg hover:scale-105"
+                  >
+                    <ChevronLeft className="w-3 h-3" />
+                    Back to Favorites
+                  </button>
+                </div>
+                {enabledFavorites.length > 0 && (
+                  <div className="mb-6">
+                    <div className="grid grid-cols-3 gap-2">
+                      {enabledFavorites.map((model) => {
+                        const enabled = isModelEnabled(model);
+                        return (
+                          <div
+                            key={model}
+                            onClick={enabled ? () => handleModelSelect(model) : undefined}
+                            className={cn(
+                              'relative flex flex-col items-center justify-center p-3 rounded-xl border-2 cursor-pointer group h-20 hover:scale-[1.05] hover:shadow-lg transition-all',
+                              selectedModel === model
+                                ? 'border-primary bg-primary/10 shadow-md'
+                                : 'border-border/60 hover:border-primary/40 hover:bg-accent',
+                              !enabled && 'opacity-50 cursor-not-allowed pointer-events-none bg-muted/20 border-border/30'
+                            )}
+                          >
+                            <div className="mb-1 opacity-70 group-hover:opacity-100 transition-opacity">
+                              {getProviderIcon(model)}
+                            </div>
+                            <div className="text-xs font-medium text-center leading-tight">{model}</div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className={cn(
+                                'absolute top-0.5 right-0.5 w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity',
+                                !enabled && 'hidden'
+                              )}
+                              onClick={enabled ? (e) => handleToggleFavorite(model, e) : undefined}
+                              disabled={!enabled}
+                            >
+                              <Star className="w-2.5 h-2.5 text-muted-foreground hover:text-yellow-500" />
+                            </Button>
+                            {selectedModel === model && (
+                              <div className="absolute top-0.5 left-0.5">
+                                <Check className="w-3 h-3 text-primary" />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                {allOtherModelsSorted.length > 0 && (
+                  <div className="mb-4">
+                    <div className="px-2 py-1 text-xs font-semibold text-muted-foreground/80 mb-3 uppercase tracking-wide">
+                      Others
+                    </div>
+                    <div className="max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted-foreground/30 scrollbar-thumb-rounded-full">
+                      <div className="grid grid-cols-3 gap-2 pr-2">
+                        {allOtherModelsSorted.map((model) => {
+                          const enabled = isModelEnabled(model);
+                          const isFav = isFavoriteModel(model);
+                          return (
+                            <div
+                              key={model}
+                              onClick={enabled ? () => handleModelSelect(model) : undefined}
+                              className={cn(
+                                'relative flex flex-col items-center justify-center p-3 rounded-xl border-2 cursor-pointer group h-20 hover:scale-[1.05] hover:shadow-lg transition-all',
+                                selectedModel === model
+                                  ? 'border-primary bg-primary/10 shadow-md'
+                                  : 'border-border/60 hover:border-primary/40 hover:bg-accent',
+                                !enabled && 'bg-muted/50 border-muted-foreground/20 opacity-60 cursor-not-allowed pointer-events-none'
+                              )}
+                            >
+                              <div className="mb-1 opacity-70 group-hover:opacity-100 transition-opacity">
+                                {getProviderIcon(model)}
+                              </div>
+                              <div className="text-xs font-medium text-center leading-tight">{model}</div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className={cn(
+                                  'absolute top-0.5 right-0.5 w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity',
+                                  (!enabled || isFav) && 'hidden'
+                                )}
+                                onClick={enabled ? (e) => handleToggleFavorite(model, e) : undefined}
+                                disabled={!enabled}
+                              >
+                                <Star className="w-2.5 h-2.5 text-muted-foreground hover:text-yellow-500" />
+                              </Button>
+                              {selectedModel === model && (
+                                <div className="absolute top-0.5 left-0.5">
+                                  <Check className="w-3 h-3 text-primary" />
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {showReasoningEffortButton && (
+        <DropdownMenu open={isReasoningEffortOpen} onOpenChange={setIsReasoningEffortOpen}>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="flex items-center gap-1 h-8 pl-3 pr-2 text-xs rounded-lg text-foreground hover:bg-accent/50 focus-visible:ring-1 focus-visible:ring-offset-0 focus-visible:ring-blue-500 transition-colors"
+              aria-label={`Reasoning effort: ${currentModelConfig.reasoningEffort || 'medium'}`}
+            >
+              <div className="flex items-center gap-1">
+                {currentModelConfig.reasoningEffort || 'medium'}
+                <ChevronDown className="w-3 h-3 opacity-50" />
+              </div>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            className={cn(
+              'w-40',
+              'border border-border/50 bg-popover/95 backdrop-blur-sm shadow-xl rounded-xl overflow-hidden max-h-[50vh]'
+            )}
+            align="center"
+            side="top"
+            sideOffset={12}
+            avoidCollisions
+          >
+            <div className="p-1">
+              {reasoningEfforts.map((effort) => (
+                <DropdownMenuItem
+                  key={effort}
+                  onSelect={() => setReasoningEffort(selectedModel, effort)}
+                  className="flex items-center justify-between gap-2 p-2 rounded-lg cursor-pointer text-sm font-medium hover:bg-accent hover:text-accent-foreground"
+                >
+                  {effort}
+                  {currentModelConfig.reasoningEffort === effort && (
+                    <Check className="w-4 h-4 text-primary" />
+                  )}
+                </DropdownMenuItem>
+              ))}
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+    </div>
+  );
+};
+
+const ChatModelDropdown = memo(PureChatModelDropdown);
+ChatModelDropdown.displayName = 'ChatModelDropdown';
+
+const PureStopButton = ({ stop }: StopButtonProps) => (
+  <Button
+    variant="outline"
+    size="icon"
+    onClick={stop}
+    aria-label="Stop generating response"
+    className="rounded-full"
+  >
+    <StopIcon size={20} />
+  </Button>
+);
+
+const StopButton = memo(PureStopButton);
+StopButton.displayName = 'StopButton';
+
+const PureSendButton = ({ onSubmit, disabled }: SendButtonProps) => (
+  <Button
+    onClick={onSubmit}
+    variant="default"
+    size="icon"
+    disabled={disabled}
+    aria-label="Send message"
+    className="rounded-full"
+  >
+    <ArrowUpIcon size={18} />
+  </Button>
+);
+
+const SendButton = memo(PureSendButton, (p, n) => p.disabled === n.disabled);
+SendButton.displayName = 'SendButton';
+
 function PureChatInput({
   threadId,
   input,
@@ -446,381 +819,8 @@ const ChatInput = memo(PureChatInput, (prevProps, nextProps) => {
     prevProps.messageCount === nextProps.messageCount
   );
 });
+ChatInput.displayName = 'ChatInput';
 
-const PureChatModelDropdown = ({ messageCount = 0 }: ChatModelDropdownProps) => {
-  const { getKey } = useAPIKeyStore();
-  const { selectedModel, setModel, getModelConfig: getModelConfigFromStore, setReasoningEffort } = useModelStore();
-  const { getVisibleFavoriteModels, getVisibleGeneralModels, isFavoriteModel, toggleFavoriteModel } = useModelVisibilityStore();
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [isOpen, setIsOpen] = useState(false);
-  const [isReasoningEffortOpen, setIsReasoningEffortOpen] = useState(false);
-
-  const currentModelConfig = getModelConfigFromStore();
-  const showReasoningEffortButton = selectedModel === 'o4-mini';
-
-  const reasoningEfforts: ReasoningEffort[] = ['high', 'medium', 'low'];
-
-  // Функция для получения иконки разработчика
-  const getProviderIcon = useCallback((model: AIModel) => {
-    const config = getModelConfig(model);
-    return getCompanyIcon(config.company, "h-3 w-3");
-  }, []);
-
-  const isModelEnabled = useCallback(
-    (model: AIModel) => {
-      const modelConfig = getModelConfig(model);
-      const apiKey = getKey(modelConfig.provider);
-      return !!apiKey;
-    },
-    [getKey]
-  );
-
-  // Получаем видимые избранные модели
-  const visibleFavoriteModels = useMemo(
-    () => getVisibleFavoriteModels(),
-    [getVisibleFavoriteModels]
-  );
-
-  // Получаем все видимые модели, исключая избранные
-  const visibleGeneralModels = useMemo(
-    () => getVisibleGeneralModels().filter(model => !isFavoriteModel(model)),
-    [getVisibleGeneralModels, isFavoriteModel]
-  );
-
-  // Получаем включенные модели из видимых
-  const enabledFavorites = useMemo(
-    () => visibleFavoriteModels.filter(isModelEnabled),
-    [visibleFavoriteModels, isModelEnabled]
-  );
-
-  const disabledModels = useMemo(
-    () => visibleGeneralModels.filter(model => !isModelEnabled(model)),
-    [visibleGeneralModels, isModelEnabled]
-  );
-
-  const enabledNonFavorites = useMemo(
-    () => visibleGeneralModels.filter(isModelEnabled),
-    [visibleGeneralModels, isModelEnabled]
-  );
-
-  const allOtherModelsSorted = useMemo(
-    () => [...enabledNonFavorites, ...disabledModels],
-    [enabledNonFavorites, disabledModels]
-  );
-
-  const handleModelSelect = useCallback((model: AIModel) => {
-    if (isModelEnabled(model)) {
-      setModel(model);
-      setIsOpen(false);
-      setIsExpanded(false);
-    }
-  }, [isModelEnabled, setModel]);
-
-  const handleToggleFavorite = useCallback((model: AIModel, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (isModelEnabled(model)) {
-      toggleFavoriteModel(model);
-    }
-  }, [toggleFavoriteModel, isModelEnabled]);
-
-  const handleShowAll = useCallback(() => {
-    setIsExpanded(true);
-  }, []);
-
-  const handleBackToFavorites = useCallback(() => {
-    setIsExpanded(false);
-  }, []);
-
-  return (
-    <div className="flex items-center gap-2">
-      <DropdownMenu open={isOpen} onOpenChange={(open) => {
-        setIsOpen(open);
-        if (!open) {
-          setIsExpanded(false);
-        }
-      }}>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            className="flex items-center gap-1 h-8 pl-3 pr-2 text-xs rounded-lg text-foreground hover:bg-accent/50 focus-visible:ring-1 focus-visible:ring-offset-0 focus-visible:ring-blue-500 transition-colors"
-            aria-label={`Selected model: ${selectedModel}`}
-          >
-            <div className="flex items-center gap-1">
-              {selectedModel}
-              <ChevronDown className="w-3 h-3 opacity-50" />
-            </div>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          className={cn(
-            !isExpanded ? 'w-64' : 'w-80',
-            'border border-border/50 bg-popover/95 backdrop-blur-sm shadow-xl rounded-xl overflow-hidden max-h-[60vh]'
-          )}
-          align="center"
-          side="top"
-          sideOffset={12}
-          avoidCollisions={true}
-        >
-          <div className="overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted-foreground/30 scrollbar-thumb-rounded-full max-h-[55vh]">
-            {!isExpanded ? (
-              // Компактный вид - только избранные
-              <div className="p-3">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="px-2 py-1 text-xs font-semibold text-muted-foreground/80 uppercase tracking-wide flex items-center gap-2">
-                    <Star className="w-3 h-3" />
-                    Favorites
-                  </div>
-                  {/* Кнопка Show all */}
-                  <button
-                    onClick={handleShowAll}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg hover:scale-105"
-                  >
-                    Show all
-                    <ChevronUp className="w-3 h-3" />
-                  </button>
-                </div>
-                
-                {enabledFavorites.length === 0 ? (
-                  <div className="text-center py-8 text-sm text-muted-foreground">
-                    No favorite models
-                  </div>
-                ) : (
-                  <div className="space-y-2 mb-4">
-                    {enabledFavorites.map((model) => {
-                      const enabled = isModelEnabled(model);
-                      return (
-                        <div
-                          key={model}
-                          onClick={enabled ? () => handleModelSelect(model) : undefined}
-                          className={cn(
-                            'relative flex items-center justify-between p-3 rounded-xl border-2 cursor-pointer group hover:scale-[1.02]',
-                            selectedModel === model 
-                              ? 'border-primary bg-primary/10 shadow-md' 
-                              : 'border-border/60 hover:border-primary/40 hover:bg-accent hover:shadow-md',
-                            !enabled && 'opacity-50 cursor-not-allowed pointer-events-none bg-muted/20 border-border/30',
-                          )}
-                        >
-                          <div className="flex items-center gap-2">
-                            {getProviderIcon(model)}
-                            <div className="text-sm font-medium">{model}</div>
-                          </div>
-                          
-                          <div className="flex items-center gap-2">
-                            {selectedModel === model && (
-                              <Check className="w-4 h-4 text-primary" />
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            ) : (
-              // Расширенный вид - все модели
-              <div className="p-3">
-                {/* Заголовок с кнопкой Back to Favorites */}
-                <div className="flex items-center justify-between mb-3">
-                  <div className="px-2 py-1 text-xs font-semibold text-muted-foreground/80 uppercase tracking-wide flex items-center gap-2">
-                    <Star className="w-3 h-3" />
-                    Favorites
-                  </div>
-                  <button
-                    onClick={handleBackToFavorites}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg hover:scale-105"
-                  >
-                    <ChevronLeft className="w-3 h-3" />
-                    Back to Favorites
-                  </button>
-                </div>
-                
-                {/* Избранные модели */}
-                {enabledFavorites.length > 0 && (
-                  <div className="mb-6">
-                    <div className="grid grid-cols-3 gap-2">
-                      {enabledFavorites.map((model) => {
-                        const enabled = isModelEnabled(model);
-                        return (
-                          <div
-                            key={model}
-                            onClick={enabled ? () => handleModelSelect(model) : undefined}
-                            className={cn(
-                              'relative flex flex-col items-center justify-center p-3 rounded-xl border-2 cursor-pointer group h-20 hover:scale-[1.05] hover:shadow-lg',
-                              selectedModel === model 
-                                ? 'border-primary bg-primary/10 shadow-md' 
-                                : 'border-border/60 hover:border-primary/40 hover:bg-accent',
-                              !enabled && 'opacity-50 cursor-not-allowed pointer-events-none bg-muted/20 border-border/30',
-                            )}
-                          >
-                            {/* Иконка разработчика */}
-                            <div className="mb-1 opacity-70 group-hover:opacity-100 transition-opacity">
-                              {getProviderIcon(model)}
-                            </div>
-                            
-                            <div className="text-xs font-medium text-center leading-tight">
-                              {model}
-                            </div>
-                            
-                            {/* Звездочка при наведении */}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className={cn("absolute top-0.5 right-0.5 w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity", !enabled && "hidden")}
-                              onClick={enabled ? (e) => handleToggleFavorite(model, e) : undefined}
-                              disabled={!enabled}
-                            >
-                              <Star className="w-2.5 h-2.5 text-muted-foreground hover:text-yellow-500" />
-                            </Button>
-                            
-                            {/* Галочка для выбранной модели */}
-                            {selectedModel === model && (
-                              <div className="absolute top-0.5 left-0.5">
-                                <Check className="w-3 h-3 text-primary" />
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Остальные модели */}
-                {allOtherModelsSorted.length > 0 && (
-                  <div className="mb-4">
-                    <div className="px-2 py-1 text-xs font-semibold text-muted-foreground/80 mb-3 uppercase tracking-wide">
-                      Others
-                    </div>
-                    <div className="max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted-foreground/30 scrollbar-thumb-rounded-full">
-                      <div className="grid grid-cols-3 gap-2 pr-2">
-                        {allOtherModelsSorted.map((model) => {
-                          const enabled = isModelEnabled(model);
-                          const isFav = isFavoriteModel(model);
-                          return (
-                            <div
-                              key={model}
-                              onClick={enabled ? () => handleModelSelect(model) : undefined}
-                              className={cn(
-                                'relative flex flex-col items-center justify-center p-3 rounded-xl border-2 cursor-pointer group h-20 hover:scale-[1.05] hover:shadow-lg',
-                                selectedModel === model 
-                                  ? 'border-primary bg-primary/10 shadow-md' 
-                                  : 'border-border/60 hover:border-primary/40 hover:bg-accent',
-                                !enabled && 'opacity-50 cursor-not-allowed pointer-events-none bg-muted/20 border-border/30',
-                              )}
-                            >
-                              <div className="mb-1 opacity-70 group-hover:opacity-100 transition-opacity">
-                                {getProviderIcon(model)}
-                              </div>
-                              <div className="text-xs font-medium text-center leading-tight">
-                                {model}
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className={cn("absolute top-0.5 right-0.5 w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity", (!enabled || isFav) && "hidden")}
-                                onClick={enabled ? (e) => handleToggleFavorite(model, e) : undefined}
-                                disabled={!enabled}
-                              >
-                                <Star className="w-2.5 h-2.5 text-muted-foreground hover:text-yellow-500" />
-                              </Button>
-                              {selectedModel === model && (
-                                <div className="absolute top-0.5 left-0.5">
-                                  <Check className="w-3 h-3 text-primary" />
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </DropdownMenuContent>
-      </DropdownMenu>
-      {showReasoningEffortButton && (
-        <DropdownMenu open={isReasoningEffortOpen} onOpenChange={setIsReasoningEffortOpen}>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              className="flex items-center gap-1 h-8 pl-3 pr-2 text-xs rounded-lg text-foreground hover:bg-accent/50 focus-visible:ring-1 focus-visible:ring-offset-0 focus-visible:ring-blue-500 transition-colors"
-              aria-label={`Reasoning effort: ${currentModelConfig.reasoningEffort || 'medium'}`}
-            >
-              <div className="flex items-center gap-1">
-                {currentModelConfig.reasoningEffort || 'medium'}
-                <ChevronDown className="w-3 h-3 opacity-50" />
-              </div>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            className={cn(
-              'w-40',
-              'border border-border/50 bg-popover/95 backdrop-blur-sm shadow-xl rounded-xl overflow-hidden max-h-[50vh]'
-            )}
-            align="center"
-            side="top"
-            sideOffset={12}
-            avoidCollisions={true}
-          >
-            <div className="p-1">
-              {reasoningEfforts.map((effort) => (
-                <DropdownMenuItem
-                  key={effort}
-                  onSelect={() => setReasoningEffort(selectedModel, effort)}
-                  className="flex items-center justify-between gap-2 p-2 rounded-lg cursor-pointer text-sm font-medium hover:bg-accent hover:text-accent-foreground"
-                >
-                  {effort}
-                  {currentModelConfig.reasoningEffort === effort && (
-                    <Check className="w-4 h-4 text-primary" />
-                  )}
-                </DropdownMenuItem>
-              ))}
-            </div>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
-    </div>
-  );
-};
-
-const ChatModelDropdown = memo(PureChatModelDropdown);
-
-const PureStopButton = ({ stop }: StopButtonProps) => {
-  return (
-    <Button
-      variant="outline"
-      size="icon"
-      onClick={stop}
-      aria-label="Stop generating response"
-      className="rounded-full"
-    >
-      <StopIcon size={20} />
-    </Button>
-  );
-};
-
-const StopButton = memo(PureStopButton);
-
-const PureSendButton = ({ onSubmit, disabled }: SendButtonProps) => {
-  return (
-    <Button
-      onClick={onSubmit}
-      variant="default"
-      size="icon"
-      disabled={disabled}
-      aria-label="Send message"
-      className="rounded-full"
-    >
-      <ArrowUpIcon size={18} />
-    </Button>
-  );
-};
-
-const SendButton = memo(PureSendButton, (prevProps, nextProps) => {
-  return prevProps.disabled === nextProps.disabled;
-});
 
 // Обёртка для решения проблемы с Rules of Hooks
 function ChatInputWrapper(props: ChatInputProps) {
