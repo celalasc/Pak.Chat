@@ -2,6 +2,7 @@ import { User, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged 
 import { create } from 'zustand';
 import { auth } from '@/firebase';
 import { useSettingsStore } from './SettingsStore';
+import { clearLastChatId } from '@/frontend/lib/lastChat';
 
 interface AuthState {
   user: User | null;
@@ -27,6 +28,7 @@ export const useAuthStore = create<AuthState>((set) => {
     async logout() {
       try {
         await signOut(auth);
+        clearLastChatId();
       } catch {
         /* ignore logout failure */
       }

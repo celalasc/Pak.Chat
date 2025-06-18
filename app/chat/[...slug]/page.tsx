@@ -6,7 +6,6 @@ import { useQuery, useConvexAuth } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id, Doc } from '@/convex/_generated/dataModel';
 import { isConvexId } from '@/lib/ids';
-import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import Chat from '@/frontend/components/Chat';
 import ErrorBoundary from '@/frontend/components/ErrorBoundary';
 
@@ -16,7 +15,6 @@ function CatchAllChatPageInner({ params }: { params: Promise<{ slug: string[] }>
   
   const router = useRouter();
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
-  const { isMobile, mounted } = useIsMobile();
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const isValidId = useMemo(() => isConvexId(chatId), [chatId]);
