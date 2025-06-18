@@ -2,6 +2,7 @@ import { memo } from 'react';
 import { Quote as QuoteIcon } from 'lucide-react';
 import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 
 interface QuoteButtonProps {
   onQuote: () => void;
@@ -10,6 +11,12 @@ interface QuoteButtonProps {
 }
 
 function PureQuoteButton({ onQuote, position, className }: QuoteButtonProps) {
+  const { isMobile } = useIsMobile();
+
+  const top = isMobile
+    ? `calc(${position.y}px + env(safe-area-inset-top, 0px))`
+    : position.y;
+
   return (
     <div
       className={cn(
@@ -18,7 +25,7 @@ function PureQuoteButton({ onQuote, position, className }: QuoteButtonProps) {
       )}
       style={{
         left: position.x,
-        top: position.y,
+        top,
         zIndex: 9999,
       }}
     >
