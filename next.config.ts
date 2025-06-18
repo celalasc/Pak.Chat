@@ -15,17 +15,13 @@ const withPWA = require('next-pwa')({
   publicExcludes: ['!sw.js'],
   buildExcludes: [/middleware-manifest\.json$/],
   cacheOnFrontEndNav: true,
-  aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
-  swcMinify: true,
-  workboxOptions: {
-    disableDevLogs: true,
-    mode: 'production',
-    clientsClaim: true,
-    skipWaiting: true,
-    navigateFallback: '/offline',
-    navigateFallbackDenylist: [/^\/_/, /^\/api/],
-  }
+  disableDevLogs: true,
+  mode: 'production',
+  clientsClaim: true,
+  // skipWaiting defined above
+  navigateFallback: '/offline',
+  navigateFallbackDenylist: [/^\/_/, /^\/api/]
 });
 
 /** @type {import('next').NextConfig} */
