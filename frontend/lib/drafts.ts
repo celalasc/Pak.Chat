@@ -1,30 +1,30 @@
 import type { UIMessage } from 'ai';
 
-const key = (threadId: string, version: number) => `draft-${threadId}-${version}`;
+const key = (threadId: string) => `draft-${threadId}`;
 
-export function loadDraft(threadId: string, version: number): { input: string; messages: UIMessage[] } | null {
+export function loadDraft(threadId: string): { input: string; messages: UIMessage[] } | null {
   if (typeof window === 'undefined') return null;
   try {
-    const raw = localStorage.getItem(key(threadId, version));
+    const raw = localStorage.getItem(key(threadId));
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
   }
 }
 
-export function saveDraft(threadId: string, version: number, draft: { input: string; messages: UIMessage[] }) {
+export function saveDraft(threadId: string, draft: { input: string; messages: UIMessage[] }) {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(key(threadId, version), JSON.stringify(draft));
+    localStorage.setItem(key(threadId), JSON.stringify(draft));
   } catch {
     // ignore storage errors
   }
 }
 
-export function clearDraft(threadId: string, version: number) {
+export function clearDraft(threadId: string) {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.removeItem(key(threadId, version));
+    localStorage.removeItem(key(threadId));
   } catch {
     // ignore storage errors
   }

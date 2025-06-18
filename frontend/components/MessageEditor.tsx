@@ -61,8 +61,6 @@ export default function MessageEditor({
 
   const removeAfter = useMutation(api.messages.removeAfter);
   const editMessage = useMutation(api.messages.edit);
-  const createSnapshot = useMutation(api.messages.createDialogSnapshot);
-  const sendMessage = useMutation(api.messages.send);
 
   const handleSave = async () => {
     if (!isConvexId(threadId)) return;
@@ -75,29 +73,20 @@ export default function MessageEditor({
     }
 
     try {
-      // Create a new dialog version for the edit
-      const { dialogVersion: nextVersion } = await createSnapshot({
-        threadId: threadId as Id<'threads'>,
+      // Update the original message content
+      await editMessage({
+        messageId: message.id as Id<'messages'>,
+        content: draftContent,
       });
 
-      // Remove messages after the current one in the new version
+      // Remove all messages after the edited one
       await removeAfter({
         threadId: threadId as Id<'threads'>,
         afterMessageId: message.id as Id<'messages'>,
       });
 
-      // Create new message with edited content in the new version
-      const newMessageId = await sendMessage({
-        threadId: threadId as Id<'threads'>,
-        content: draftContent,
-        role: 'user',
-        dialogVersion: nextVersion,
-        isActive: true,
-      });
-
       const updatedMessage = {
         ...message,
-        id: newMessageId,
         content: draftContent,
         parts: [
           {
@@ -105,7 +94,6 @@ export default function MessageEditor({
             text: draftContent,
           },
         ],
-        createdAt: new Date(),
       };
 
       setMessages((messages) => {
@@ -118,7 +106,7 @@ export default function MessageEditor({
 
       complete(draftContent, {
         body: {
-          messageId: newMessageId,
+          messageId: message.id as Id<'messages'>,
           threadId,
         },
       });

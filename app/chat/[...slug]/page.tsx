@@ -40,10 +40,7 @@ function CatchAllChatPageInner({ params }: { params: Promise<{ slug: string[] }>
     shouldRunQueries ? { threadId: chatId as Id<'threads'> } : 'skip'
   );
 
-  const currentVersion = useQuery(
-    api.messages.getCurrentDialogVersion,
-    shouldRunQueries ? { threadId: chatId as Id<'threads'> } : 'skip'
-  );
+
   
   const messages = useMemo(() => {
     if (!attachments || !messagesResult) return [];
@@ -96,17 +93,19 @@ function CatchAllChatPageInner({ params }: { params: Promise<{ slug: string[] }>
     }
   }, [authLoading, isAuthenticated, isValidId, router, chatId, thread]);
 
-  // Убираем автоматическое перенаправление - пользователи должны иметь возможность заходить в чат с мобильных
+  // Автоматическое переключение между версиями при изменении размера экрана
+  useEffect(() => {
+    if (mounted && isAuthenticated && isMobile && isValidId) {
+      router.push('/home');
+    }
+  }, [isMobile, mounted, isAuthenticated, isValidId, router]);
 
   const isLoading =
     authLoading ||
     !isValidId ||
     thread === undefined ||
-    (shouldRunQueries && (
-      messagesResult === undefined ||
-      attachments === undefined ||
-      currentVersion === undefined
-    ));
+    messagesResult === undefined ||
+    attachments === undefined;
 
   useEffect(() => {
     if (!isLoading) {
@@ -125,11 +124,10 @@ function CatchAllChatPageInner({ params }: { params: Promise<{ slug: string[] }>
 
   return (
     <Chat
-      key={`${chatId}-${currentVersion}`}
+      key={chatId}
       threadId={chatId}
       thread={thread}
       initialMessages={messages}
-      dialogVersion={currentVersion as number}
     />
   )
 }
