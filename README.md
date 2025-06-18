@@ -44,3 +44,32 @@ Pak.Chat is a high-performance Next.js application that integrates multiple larg
 - Mobile-friendly responsive design
 - Optimized image rendering using `next/image`
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+p.s
+thanks https://github.com/senbo1/chat0 for the great foundation for my project.
