@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect, useCallback, memo, useRef, useMemo } from 'react';
-import { useDebounceCallback } from 'use-debounce';
+// use-debounce provides a debounced callback hook to prevent rapid state changes
+import { useDebouncedCallback } from 'use-debounce';
 import { Drawer, DrawerContent, DrawerTrigger, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, DialogDescription } from '@/frontend/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -974,7 +975,7 @@ const ModelRow = memo(({
   const isDisabled = !isProviderEnabled;
 
   // Debounce toggling to avoid rapid state thrashing on fast clicks
-  const debouncedToggle = useDebounceCallback(onToggleFavoriteModel, 300);
+  const debouncedToggle = useDebouncedCallback(onToggleFavoriteModel, 300);
 
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
