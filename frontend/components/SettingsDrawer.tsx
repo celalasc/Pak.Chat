@@ -283,6 +283,7 @@ const CustomizationTab = memo(() => {
   const { settings, setSettings } = useSettingsStore();
   const { setTheme } = useTheme();
   const [featuresExpanded, setFeaturesExpanded] = useState(false);
+  const { isMobile } = useIsMobile();
 
   // Мемоизируем обработчики чтобы предотвратить ненужные перерендеры
   const handleFontChange = useCallback((type: 'generalFont' | 'codeFont', value: GeneralFont | CodeFont) => {
@@ -470,12 +471,18 @@ const CustomizationTab = memo(() => {
             </div>
 
             <div className="flex items-center justify-between">
-              <Label htmlFor="chat-preview" className="text-sm">Show chat preview</Label>
-              <Switch
-                id="chat-preview"
-                checked={settings.showChatPreview}
-                onCheckedChange={(v) => handleSwitchChange('showChatPreview', v)}
-              />
+              <Label htmlFor="chat-preview" className={cn('text-sm', isMobile && 'text-muted-foreground')}>
+                Show chat preview
+              </Label>
+              {isMobile ? (
+                <span className="text-muted-foreground text-xs select-none">Only For PC</span>
+              ) : (
+                <Switch
+                  id="chat-preview"
+                  checked={settings.showChatPreview}
+                  onCheckedChange={(v) => handleSwitchChange('showChatPreview', v)}
+                />
+              )}
             </div>
           </CardContent>
         )}

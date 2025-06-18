@@ -33,6 +33,9 @@ const nextConfig = {
   turbopack: {
     resolveExtensions: ['.ts', '.tsx', '.js', '.jsx', '.json', '.css'],
   },
+  images: {
+    domains: ['lh3.googleusercontent.com'],
+  },
 };
 
 export default withPWA(withAnalyzer(nextConfig));
