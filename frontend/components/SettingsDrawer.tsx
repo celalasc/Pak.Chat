@@ -980,37 +980,41 @@ const ModelRow = memo(({
   isFavoriteModel,
   onToggleFavoriteModel,
 }: ModelRowProps) => {
-  const isDisabled = !isProviderEnabled;
-
   // Убираем дебаунсинг - он вызывает проблемы с отменой выбора
   // const debouncedToggle = useDebouncedCallback(onToggleFavoriteModel, 300);
 
   const handleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
-    if (isDisabled) return;
     onToggleFavoriteModel();
-  }, [isDisabled, onToggleFavoriteModel]);
+  }, [onToggleFavoriteModel]);
 
   return (
     <div
       role="button"
-      tabIndex={isDisabled ? -1 : 0}
+      tabIndex={0}
       className={cn(
         "flex items-center justify-between p-2 rounded-md border cursor-pointer transition-colors",
-        isFavoriteModel && isProviderEnabled && "bg-primary/10 border-primary/20",
-        isDisabled && "opacity-50 cursor-not-allowed"
+        isFavoriteModel && "bg-primary/10 border-primary/20",
+        !isProviderEnabled && "opacity-60"
       )}
       onClick={handleClick}
       onKeyDown={(e) => {
-        if ((e.key === 'Enter' || e.key === ' ') && !isDisabled) {
+        if (e.key === 'Enter' || e.key === ' ') {
           handleClick(e as any);
         }
       }}
     >
-      <span className="text-sm font-medium">{model}</span>
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-medium">{model}</span>
+        {!isProviderEnabled && (
+          <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+            No API key
+          </span>
+        )}
+      </div>
       <div className="flex items-center gap-1">
         {/* Favourite toggle */}
-        {isFavoriteModel && isProviderEnabled && (
+        {isFavoriteModel && (
           <Check className="h-4 w-4 text-primary" />
         )}
       </div>

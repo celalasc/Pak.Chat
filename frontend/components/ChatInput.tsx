@@ -164,7 +164,10 @@ const PureChatModelDropdown = ({ messageCount = 0 }: ChatModelDropdownProps) => 
 
   const visibleGeneralModels = getVisibleGeneralModels().filter((m) => !isFavoriteModel(m));
 
-  const enabledFavorites = visibleFavoriteModels.filter(isModelEnabled);
+  // Показываем все избранные модели, но визуально отключаем те, которые
+  // недоступны (например, отсутствует API-ключ). Это позволяет пользователю
+  // видеть свои избранные модели на любом устройстве.
+  const enabledFavorites = visibleFavoriteModels;
 
   const disabledModels = visibleGeneralModels.filter((m) => !isModelEnabled(m));
 
@@ -263,20 +266,33 @@ const PureChatModelDropdown = ({ messageCount = 0 }: ChatModelDropdownProps) => 
                       return (
                         <div
                           key={model}
-                          onClick={enabled ? () => handleModelSelect(model) : undefined}
+                          onClick={() => handleModelSelect(model)}
                           className={cn(
                             'relative flex items-center justify-between p-3 rounded-xl border-2 cursor-pointer group hover:scale-[1.02] transition-all',
                             selectedModel === model
                               ? 'border-primary bg-primary/10 shadow-md'
                               : 'border-border/60 hover:border-primary/40 hover:bg-accent hover:shadow-md',
-                            !enabled && 'opacity-50 cursor-not-allowed pointer-events-none bg-muted/20 border-border/30'
+                            !enabled && 'opacity-50 bg-muted/20 border-border/30'
                           )}
                         >
                           <div className="flex items-center gap-2">
                             {getProviderIcon(model)}
                             <div className="text-sm font-medium">{model}</div>
+                            {!enabled && (
+                              <div className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                                No API key
+                              </div>
+                            )}
                           </div>
                           <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => handleToggleFavorite(model, e)}
+                            >
+                              <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
+                            </Button>
                             {selectedModel === model && <Check className="w-4 h-4 text-primary" />}
                           </div>
                         </div>
@@ -308,30 +324,31 @@ const PureChatModelDropdown = ({ messageCount = 0 }: ChatModelDropdownProps) => 
                         return (
                           <div
                             key={model}
-                            onClick={enabled ? () => handleModelSelect(model) : undefined}
+                            onClick={() => handleModelSelect(model)}
                             className={cn(
                               'relative flex flex-col items-center justify-center p-3 rounded-xl border-2 cursor-pointer group h-20 hover:scale-[1.05] hover:shadow-lg transition-all',
                               selectedModel === model
                                 ? 'border-primary bg-primary/10 shadow-md'
                                 : 'border-border/60 hover:border-primary/40 hover:bg-accent',
-                              !enabled && 'opacity-50 cursor-not-allowed pointer-events-none bg-muted/20 border-border/30'
+                              !enabled && 'opacity-50 bg-muted/20 border-border/30'
                             )}
                           >
                             <div className="mb-1 opacity-70 group-hover:opacity-100 transition-opacity">
                               {getProviderIcon(model)}
                             </div>
                             <div className="text-xs font-medium text-center leading-tight">{model}</div>
+                            {!enabled && (
+                              <div className="text-xs text-muted-foreground/70 text-center mt-1">
+                                No API key
+                              </div>
+                            )}
                             <Button
                               variant="ghost"
                               size="icon"
-                              className={cn(
-                                'absolute top-0.5 right-0.5 w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity',
-                                !enabled && 'hidden'
-                              )}
-                              onClick={enabled ? (e) => handleToggleFavorite(model, e) : undefined}
-                              disabled={!enabled}
+                              className="absolute top-0.5 right-0.5 w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => handleToggleFavorite(model, e)}
                             >
-                              <Star className="w-2.5 h-2.5 text-muted-foreground hover:text-yellow-500" />
+                              <Star className="w-2.5 h-2.5 text-yellow-500 fill-yellow-500" />
                             </Button>
                             {selectedModel === model && (
                               <div className="absolute top-0.5 left-0.5">
@@ -357,28 +374,32 @@ const PureChatModelDropdown = ({ messageCount = 0 }: ChatModelDropdownProps) => 
                           return (
                             <div
                               key={model}
-                              onClick={enabled ? () => handleModelSelect(model) : undefined}
+                              onClick={() => handleModelSelect(model)}
                               className={cn(
                                 'relative flex flex-col items-center justify-center p-3 rounded-xl border-2 cursor-pointer group h-20 hover:scale-[1.05] hover:shadow-lg transition-all',
                                 selectedModel === model
                                   ? 'border-primary bg-primary/10 shadow-md'
                                   : 'border-border/60 hover:border-primary/40 hover:bg-accent',
-                                !enabled && 'bg-muted/50 border-muted-foreground/20 opacity-60 cursor-not-allowed pointer-events-none'
+                                !enabled && 'bg-muted/50 border-muted-foreground/20 opacity-60'
                               )}
                             >
                               <div className="mb-1 opacity-70 group-hover:opacity-100 transition-opacity">
                                 {getProviderIcon(model)}
                               </div>
                               <div className="text-xs font-medium text-center leading-tight">{model}</div>
+                              {!enabled && (
+                                <div className="text-xs text-muted-foreground/70 text-center mt-1">
+                                  No API key
+                                </div>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 className={cn(
                                   'absolute top-0.5 right-0.5 w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity',
-                                  (!enabled || isFav) && 'hidden'
+                                  isFav && 'hidden'
                                 )}
-                                onClick={enabled ? (e) => handleToggleFavorite(model, e) : undefined}
-                                disabled={!enabled}
+                                onClick={(e) => handleToggleFavorite(model, e)}
                               >
                                 <Star className="w-2.5 h-2.5 text-muted-foreground hover:text-yellow-500" />
                               </Button>

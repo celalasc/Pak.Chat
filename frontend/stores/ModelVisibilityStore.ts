@@ -65,18 +65,7 @@ export const useModelVisibilityStore = create<ModelVisibilityStore>((set, get) =
   },
 
   getVisibleFavoriteModels: () => {
-    const { favoriteModels, enabledProviders } = get();
-    const modelsByProvider = getModelsByProvider();
-    
-    return favoriteModels.filter(model => {
-      // Найти провайдера для этой модели
-      for (const [provider, models] of Object.entries(modelsByProvider)) {
-        if (models.includes(model) && enabledProviders.includes(provider as Provider)) {
-          return true;
-        }
-      }
-      return false;
-    });
+    return get().favoriteModels;
   },
 
   getVisibleGeneralModels: () => {
