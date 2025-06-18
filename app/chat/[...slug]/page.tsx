@@ -6,6 +6,7 @@ import { useQuery, useConvexAuth } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id, Doc } from '@/convex/_generated/dataModel';
 import { isConvexId } from '@/lib/ids';
+import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import Chat from '@/frontend/components/Chat';
 import AppShellSkeleton from '@/frontend/components/AppShellSkeleton';
 
@@ -15,6 +16,7 @@ export default function CatchAllChatPage({ params }: { params: Promise<{ slug: s
   
   const router = useRouter();
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const { isMobile, mounted } = useIsMobile();
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const isValidId = useMemo(() => isConvexId(chatId), [chatId]);
@@ -89,6 +91,13 @@ export default function CatchAllChatPage({ params }: { params: Promise<{ slug: s
       router.replace('/chat');
     }
   }, [authLoading, isAuthenticated, isValidId, router, chatId, thread]);
+
+  // Автоматическое переключение между версиями при изменении размера экрана
+  useEffect(() => {
+    if (mounted && isAuthenticated && isMobile && isValidId) {
+      router.push('/home');
+    }
+  }, [isMobile, mounted, isAuthenticated, isValidId, router]);
   
   const isLoading =
     authLoading ||

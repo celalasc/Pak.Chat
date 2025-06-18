@@ -3,6 +3,7 @@
 import ChatHistoryButton from './ChatHistoryButton';
 import NewChatButton from './NewChatButton';
 import SettingsButton from './SettingsButton';
+import MobileChatMenu from './MobileChatMenu';
 import ChatView from './ChatView';
 import { useRouter } from 'next/navigation';
 import { Button } from './ui/button';
@@ -58,50 +59,50 @@ function Chat({ threadId, initialMessages, dialogVersion }: ChatProps) {
     <div className="w-full min-h-screen flex flex-col overflow-y-auto chat-smooth">
       {/* Header for new chat vs existing chat */}
       {isMobile ? (
-        // МОБИЛЬНАЯ версия - плюсик везде
+        // МОБИЛЬНАЯ версия - только меню с тремя точками для существующих чатов
         <>
-          {/* Top-right control panel - всегда показываем на мобильных */}
-          <div
-            ref={panelRef}
-            className={cn(
-              'fixed right-4 top-4 z-50 flex gap-2 p-1 bg-background/60 backdrop-blur-md rounded-lg border border-border/20 transition-transform duration-300 ease-in-out',
-              (!isHeaderVisible || isKeyboardVisible) && 'transform translate-x-[calc(100%+1rem)]',
-            )}
-          >
-            <NewChatButton className="backdrop-blur-sm" />
-            {threadId && <ChatHistoryButton className="backdrop-blur-sm" />}
-          </div>
-
           {threadId ? (
-            // Existing chat - show logo
-            <div
-              className={cn(
-                'fixed left-4 top-4 z-50 transition-all duration-300 ease-in-out',
-                (!isHeaderVisible || isKeyboardVisible) && 'transform -translate-x-full opacity-0',
-              )}
-            >
-              <div className="relative">
-                <div className="absolute inset-0 -m-2 bg-background/60 backdrop-blur-md rounded-lg" />
-                <span
-                  className="relative text-xl font-bold text-foreground hover:text-primary transition-colors cursor-pointer"
-                  onClick={() => router.push('/chat')}
-                >
-                  Pak.Chat
-                </span>
+            // Existing chat - показываем стрелочку назад слева и меню справа
+            <>
+              <div
+                className={cn(
+                  'fixed left-4 top-4 z-50 transition-all duration-300 ease-in-out',
+                  (!isHeaderVisible || isKeyboardVisible) && 'transform -translate-x-full opacity-0',
+                )}
+              >
+                <WithTooltip label="Back to Home" side="bottom">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="bg-background/60 backdrop-blur-xl border border-border/20 rounded-full h-9 w-9 shadow-lg"
+                    onClick={() => router.push('/home')}
+                    aria-label="Back to home"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </Button>
+                </WithTooltip>
               </div>
-            </div>
+              <div
+                className={cn(
+                  'fixed right-4 top-4 z-50 transition-all duration-300 ease-in-out',
+                  (!isHeaderVisible || isKeyboardVisible) && 'transform translate-x-[calc(100%+1rem)]',
+                )}
+              >
+                <MobileChatMenu threadId={threadId} />
+              </div>
+            </>
           ) : (
-            // New chat - show back button
+            // New chat - показываем кнопку назад
             <div className="fixed left-4 top-4 z-50">
               <WithTooltip label="Back to Home" side="bottom">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="bg-background/80 backdrop-blur-sm border-border/50"
-                  onClick={() => router.push(isMobile ? '/home' : '/chat')}
+                  className="bg-background/60 backdrop-blur-xl border border-border/20 rounded-full h-9 w-9 shadow-lg"
+                  onClick={() => router.push('/home')}
                   aria-label="Back to home"
                 >
-                  <ArrowLeft className="h-5 w-5" />
+                  <ArrowLeft className="h-4 w-4" />
                 </Button>
               </WithTooltip>
             </div>

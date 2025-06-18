@@ -27,6 +27,7 @@ export default function IndexPage() {
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-4 text-center">
       <h1 className="text-4xl font-bold tracking-tight">Welcome to Pak.Chat</h1>
       <p className="text-lg text-muted-foreground">Your high-performance LLM application.</p>
+      
       <Button size="lg" onClick={login} disabled={loading}>
         Sign In with Google to Continue
       </Button>

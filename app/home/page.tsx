@@ -4,10 +4,11 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useConvexAuth } from 'convex/react';
 import { Button } from '@/frontend/components/ui/button';
-import { MessageSquare, Plus, Settings } from 'lucide-react';
+import { MessageSquare, Plus, Settings, Search } from 'lucide-react';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import ChatHistoryList from '@/frontend/components/ChatHistoryList';
 import SettingsDrawer from '@/frontend/components/SettingsDrawer';
+import MobileSearch from '@/frontend/components/MobileSearch';
 import AppShellSkeleton from '@/frontend/components/AppShellSkeleton';
 import { WithTooltip } from '@/frontend/components/WithTooltip';
 import type { Id } from '@/convex/_generated/dataModel';
@@ -17,12 +18,20 @@ export default function HomePage() {
   const router = useRouter();
   const { isMobile } = useIsMobile();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       router.replace('/');
     }
   }, [isLoading, isAuthenticated, router]);
+
+  // Автоматическое переключение на ПК версию при увеличении размера экрана
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && !isMobile) {
+      router.push('/chat');
+    }
+  }, [isMobile, isLoading, isAuthenticated, router]);
 
   const handleSelectThread = (threadId: Id<'threads'>) => {
     router.push(`/chat/${threadId}`);
@@ -61,8 +70,22 @@ export default function HomePage() {
           <span className="text-xl font-bold text-foreground">Pak.Chat</span>
         </div>
 
-        {/* Right: Spacer to keep logo centered */}
-        <div className="w-10" />
+        {/* Right: Search button (mobile only) */}
+        {isMobile ? (
+          <WithTooltip label="Search" side="bottom">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="bg-background/80 backdrop-blur-sm border-border/50"
+              aria-label="Search chats"
+              onClick={() => setSearchOpen(true)}
+            >
+              <Search className="h-5 w-5" />
+            </Button>
+          </WithTooltip>
+        ) : (
+          <div className="w-10" />
+        )}
       </div>
 
       {/* Chat history list */}
@@ -89,6 +112,14 @@ export default function HomePage() {
             </Button>
           </WithTooltip>
         </div>
+      )}
+
+      {/* Mobile Search */}
+      {isMobile && (
+        <MobileSearch 
+          isOpen={searchOpen} 
+          onClose={() => setSearchOpen(false)} 
+        />
       )}
     </div>
   );
