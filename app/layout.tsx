@@ -7,6 +7,8 @@ import { Suspense } from 'react';
 import AuthListener from '@/frontend/components/AuthListener';
 import ConvexClientProvider from '@/frontend/components/ConvexClientProvider';
 import UserSync from '@/frontend/components/UserSync';
+import PWAInstallPrompt from '@/frontend/components/PWAInstallPrompt';
+import MobileEnhancements from '@/frontend/components/MobileEnhancements';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,19 +25,55 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
         <meta
           httpEquiv="Cross-Origin-Opener-Policy"
           content="same-origin-allow-popups"
         />
         <link rel="manifest" href="/manifest.webmanifest" />
+        
+        {/* PWA и мобильные мета-теги */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Pak.Chat" />
         <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="application-name" content="Pak.Chat" />
+        
+        {/* Отключаем зум на двойной тап */}
+        <meta name="format-detection" content="telephone=no" />
+        <meta name="msapplication-tap-highlight" content="no" />
+        
+        {/* PWA иконки для iOS */}
+        <link rel="apple-touch-icon" href="/favicon.ico" />
+        <link rel="apple-touch-icon" sizes="152x152" href="/favicon.ico" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/favicon.ico" />
+        
+        {/* Полноэкранный режим */}
+        <meta name="apple-touch-fullscreen" content="yes" />
+        <meta name="mobile-web-app-status-bar-style" content="black-translucent" />
         {/* Устанавливаем класc темы до загрузки React, чтобы избежать мигания света/темноты */}
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark');}else{document.documentElement.classList.remove('dark');}}catch(e){}})();`,
+          }}
+        />
+        
+        {/* Регистрация Service Worker для PWA */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js')
+                    .then(function(registration) {
+                      console.log('SW registered: ', registration);
+                    })
+                    .catch(function(registrationError) {
+                      console.log('SW registration failed: ', registrationError);
+                    });
+                });
+              }
+            `,
           }}
         />
       </head>
@@ -49,6 +87,8 @@ export default function RootLayout({
               </AuthListener>
             </Providers>
             <Toaster richColors position="top-right" />
+            <PWAInstallPrompt />
+            <MobileEnhancements />
           </ConvexClientProvider>
         </Suspense>
       </body>

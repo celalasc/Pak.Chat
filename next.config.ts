@@ -3,7 +3,30 @@ import { createRequire } from 'node:module'
 const require = createRequire(import.meta.url)
 
 const withAnalyzer = require('@next/bundle-analyzer')({ enabled: process.env.ANALYZE === 'true' });
-const withPWA = require('next-pwa')({ dest: 'public', disable: process.env.NODE_ENV === 'development' });
+const withPWA = require('next-pwa')({ 
+  dest: 'public', 
+  disable: process.env.NODE_ENV === 'development',
+  sw: 'sw.js',
+  register: false, // Мы регистрируем SW вручную в layout.tsx
+  skipWaiting: true,
+  fallbacks: {
+    document: '/offline',
+  },
+  publicExcludes: ['!sw.js'],
+  buildExcludes: [/middleware-manifest\.json$/],
+  cacheOnFrontEndNav: true,
+  aggressiveFrontEndNavCaching: true,
+  reloadOnOnline: true,
+  swcMinify: true,
+  workboxOptions: {
+    disableDevLogs: true,
+    mode: 'production',
+    clientsClaim: true,
+    skipWaiting: true,
+    navigateFallback: '/offline',
+    navigateFallbackDenylist: [/^\/_/, /^\/api/],
+  }
+});
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {

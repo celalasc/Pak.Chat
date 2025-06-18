@@ -40,6 +40,11 @@ function Chat({ threadId, thread, initialMessages }: ChatProps) {
     document.documentElement.style.setProperty('--keyboard-inset-height', `${h}px`);
   });
 
+  // Handle settings drawer open/close for mobile animation
+  const handleSettingsOpenChange = (open: boolean) => {
+    setIsSettingsOpen(open);
+  };
+
   // Track virtual keyboard visibility on mobile
   useEffect(() => {
     if (!isMobile) return;
@@ -59,12 +64,31 @@ function Chat({ threadId, thread, initialMessages }: ChatProps) {
   }, [isMobile]);
 
   return (
-    <div className="relative h-screen overflow-hidden bg-background">
+    <div className={cn(
+      "relative h-screen overflow-hidden bg-background",
+      isMobile && "mobile-fullscreen touch-target"
+    )}>
+      {/* Background overlay for mobile settings */}
+      {isMobile && (
+        <motion.div
+          className="fixed inset-0 bg-black z-40"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: isSettingsOpen ? 0.5 : 0 }}
+          transition={{
+            duration: 0.4,
+            ease: [0.25, 0.8, 0.25, 1],
+          }}
+          style={{
+            pointerEvents: isSettingsOpen ? 'auto' : 'none',
+          }}
+        />
+      )}
+      
       <motion.div
         className="w-full min-h-screen flex flex-col overflow-y-auto chat-smooth origin-top"
         animate={{
           scale: isSettingsOpen ? 0.95 : 1,
-          y: isSettingsOpen ? '20px' : '0px',
+          y: isSettingsOpen ? (isMobile ? '20px' : '10px') : '0px',
           filter: isSettingsOpen ? 'brightness(0.7)' : 'brightness(1)',
         }}
         transition={{
@@ -94,7 +118,7 @@ function Chat({ threadId, thread, initialMessages }: ChatProps) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="bg-background/60 backdrop-blur-xl border border-border/20 rounded-full h-9 w-9 shadow-lg"
+                      className="bg-background/60 backdrop-blur-xl border border-border/20 rounded-full h-9 w-9 shadow-lg touch-target"
                     onClick={() => router.push('/home')}
                     aria-label="Back to home"
                   >
@@ -118,7 +142,7 @@ function Chat({ threadId, thread, initialMessages }: ChatProps) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="bg-background/60 backdrop-blur-xl border border-border/20 rounded-full h-9 w-9 shadow-lg"
+                    className="bg-background/60 backdrop-blur-xl border border-border/20 rounded-full h-9 w-9 shadow-lg touch-target"
                   onClick={() => router.push('/home')}
                   aria-label="Back to home"
                 >
@@ -138,14 +162,14 @@ function Chat({ threadId, thread, initialMessages }: ChatProps) {
           >
             <NewChatButton className="backdrop-blur-sm" />
             <ChatHistoryButton className="backdrop-blur-sm" />
-            <SettingsDrawer isOpen={isSettingsOpen} setIsOpen={setIsSettingsOpen}>
+              <SettingsDrawer isOpen={isSettingsOpen} setIsOpen={handleSettingsOpenChange}>
               <WithTooltip label="Settings" side="bottom">
                 <Button
                   variant="outline"
                   size="icon"
                   className="bg-background/80 backdrop-blur-sm border-border/50"
                   aria-label="Open settings"
-                  onClick={() => setIsSettingsOpen(true)}
+                    onClick={() => handleSettingsOpenChange(true)}
                 >
                   <Settings className="h-5 w-5" />
                 </Button>
