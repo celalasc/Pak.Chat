@@ -35,6 +35,7 @@ export default defineSchema({
     userId: v.id("users"),
     favoriteModels: v.array(v.string()),
     enabledProviders: v.array(v.string()),
+    selectedModel: v.optional(v.string()),
   }).index("by_user", ["userId"]),
 
   // Chat threads
@@ -80,6 +81,7 @@ export default defineSchema({
     originalThreadId: v.id("threads"),
     userId: v.id("users"),
     title: v.string(),
+    isAnonymous: v.optional(v.boolean()),
     messages: v.array(
       v.object({
         role: v.union(v.literal("user"), v.literal("assistant")),

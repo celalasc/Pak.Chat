@@ -34,12 +34,14 @@ export const getModelVisibility = query({
       return {
         favoriteModels: [],
         enabledProviders: ["google", "openrouter", "openai", "groq"],
+        selectedModel: "Gemini 2.5 Flash",
       };
     }
 
     return {
       favoriteModels: settings.favoriteModels || [],
       enabledProviders: settings.enabledProviders || ["google", "openrouter", "openai", "groq"],
+      selectedModel: settings.selectedModel || "Gemini 2.5 Flash",
     };
   },
 });
@@ -49,6 +51,7 @@ export const setModelVisibility = mutation({
   args: {
     favoriteModels: v.array(v.string()),
     enabledProviders: v.array(v.string()),
+    selectedModel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getCurrentUserId(ctx);
@@ -61,16 +64,23 @@ export const setModelVisibility = mutation({
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .first();
 
+    const updateData: any = {
+      favoriteModels: args.favoriteModels,
+      enabledProviders: args.enabledProviders,
+    };
+
+    if (args.selectedModel !== undefined) {
+      updateData.selectedModel = args.selectedModel;
+    }
+
     if (existing) {
-      await ctx.db.patch(existing._id, {
-        favoriteModels: args.favoriteModels,
-        enabledProviders: args.enabledProviders,
-      });
+      await ctx.db.patch(existing._id, updateData);
     } else {
       await ctx.db.insert("modelVisibility", {
         userId,
         favoriteModels: args.favoriteModels,
         enabledProviders: args.enabledProviders,
+        selectedModel: args.selectedModel || "Gemini 2.5 Flash",
       });
     }
   },

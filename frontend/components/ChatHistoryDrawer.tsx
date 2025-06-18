@@ -28,6 +28,8 @@ import { Button, buttonVariants } from "./ui/button";
 import { Input } from "./ui/input";
 import CopyButton from "./ui/CopyButton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+import { Switch } from "./ui/switch";
+import { Label } from "@/components/ui/label";
 import { useRouter, useParams } from "next/navigation";
 import {
   X,
@@ -137,6 +139,8 @@ function ChatHistoryDrawerComponent({
   const itemRefs = useRef<Map<number, HTMLDivElement | null>>(new Map());
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [shareLink, setShareLink] = useState<string | null>(null);
+  const [isAnonymousShare, setIsAnonymousShare] = useState(false);
+  const [sharingThread, setSharingThread] = useState<Thread | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
   const { isMobile, mounted } = useIsMobile(600);
@@ -258,14 +262,27 @@ function ChatHistoryDrawerComponent({
 
   const handleShare = useCallback(
     async (thread: Thread) => {
-      const shareId = await createShareLink({ threadId: thread._id });
-      const url = `${window.location.origin}/share/${shareId}`;
-      setShareLink(url);
+      setIsAnonymousShare(false); // Reset to default
+      setSharingThread(thread);
+      setShareLink(null); // Reset link
       setShareDialogOpen(true);
       setLongPressThreadId(null);
       setMobileMenuThreadId(null);
     },
-    [createShareLink],
+    [],
+  );
+
+  const generateShareLink = useCallback(
+    async () => {
+      if (!sharingThread) return;
+      const shareId = await createShareLink({ 
+        threadId: sharingThread._id, 
+        isAnonymous: isAnonymousShare 
+      });
+      const url = `${window.location.origin}/share/${shareId}`;
+      setShareLink(url);
+    },
+    [createShareLink, sharingThread, isAnonymousShare],
   );
 
   const handleNewChat = useCallback(() => {
@@ -762,16 +779,45 @@ function ChatHistoryDrawerComponent({
         <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Share link</DialogTitle>
+              <DialogTitle>Share Chat</DialogTitle>
             </DialogHeader>
-            <div className="flex items-center gap-2">
-              <Input
-                value={shareLink ?? ''}
-                readOnly
-                className="flex-1"
-                onFocus={(e) => e.currentTarget.select()}
-              />
-              {shareLink && <CopyButton code={shareLink} />}
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="anonymous-mode"
+                  checked={isAnonymousShare}
+                  onCheckedChange={setIsAnonymousShare}
+                />
+                <Label htmlFor="anonymous-mode">Stay anonymous</Label>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                When enabled, your avatar and name will be replaced with "Anonymous" for viewers
+              </p>
+              
+              {!shareLink ? (
+                <Button onClick={generateShareLink} className="w-full">
+                  Create Link
+                </Button>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={shareLink}
+                      readOnly
+                      className="flex-1"
+                      onFocus={(e) => e.currentTarget.select()}
+                    />
+                    <CopyButton code={shareLink} />
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShareLink(null)} 
+                    className="w-full"
+                  >
+                    Create New Link
+                  </Button>
+                </div>
+              )}
             </div>
           </DialogContent>
         </Dialog>
@@ -834,16 +880,45 @@ function ChatHistoryDrawerComponent({
       <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Share link</DialogTitle>
+            <DialogTitle>Share Chat</DialogTitle>
           </DialogHeader>
-          <div className="flex items-center gap-2">
-            <Input
-              value={shareLink ?? ''}
-              readOnly
-              className="flex-1"
-              onFocus={(e) => e.currentTarget.select()}
-            />
-            {shareLink && <CopyButton code={shareLink} />}
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="anonymous-mode-desktop"
+                checked={isAnonymousShare}
+                onCheckedChange={setIsAnonymousShare}
+              />
+              <Label htmlFor="anonymous-mode-desktop">Stay anonymous</Label>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              When enabled, your avatar and name will be replaced with "Anonymous" for viewers
+            </p>
+            
+            {!shareLink ? (
+              <Button onClick={generateShareLink} className="w-full">
+                Create Link
+              </Button>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={shareLink}
+                    readOnly
+                    className="flex-1"
+                    onFocus={(e) => e.currentTarget.select()}
+                  />
+                  <CopyButton code={shareLink} />
+                </div>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShareLink(null)} 
+                  className="w-full"
+                >
+                  Create New Link
+                </Button>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

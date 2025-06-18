@@ -6,21 +6,20 @@ export type ReasoningEffort = "medium" | "low" | "high";
 
 type ModelStore = {
   selectedModel: AIModel;
-  favoriteModels: AIModel[];
   modelSpecificSettings: Partial<Record<AIModel, { reasoningEffort?: ReasoningEffort }>>;
   webSearchEnabled: boolean;
   setModel: (model: AIModel) => void;
-  toggleFavorite: (model: AIModel) => void;
-  isFavorite: (model: AIModel) => boolean;
   getModelConfig: () => ModelConfig;
   setReasoningEffort: (model: AIModel, effort: ReasoningEffort) => void;
   setWebSearchEnabled: (enabled: boolean) => void;
   supportsWebSearch: (model?: AIModel) => boolean;
+  // Новые методы для синхронизации
+  syncSelectedModel: (model: AIModel) => void;
 };
 
 type StoreWithPersist = Mutate<
   StoreApi<ModelStore>,
-  [['zustand/persist', { selectedModel: AIModel; favoriteModels: AIModel[]; modelSpecificSettings: Partial<Record<AIModel, { reasoningEffort?: ReasoningEffort }>>; webSearchEnabled: boolean }]]
+  [['zustand/persist', { selectedModel: AIModel; modelSpecificSettings: Partial<Record<AIModel, { reasoningEffort?: ReasoningEffort }>>; webSearchEnabled: boolean }]]
 >;
 
 export const withStorageDOMEvents = (store: StoreWithPersist) => {
@@ -46,31 +45,17 @@ export const useModelStore = create<ModelStore>()(
   persist(
     (set, get) => ({
       selectedModel: 'Gemini 2.5 Flash',
-      favoriteModels: ['Gemini 2.5 Flash', 'GPT-4o', 'Deepseek R1 0528'],
       modelSpecificSettings: {},
       webSearchEnabled: false,
 
       setModel: (model) => {
         set({ selectedModel: model });
+        // Синхронизация будет происходить через useModelSync хук
       },
 
-      toggleFavorite: (model) => {
-        set((state) => {
-          const isFav = state.favoriteModels.includes(model);
-          if (isFav) {
-            return {
-              favoriteModels: state.favoriteModels.filter(m => m !== model)
-            };
-          } else {
-            return {
-              favoriteModels: [...state.favoriteModels, model]
-            };
-          }
-        });
-      },
-
-      isFavorite: (model) => {
-        return get().favoriteModels.includes(model);
+      syncSelectedModel: (model) => {
+        // Синхронизация модели из Convex без повторного сохранения
+        set({ selectedModel: model });
       },
 
       getModelConfig: () => {
@@ -109,7 +94,6 @@ export const useModelStore = create<ModelStore>()(
       name: 'selected-model',
       partialize: (state) => ({
         selectedModel: state.selectedModel,
-        favoriteModels: state.favoriteModels,
         modelSpecificSettings: state.modelSpecificSettings,
         webSearchEnabled: state.webSearchEnabled,
       }),

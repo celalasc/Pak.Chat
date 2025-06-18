@@ -43,13 +43,14 @@ export function useModelVisibilitySync() {
     saveTimeoutRef.current = setTimeout(async () => {
       if (isSavingRef.current) return;
 
-      const { favoriteModels, enabledProviders } = store.getState(); // Актуальные данные
+      const { favoriteModels, enabledProviders, selectedModel } = store.getState(); // Актуальные данные
 
       isSavingRef.current = true;
       try {
         await saveVisibility({
           favoriteModels,
           enabledProviders,
+          selectedModel,
         });
       } catch (error) {
         console.error('Failed to save model visibility settings:', error);

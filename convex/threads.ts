@@ -219,8 +219,11 @@ export const setParent = mutation({
 
 /** Create a public share link for a thread */
 export const createShareLink = mutation({
-  args: { threadId: v.id("threads") },
-  async handler(ctx, { threadId }) {
+  args: { 
+    threadId: v.id("threads"),
+    isAnonymous: v.optional(v.boolean())
+  },
+  async handler(ctx, { threadId, isAnonymous }) {
     const uid = await currentUserId(ctx);
     const thread = await ctx.db.get(threadId);
     if (!uid || !thread || thread.userId !== uid) throw new Error("Access denied");
@@ -238,6 +241,7 @@ export const createShareLink = mutation({
       originalThreadId: threadId,
       userId: uid,
       title: thread.title,
+      isAnonymous: isAnonymous ?? false,
       messages: messages.map((m) => ({ role: m.role, content: m.content })),
     });
 
@@ -245,14 +249,70 @@ export const createShareLink = mutation({
   },
 });
 
+/** Create a copy of a shared thread for the current user */
+export const continueFromShared = mutation({
+  args: { shareId: v.string() },
+  async handler(ctx, { shareId }) {
+    const uid = await currentUserId(ctx);
+    if (!uid) throw new Error("Unauthenticated");
+
+    const sharedThread = await ctx.db
+      .query("sharedThreads")
+      .withIndex("by_share_id", (q) => q.eq("shareId", shareId))
+      .unique();
+
+    if (!sharedThread) throw new Error("Shared thread not found");
+
+    // Create a new thread for the current user
+    const newThreadId = await ctx.db.insert("threads", {
+      userId: uid,
+      title: sharedThread.title,
+      createdAt: Date.now(),
+      pinned: false,
+    });
+
+    // Copy all messages from the shared thread
+    for (const message of sharedThread.messages) {
+      await ctx.db.insert("messages", {
+        threadId: newThreadId,
+        authorId: uid,
+        role: message.role,
+        content: message.content,
+        createdAt: Date.now(),
+      });
+    }
+
+    return newThreadId;
+  },
+});
+
 /** Retrieve a shared thread by its public ID */
 export const getSharedThread = query({
   args: { shareId: v.string() },
   async handler(ctx, { shareId }) {
-    return await ctx.db
+    const sharedThread = await ctx.db
       .query("sharedThreads")
       .withIndex("by_share_id", (q) => q.eq("shareId", shareId))
       .unique();
+
+    if (!sharedThread) return null;
+
+    // If not anonymous, get user info
+    let userInfo = null;
+    if (!sharedThread.isAnonymous) {
+      const user = await ctx.db.get(sharedThread.userId);
+      if (user) {
+        userInfo = {
+          name: user.name,
+          avatarUrl: user.avatarUrl,
+        };
+      }
+    }
+
+    return {
+      ...sharedThread,
+      userInfo,
+    };
   },
 });
 

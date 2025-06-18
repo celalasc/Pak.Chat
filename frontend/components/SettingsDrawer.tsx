@@ -29,8 +29,7 @@ import {
   Copy,
   Check,
   ExternalLink,
-  Bot,
-  Star
+  Bot
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSettingsStore, GENERAL_FONTS, CODE_FONTS, THEMES, GeneralFont, CodeFont, Theme } from '@/frontend/stores/SettingsStore';
@@ -1011,26 +1010,6 @@ const ModelRow = memo(({
       <span className="text-sm font-medium">{model}</span>
       <div className="flex items-center gap-1">
         {/* Favourite toggle */}
-        {isProviderEnabled && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-5 w-5 p-0"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleFavoriteModel();
-            }}
-            aria-label={isFavoriteModel ? 'Remove from favourites' : 'Add to favourites'}
-          >
-            <Star
-              className={cn(
-                'w-3.5 h-3.5 transition-colors',
-                isFavoriteModel ? 'text-yellow-500' : 'text-muted-foreground hover:text-yellow-500'
-              )}
-              fill={isFavoriteModel ? 'currentColor' : 'none'}
-            />
-          </Button>
-        )}
         {isFavoriteModel && isProviderEnabled && (
           <Check className="h-4 w-4 text-primary" />
         )}

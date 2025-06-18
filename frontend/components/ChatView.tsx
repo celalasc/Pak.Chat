@@ -16,6 +16,7 @@ import { api } from '@/convex/_generated/api';
 import { isConvexId } from '@/lib/ids';
 import { Id } from '@/convex/_generated/dataModel';
 import type { UIMessage } from 'ai';
+import { useDebounceCallback } from 'usehooks-ts';
 
 interface ChatViewProps {
   threadId: string;
@@ -91,19 +92,26 @@ function ChatView({ threadId, initialMessages, showNavBars }: ChatViewProps) {
         !isConvexId(finalMsg.id) &&
         isConvexId(latestThreadId)
       ) {
+        // Persist the assistant message to Convex and obtain the real ID
         const realId = await sendMessage({
           threadId: latestThreadId as Id<'threads'>,
           role: 'assistant',
           content: finalMsg.content,
           model: selectedModel,
         });
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === finalMsg.id
-              ? { ...(m as any), id: realId, model: selectedModel }
-              : m,
-          ),
-        );
+
+        // Replace the temporary message ID with the real Convex ID
+        setMessages((prev) => {
+          const idx = prev.findIndex((m) => m.id === finalMsg.id);
+
+          // If the message is already replaced or not found, skip updating to
+          // avoid creating an identical array that would trigger another rerender.
+          if (idx === -1) return prev;
+
+          const next = [...prev];
+          next[idx] = { ...(next[idx] as any), id: realId, model: selectedModel } as any;
+          return next;
+        });
       }
     },
   });
@@ -130,8 +138,12 @@ function ChatView({ threadId, initialMessages, showNavBars }: ChatViewProps) {
       }
     });
 
-    setCurrentMessageId(currentMsg.id);
-  }, [messages]);
+    if (currentMessageId !== currentMsg.id) {
+      setCurrentMessageId(currentMsg.id);
+    }
+  }, [messages, currentMessageId]);
+  
+  const debouncedUpdateCurrentMessage = useDebounceCallback(updateCurrentMessage, 50, { leading: true });
 
   // Добавляем обработчик скролла
   useEffect(() => {
@@ -139,17 +151,17 @@ function ChatView({ threadId, initialMessages, showNavBars }: ChatViewProps) {
     if (!scrollArea) return;
 
     const handleScroll = () => {
-      updateCurrentMessage();
+      debouncedUpdateCurrentMessage();
     };
 
-    scrollArea.addEventListener('scroll', handleScroll);
+    scrollArea.addEventListener('scroll', handleScroll, { passive: true });
     // Также обновляем при изменении сообщений
-    updateCurrentMessage();
+    debouncedUpdateCurrentMessage();
 
     return () => {
       scrollArea.removeEventListener('scroll', handleScroll);
     };
-  }, [updateCurrentMessage]);
+  }, [debouncedUpdateCurrentMessage]);
 
   // Register setter so that other components can alter the input value
   const registerInputSetter = useChatStore((s) => s.registerInputSetter);

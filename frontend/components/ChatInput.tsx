@@ -20,6 +20,7 @@ import { Id } from '@/convex/_generated/dataModel';
 import { useAPIKeyStore, APIKeys } from '@/frontend/stores/APIKeyStore';
 import { useModelStore, ReasoningEffort } from '@/frontend/stores/ModelStore';
 import { useModelVisibilityStore } from '@/frontend/stores/ModelVisibilityStore';
+import { useModelVisibilitySync } from '@/frontend/hooks/useModelVisibilitySync';
 import { useQuoteStore } from '@/frontend/stores/QuoteStore';
 import { AI_MODELS, AIModel, getModelConfig } from '@/lib/models';
 import { UIMessage } from 'ai';
@@ -225,14 +226,14 @@ const PureChatModelDropdown = ({ messageCount = 0 }: ChatModelDropdownProps) => 
         <DropdownMenuContent
           className={cn(
             !isExpanded ? 'w-64' : 'w-80',
-            'border border-border/50 bg-popover/95 backdrop-blur-sm shadow-xl rounded-xl overflow-hidden max-h-[60vh]'
+            'border border-border/50 bg-popover/95 backdrop-blur-sm shadow-xl rounded-xl overflow-hidden max-h-[50vh]'
           )}
           align="center"
           side="top"
           sideOffset={12}
           avoidCollisions
         >
-          <div className="overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted-foreground/30 scrollbar-thumb-rounded-full max-h-[55vh]">
+          <div className="overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted-foreground/30 scrollbar-thumb-rounded-full max-h-[45vh]">
             {!isExpanded ? (
               <div className="p-3">
                 <div className="flex items-center justify-between mb-3">
@@ -253,7 +254,7 @@ const PureChatModelDropdown = ({ messageCount = 0 }: ChatModelDropdownProps) => 
                     No favorite models
                   </div>
                 ) : (
-                  <div className="space-y-2 mb-4">
+                  <div className="space-y-2 mb-4 max-h-64 overflow-y-auto pr-2">
                     {enabledFavorites.map((model) => {
                       const enabled = isModelEnabled(model);
                       return (

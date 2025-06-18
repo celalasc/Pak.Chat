@@ -7,12 +7,15 @@ type ModelVisibilityStore = {
   favoriteModels: AIModel[];
   // Включенные провайдеры
   enabledProviders: Provider[];
+  // Выбранная модель
+  selectedModel: AIModel;
   // Загрузка
   loading: boolean;
   
   // Действия
   toggleFavoriteModel: (model: AIModel) => void;
   toggleProvider: (provider: Provider) => void;
+  setSelectedModel: (model: AIModel) => void;
   isProviderEnabled: (provider: Provider) => boolean;
   isFavoriteModel: (model: AIModel) => boolean;
   
@@ -21,13 +24,14 @@ type ModelVisibilityStore = {
   getVisibleGeneralModels: () => AIModel[];
   
   // Синхронизация с Convex
-  syncWithConvex: (data: { favoriteModels: string[], enabledProviders: string[] }) => void;
+  syncWithConvex: (data: { favoriteModels: string[], enabledProviders: string[], selectedModel?: string }) => void;
   setLoading: (loading: boolean) => void;
 };
 
 export const useModelVisibilityStore = create<ModelVisibilityStore>((set, get) => ({
   favoriteModels: [],
   enabledProviders: ['google', 'openrouter', 'openai', 'groq'],
+  selectedModel: 'Gemini 2.5 Flash',
   loading: false,
 
   toggleFavoriteModel: (model: AIModel) => {
@@ -46,6 +50,10 @@ export const useModelVisibilityStore = create<ModelVisibilityStore>((set, get) =
       : [...enabledProviders, provider];
     
     set({ enabledProviders: newProviders });
+  },
+
+  setSelectedModel: (model: AIModel) => {
+    set({ selectedModel: model });
   },
 
   isProviderEnabled: (provider: Provider) => {
@@ -85,10 +93,11 @@ export const useModelVisibilityStore = create<ModelVisibilityStore>((set, get) =
     return allModels;
   },
 
-  syncWithConvex: (data: { favoriteModels: string[], enabledProviders: string[] }) => {
+  syncWithConvex: (data: { favoriteModels: string[], enabledProviders: string[], selectedModel?: string }) => {
     set({
       favoriteModels: data.favoriteModels as AIModel[],
       enabledProviders: data.enabledProviders as Provider[],
+      selectedModel: (data.selectedModel as AIModel) || 'Gemini 2.5 Flash',
       loading: false,
     });
   },

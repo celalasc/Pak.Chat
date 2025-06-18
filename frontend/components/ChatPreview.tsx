@@ -178,6 +178,7 @@ PreviewMessage.displayName = "PreviewMessage";
 /* Основной компонент                                                  */
 /* ------------------------------------------------------------------ */
 export default function ChatPreview({ threadId, onClose }: ChatPreviewProps) {
+  // No auto-scroll logic needed
   const messages = useQuery(
     api.messages.preview,
     threadId ? { threadId, limit: 8 } : "skip"
@@ -212,7 +213,6 @@ export default function ChatPreview({ threadId, onClose }: ChatPreviewProps) {
         style={{
           overscrollBehavior: "contain",
           WebkitOverflowScrolling: "touch",
-          scrollBehavior: "smooth",
         }}
       >
         <div className="flex flex-col space-y-6 p-4">

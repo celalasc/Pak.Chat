@@ -25,14 +25,14 @@ export default function MessageReasoning({ reasoning, id, isComplete = false }: 
   if (!reasoning.trim()) return null
 
   return (
-    <div className="w-full my-4 bg-background dark:bg-background rounded-2xl border border-border/40 shadow-sm overflow-hidden">
+    <div className="w-full my-4 bg-background dark:bg-muted/20 rounded-2xl border border-border/40 dark:border-border/60 shadow-sm overflow-hidden">
       {/* Header - sticky в развернутом режиме */}
       <div className={cn(
-        "flex items-center justify-between px-6 py-4 border-b border-border/40 bg-muted/80 dark:bg-muted/60 backdrop-blur-sm",
+        "flex items-center justify-between px-6 py-3 border-b border-border/40 bg-muted/80 dark:bg-muted/60 backdrop-blur-sm",
         isExpanded && "sticky top-0 z-10"
       )}>
         <div className="flex items-center gap-3">
-          <h2 className="text-xl font-medium text-foreground">
+          <h2 className="text-lg font-medium text-foreground">
             {!isComplete ? (
               <span className="shine-text font-semibold">Thinking</span>
             ) : (
@@ -58,10 +58,10 @@ export default function MessageReasoning({ reasoning, id, isComplete = false }: 
         <div
           ref={contentRef}
           className={cn(
-            "px-6 py-4 text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap",
+            "px-6 text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap",
             !isExpanded
-              ? "h-48 overflow-y-auto"
-              : "overflow-y-visible"
+              ? "py-4 h-48 overflow-y-auto"
+              : "pt-2 pb-3 overflow-y-visible"
           )}
           style={!isExpanded ? {
             scrollbarWidth: 'none',
