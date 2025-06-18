@@ -14,7 +14,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { isConvexId } from '@/lib/ids';
-import { Id } from '@/convex/_generated/dataModel';
+import { Id, Doc } from '@/convex/_generated/dataModel';
 import type { UIMessage } from 'ai';
 import { useDebounceCallback } from 'usehooks-ts';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
@@ -22,12 +22,13 @@ import { loadDraft, saveDraft, clearDraft } from '@/frontend/lib/drafts';
 
 interface ChatViewProps {
   threadId: string;
+  thread: Doc<'threads'> | null | undefined;
   initialMessages: UIMessage[];
   showNavBars: boolean;
   dialogVersion: number;
 }
 
-function ChatView({ threadId, initialMessages, showNavBars, dialogVersion }: ChatViewProps) {
+function ChatView({ threadId, thread, initialMessages, showNavBars, dialogVersion }: ChatViewProps) {
   const { keys } = useAPIKeyStore();
   const { selectedModel, webSearchEnabled } = useModelStore();
   const { clearQuote } = useQuoteStore();
@@ -249,6 +250,7 @@ function ChatView({ threadId, initialMessages, showNavBars, dialogVersion }: Cha
         >
           <ChatInput
             threadId={currentThreadId}
+            thread={thread}
             input={input}
             status={status}
             reload={reload}

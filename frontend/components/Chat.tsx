@@ -17,14 +17,16 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useSettingsStore } from '@/frontend/stores/SettingsStore';
 import { useModelStore } from '@/frontend/stores/ModelStore';
 import type { UIMessage } from 'ai';
+import { Doc } from '@/convex/_generated/dataModel';
 
 interface ChatProps {
   threadId: string;
+  thread: Doc<'threads'> | null | undefined;
   initialMessages: UIMessage[];
   dialogVersion: number;
 }
 
-function Chat({ threadId, initialMessages, dialogVersion }: ChatProps) {
+function Chat({ threadId, thread, initialMessages, dialogVersion }: ChatProps) {
   const { isMobile } = useIsMobile();
   const { selectedModel } = useModelStore();
   const router = useRouter();
@@ -137,6 +139,7 @@ function Chat({ threadId, initialMessages, dialogVersion }: ChatProps) {
       <ChatView
         key={`${threadId}-${dialogVersion}`}
         threadId={threadId}
+        thread={thread}
         initialMessages={initialMessages}
         dialogVersion={dialogVersion}
         showNavBars={settings.showNavBars}

@@ -50,6 +50,8 @@ export default defineSchema({
     clonedFrom: v.optional(v.id("threads")),
     forkedFromMessageId: v.optional(v.id("messages")),
     currentDialogVersion: v.optional(v.number()),
+    // Temporary unsent message text saved for this thread
+    draft: v.optional(v.string()),
   })
     .index("by_user_and_time", ["userId", "createdAt"])
     .searchIndex("by_title", { searchField: "title" }),

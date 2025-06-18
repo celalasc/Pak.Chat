@@ -16,7 +16,7 @@ import useAutoResizeTextarea from '@/hooks/useAutoResizeTextArea';
 import { UseChatHelpers, useCompletion } from '@ai-sdk/react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { Id } from '@/convex/_generated/dataModel';
+import { Id, Doc } from '@/convex/_generated/dataModel';
 import { useAPIKeyStore, APIKeys } from '@/frontend/stores/APIKeyStore';
 import { useModelStore, ReasoningEffort } from '@/frontend/stores/ModelStore';
 import { useModelVisibilityStore } from '@/frontend/stores/ModelVisibilityStore';
@@ -38,6 +38,7 @@ import { Input } from '@/frontend/components/ui/input';
 import { useRouter } from 'next/navigation';
 import { useRecentFilesIntegration, addFileToRecent, addUploadedFileMetaToRecent } from './RecentFilesDropdown';
 import { getCompanyIcon } from '@/frontend/components/ui/provider-icons';
+import { useDebouncedCallback } from 'use-debounce';
 import { createImagePreview } from '@/frontend/lib/image';
 
 // Helper to convert File objects to Base64 data URLs
@@ -77,6 +78,7 @@ const getImageDimensions = (file: File): Promise<{ width: number; height: number
 
 interface ChatInputProps {
   threadId: string;
+  thread: Doc<'threads'> | null | undefined;
   input: UseChatHelpers['input'];
   status: UseChatHelpers['status'];
   error: UseChatHelpers['error'];
@@ -520,6 +522,7 @@ SendButton.displayName = 'SendButton';
 
 function PureChatInput({
   threadId,
+  thread,
   input,
   status,
   error,
@@ -547,12 +550,27 @@ function PureChatInput({
   const generateUploadUrl = useMutation(api.attachments.generateUploadUrl);
   const saveAttachments = useMutation(api.attachments.save as any);
   const updateAttachmentMessageId = useMutation(api.attachments.updateMessageId);
+  const saveDraftMutation = useMutation(api.threads.saveDraft);
   // Remove this line as we'll use a different approach
   const { complete } = useMessageSummary();
   const { attachments, clear } = useAttachmentsStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { selectedModel, webSearchEnabled } = useModelStore();
   const { consumeNextDialogVersion } = useChatStore();
+
+  // Initialize input from server-side draft when thread changes
+  useEffect(() => {
+    const initialText = thread?.draft ?? '';
+    setInput(initialText);
+    adjustHeight();
+  }, [threadId, thread, setInput, adjustHeight]);
+
+  // Debounced draft saver to reduce server load
+  const debouncedSaveDraft = useDebouncedCallback((draftText: string) => {
+    if (isConvexId(threadId)) {
+      saveDraftMutation({ threadId: threadId as Id<'threads'>, draft: draftText });
+    }
+  }, 500);
   
   // Get current dialog version for existing threads
   const currentVersion = useQuery(
@@ -806,10 +824,12 @@ function PureChatInput({
 
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      setInput(e.target.value);
+      const newValue = e.target.value;
+      setInput(newValue);
       adjustHeight();
+      debouncedSaveDraft(newValue);
     },
-    [setInput, adjustHeight]
+    [setInput, adjustHeight, debouncedSaveDraft]
   );
 
   const handleFocus = useCallback(() => {
