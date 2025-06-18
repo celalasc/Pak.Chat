@@ -3,8 +3,9 @@
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { memo, useState } from "react";
+import { memo, useState, useMemo } from "react";
 import MarkdownRenderer from "./MemoizedMarkdown";
+import MessageReasoning from "./MessageReasoning";
 import { cn } from "@/lib/utils";
 import MessageLoading from "./ui/MessageLoading";
 import SelectableText from "./SelectableText";
@@ -103,6 +104,32 @@ const PreviewMessage = memo(
   }) => {
     const isUser = message.role === "user";
 
+    // Извлекаем reasoning из сообщения
+    const reasoningData = useMemo(() => {
+      const extractReasoning = (text: string) => {
+        const openTag = text.indexOf('<think>');
+        const closeTag = text.indexOf('</think>');
+        
+        if (openTag === -1) return null;
+        
+        const startIndex = openTag + 7;
+        const endIndex = closeTag > -1 ? closeTag : text.length;
+        const rawReasoning = text.slice(startIndex, endIndex);
+        const cleanReasoning = rawReasoning.replace(/g:"([^"]*)"/g, '$1');
+        
+        return {
+          reasoning: cleanReasoning,
+          isComplete: closeTag > -1
+        };
+      };
+
+      // Проверяем содержимое сообщения на наличие reasoning
+      if (message.content && message.content.includes('<think>')) {
+        return extractReasoning(message.content);
+      }
+      return null;
+    }, [message.content]);
+
     return (
       <div className={cn("flex flex-col", isUser ? "items-end mb-2" : "items-start mb-4")}>
         {isUser ? (
@@ -117,6 +144,16 @@ const PreviewMessage = memo(
           </div>
         ) : (
           <div className="group flex flex-col gap-2 w-full max-w-full overflow-hidden relative pb-3">
+            {/* Показываем reasoning отдельно если найден */}
+            {reasoningData && reasoningData.reasoning.trim() && (
+              <MessageReasoning
+                key={`reasoning-${message._id}`}
+                reasoning={reasoningData.reasoning}
+                id={message._id}
+                isComplete={reasoningData.isComplete}
+              />
+            )}
+
             <SelectableText messageId={message._id}>
               <div className="prose prose-xs dark:prose-invert max-w-none prose-code:before:content-none prose-code:after:content-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 break-words">
                 <MarkdownRenderer content={message.content} />
