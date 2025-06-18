@@ -116,6 +116,7 @@ export default function CatchAllChatPage({ params }: { params: Promise<{ slug: s
     <Chat
       key={`${chatId}-${currentVersion}`}
       threadId={chatId}
+      thread={thread}
       initialMessages={messages}
       dialogVersion={currentVersion as number}
     />
