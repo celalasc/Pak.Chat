@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { X, FileText, File, Image as ImageIcon, Loader2 } from 'lucide-react';
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
 interface FilePreviewProps {
@@ -69,13 +70,15 @@ export default function FilePreview({ file, onRemove, showPreview = true }: File
       >
         <div className="relative">
           {hasValidPreview ? (
-            <img 
-              src={file.preview} 
+            <Image
+              src={file.preview}
               className={cn(
                 "h-16 w-16 object-cover rounded-lg border-2 border-blue-200 dark:border-blue-800 shadow-sm",
                 file.isUploading && "opacity-50"
-              )} 
+              )}
               alt={file.name}
+              width={64}
+              height={64}
             />
           ) : (
             <div className={cn(
@@ -97,10 +100,12 @@ export default function FilePreview({ file, onRemove, showPreview = true }: File
           {showPreview && isHovered && hasValidPreview && (
             <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 z-[200] pointer-events-none">
               <div className="bg-background border border-border rounded-lg shadow-xl p-3">
-                <img
+                <Image
                   src={file.preview}
                   alt={file.name}
                   className="w-64 h-64 object-cover rounded-lg"
+                  width={256}
+                  height={256}
                 />
                 <div className="mt-2 text-sm text-muted-foreground text-center">
                   <div className="font-medium truncate max-w-64">{file.name}</div>

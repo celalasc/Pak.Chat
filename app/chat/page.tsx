@@ -6,6 +6,8 @@ import { useEffect } from 'react';
 
 export default function NewChatPage() {
   const { isAuthenticated, isLoading } = useConvexAuth();
+  // Call the hook to init media query listeners; return values unused for now
+  useIsMobile();
   const router = useRouter();
 
   useEffect(() => {

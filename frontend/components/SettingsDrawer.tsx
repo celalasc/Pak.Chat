@@ -40,6 +40,7 @@ import { useModelVisibilitySync } from '@/frontend/hooks/useModelVisibilitySync'
 import { ProviderIcon } from '@/frontend/components/ui/provider-icons';
 import { getModelsByProvider, getModelConfig, AIModel } from '@/lib/models';
 import { useTheme } from 'next-themes';
+import Image from 'next/image';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { FieldError, useForm, UseFormRegister } from 'react-hook-form';
@@ -517,7 +518,7 @@ const ProfileTab = memo(() => {
             <>
               <div className="flex items-center gap-4">
                 {user.photoURL && (
-                   <img
+                   <Image
                       src={user.photoURL}
                       alt="User Avatar"
                       width={64}

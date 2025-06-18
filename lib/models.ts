@@ -101,8 +101,15 @@ export const MODEL_CONFIGS: Record<AIModel, ModelConfig> = {
   },
 } as const satisfies Record<AIModel, ModelConfig>;
 
-export const getModelConfig = (modelName: AIModel): ModelConfig => {
-  return MODEL_CONFIGS[modelName];
+// Fallback model used when an unknown model is requested
+export const DEFAULT_MODEL: AIModel = 'Gemini 2.5 Flash';
+
+export const getModelConfig = (modelName: string): ModelConfig => {
+  const config = MODEL_CONFIGS[modelName as AIModel] ?? MODEL_CONFIGS[DEFAULT_MODEL];
+  return {
+    ...config,
+    reasoningEffort: config.reasoningEffort ?? 'medium',
+  };
 };
 
 // Группируем модели по компаниям

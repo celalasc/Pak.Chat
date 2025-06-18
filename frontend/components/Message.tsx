@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { SearchIcon } from 'lucide-react';
+import Image from 'next/image';
 
 function PureMessage({
   threadId,
@@ -191,7 +192,7 @@ function PureMessage({
                 <div className="flex gap-2 flex-wrap mb-3">
                   {attachments.map((a, index) =>
                     a.type.startsWith('image') ? (
-                      <img
+                      <Image
                         key={`${a.id}-${index}`}
                         src={a.url}
                         className="h-32 w-32 rounded cursor-pointer hover:scale-105 transition object-cover"
@@ -202,6 +203,8 @@ function PureMessage({
                           size: a.size,
                         })}
                         alt={a.name}
+                        width={128}
+                        height={128}
                         loading="eager"
                         decoding="async"
                       />
@@ -267,7 +270,7 @@ function PureMessage({
                 <div className="flex gap-2 flex-wrap mt-2">
                   {attachments.map((a, index) =>
                     a.type.startsWith('image') ? (
-                      <img
+                      <Image
                         key={`${a.id}-${index}`}
                         src={a.url}
                         className="h-24 w-24 rounded cursor-pointer hover:scale-105 transition"
@@ -280,6 +283,8 @@ function PureMessage({
                         loading="eager"
                         decoding="async"
                         alt={a.name}
+                        width={96}
+                        height={96}
                       />
                     ) : (
                       <a
