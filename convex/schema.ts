@@ -18,6 +18,8 @@ export default defineSchema({
     uiFont: v.optional(v.string()),
     codeFont: v.optional(v.string()),
     hidePersonal: v.optional(v.boolean()),
+    // Whether to keep full history of regenerations (dialog snapshots)
+    saveRegenerationHistory: v.optional(v.boolean()),
   }).index("by_user", ["userId"]),
 
   // API Keys stored securely in Convex
@@ -47,6 +49,7 @@ export default defineSchema({
     pinned: v.optional(v.boolean()),
     clonedFrom: v.optional(v.id("threads")),
     forkedFromMessageId: v.optional(v.id("messages")),
+    currentDialogVersion: v.optional(v.number()),
   })
     .index("by_user_and_time", ["userId", "createdAt"])
     .searchIndex("by_title", { searchField: "title" }),
@@ -59,6 +62,10 @@ export default defineSchema({
     content: v.string(),
     createdAt: v.number(),
     model: v.optional(v.string()),
+    // Dialog snapshot/version metadata
+    dialogVersion: v.optional(v.number()),
+    isActive: v.optional(v.boolean()),
+    regeneratedFromMessageId: v.optional(v.id("messages")),
     // Message metadata
   }).index("by_thread_and_time", ["threadId", "createdAt"]),
 
@@ -71,6 +78,10 @@ export default defineSchema({
     messageId: v.optional(v.id("messages")),
     width: v.optional(v.number()),
     height: v.optional(v.number()),
+    // ID of a downscaled preview image stored in Convex Storage (optional)
+    previewId: v.optional(v.string()),
+    // Original file size in bytes – helps decide when to lazy-load
+    size: v.optional(v.number()),
   })
     .index("by_thread", ["threadId"])
     .index("by_message", ["messageId"]),

@@ -99,6 +99,7 @@ export const create = mutation({
       createdAt: Date.now(),
       pinned: false,
       system: args.system ?? false,
+      currentDialogVersion: 1,
     });
   },
 });
@@ -149,6 +150,7 @@ export const clone = mutation({
       createdAt: Date.now(),
       clonedFrom: args.threadId,
       pinned: false,
+      currentDialogVersion: thread.currentDialogVersion ?? 1,
     });
     const messages = await ctx.db
       .query("messages")

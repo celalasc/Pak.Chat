@@ -12,6 +12,9 @@ import { api } from '@/convex/_generated/api';
 import { isConvexId } from '@/lib/ids';
 import type { Id } from '@/convex/_generated/dataModel';
 import { useRouter } from 'next/navigation';
+import { useSettingsStore } from '@/frontend/stores/SettingsStore';
+import { useChatStore } from '@/frontend/stores/ChatStore';
+import DialogVersionNavigation from './DialogVersionNavigation';
 
 interface MessageControlsProps {
   threadId: string;
@@ -47,6 +50,9 @@ export default function MessageControls({
   const canChat = hasRequiredKeys();
   const { isMobile } = useIsMobile();
   const prepareForRegenerate = useMutation(api.messages.prepareForRegeneration);
+  const createSnapshot = useMutation(api.messages.createDialogSnapshot);
+  const { settings } = useSettingsStore();
+  const { setNextDialogVersion } = useChatStore();
   const cloneThread = useMutation(api.threads.clone);
   const thread = useQuery(
     api.threads.get,
@@ -107,30 +113,47 @@ export default function MessageControls({
     const messagesUpToParent = messages.slice(0, parentMessageIndex + 1);
     setMessages(messagesUpToParent);
 
-    // If the parent message already exists in Convex, clean up server-side history so that
-    // regeneration starts from a clean slate. When the message hasn't been persisted yet
-    // (e.g. due to network hiccups) we simply skip this step.
-    if (isConvexId(parentMessageToResend.id)) {
+    if (settings.saveRegenerationHistory) {
+      // Create snapshot to keep history and obtain new dialogVersion
       try {
-        await prepareForRegenerate({
+        const res = await createSnapshot({
           threadId: threadId as Id<'threads'>,
-          userMessageId: parentMessageToResend.id as Id<'messages'>,
         });
-      } catch (error) {
-        console.error('Error during regeneration cleanup:', error);
+        setNextDialogVersion(res.dialogVersion);
+      } catch (err) {
+        console.error('Snapshot creation failed', err);
+      }
+    } else {
+      // fallback to legacy deletion behaviour
+      if (isConvexId(parentMessageToResend.id)) {
+        try {
+          await prepareForRegenerate({
+            threadId: threadId as Id<'threads'>,
+            userMessageId: parentMessageToResend.id as Id<'messages'>,
+          });
+        } catch (error) {
+          console.error('Error during regeneration cleanup:', error);
+        }
       }
     }
 
-    // Finally, request a fresh completion from the model.
+    // Finally, request a fresh completion from the model using the **latest**
+    // store values so that a just-changed model is respected even if the UI
+    // hasn't finished re-rendering before the user clicked the button.
+    const {
+      selectedModel: currentModel,
+      webSearchEnabled: currentSearch,
+    } = useModelStore.getState();
+
     reload({
       body: {
-        model: selectedModel,
+        model: currentModel,
         apiKeys: keys,
         threadId,
-        search: webSearchEnabled,
+        search: currentSearch,
       },
     });
-  }, [stop, threadId, message.id, messages, setMessages, reload, prepareForRegenerate, selectedModel, keys, webSearchEnabled]);
+  }, [stop, threadId, message.id, messages, setMessages, reload, prepareForRegenerate, keys, createSnapshot, settings, setNextDialogVersion]);
 
   // Show controls on mobile only when explicitly visible.
   const shouldShowControls = useMemo(() => (isMobile ? isVisible : true), [isMobile, isVisible]);
@@ -157,15 +180,20 @@ export default function MessageControls({
             <SquarePen className="w-4 h-4" />
           </Button>
         )}
-        {canChat && (
+        {message.role === 'assistant' && canChat && (
           <Button variant="ghost" size="icon" onClick={handleBranch}>
             <GitBranch className="w-4 h-4" />
           </Button>
         )}
-        {canChat && (
+        {message.role === 'assistant' && canChat && (
           <Button variant="ghost" size="icon" onClick={handleRegenerate}>
             <RefreshCcw className="w-4 h-4" />
           </Button>
+        )}
+
+        {/* Dialog version navigation for user messages */}
+        {message.role === 'user' && (
+          <DialogVersionNavigation threadId={threadId} />
         )}
 
         {/* Model label for assistant messages */}

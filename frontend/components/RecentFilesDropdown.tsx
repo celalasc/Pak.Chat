@@ -20,6 +20,8 @@ interface RecentFile {
   size: number;
   lastUsed: Date;
   preview?: string;
+  storageId?: string;
+  previewId?: string;
 }
 
 interface RecentFilesDropdownProps {
@@ -33,7 +35,7 @@ const RECENT_FILES_KEY = 'pak_chat_recent_files';
 const MAX_RECENT_FILES = 15;
 
 export default function RecentFilesDropdown({ children, onFileSelect, messageCount = 0 }: RecentFilesDropdownProps) {
-  const { add } = useAttachmentsStore();
+  const { add, addRemote } = useAttachmentsStore();
   const [recentFiles, setRecentFiles] = useState<RecentFile[]>([]);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -43,45 +45,86 @@ export default function RecentFilesDropdown({ children, onFileSelect, messageCou
     [recentFiles]
   );
 
-  // Загружаем недавние файлы из localStorage только один раз
+  // Загружаем недавние файлы из localStorage с улучшенной валидацией (F1.4)
   useEffect(() => {
     const saved = localStorage.getItem(RECENT_FILES_KEY);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        const files = parsed.map((file: any) => ({
-          ...file,
-          lastUsed: new Date(file.lastUsed)
-        }));
         
-        // Очищаем файлы с недействительными blob URLs
-        const validFiles = files.filter((file: RecentFile) => {
-          if (file.preview && file.preview.startsWith('blob:')) {
-            // Проверяем доступность blob URL асинхронно
-            fetch(file.preview).catch(() => {
-              // Если URL недоступен, удаляем preview
+        if (!Array.isArray(parsed)) {
+          console.warn('Recent files data is not an array, clearing');
+          localStorage.removeItem(RECENT_FILES_KEY);
+          return;
+        }
+
+        // Валидация и очистка данных
+        const validFiles = parsed
+          .filter((file: any) => {
+            // Основная валидация структуры
+            if (!file || typeof file !== 'object') return false;
+            if (!file.id || !file.name || !file.type || typeof file.size !== 'number') return false;
+            
+            // Проверка возраста файла (удаляем файлы старше 30 дней)
+            const lastUsed = new Date(file.lastUsed);
+            const daysDiff = Math.floor((Date.now() - lastUsed.getTime()) / (1000 * 60 * 60 * 24));
+            if (daysDiff > 30) return false;
+            
+            // Удаляем недействительные blob URLs
+            if (file.preview && file.preview.startsWith('blob:')) {
               file.preview = undefined;
-            });
-          }
-          return true;
-        });
+            }
+            
+            return true;
+          })
+          .map((file: any) => ({
+            ...file,
+            lastUsed: new Date(file.lastUsed)
+          }))
+          .slice(0, MAX_RECENT_FILES); // Ограничиваем количество
         
         setRecentFiles(validFiles);
+        
+        // Если данные изменились, сохраняем очищенную версию
+        if (validFiles.length !== parsed.length) {
+          localStorage.setItem(RECENT_FILES_KEY, JSON.stringify(validFiles));
+        }
+        
       } catch (e) {
-        console.error('Failed to parse recent files:', e);
+        console.error('Failed to parse recent files, clearing corrupt data:', e);
+        localStorage.removeItem(RECENT_FILES_KEY);
+        setRecentFiles([]);
       }
     }
   }, []);
 
   const handleFileSelect = useCallback(async (recentFile: RecentFile) => {
     try {
-      // Показываем уведомление пользователю
-      toast.info('Recent files cannot be reattached. Please select the file from your computer again.', {
-        duration: 4000,
-      });
+      if (recentFile.storageId) {
+        // Build remote attachment object and add to store
+        addRemote({
+          storageId: recentFile.storageId,
+          previewId: recentFile.previewId,
+          name: recentFile.name,
+          type: recentFile.type,
+          size: recentFile.size,
+          preview: recentFile.preview ?? undefined,
+          remote: true,
+        });
+        toast.success(`Reattached "${recentFile.name}"`);
+      } else {
+        toast.info(
+          `Cannot reattach "${recentFile.name}" from recent files. Please select the file from your device again.`,
+          {
+            duration: 5000,
+            description: 'This file was stored only as a history entry without data.',
+          }
+        );
+      }
       setIsOpen(false);
     } catch (error) {
-      console.error('Failed to select recent file:', error);
+      console.error('Failed to handle recent file selection:', error);
+      toast.error('An error occurred while handling the recent file selection.');
     }
   }, []);
 
@@ -228,53 +271,108 @@ export default function RecentFilesDropdown({ children, onFileSelect, messageCou
   );
 }
 
-// Хук для интеграции с AttachmentsStore
-export function useRecentFilesIntegration() {
-  useEffect(() => {
-    const addToRecent = (file: File) => {
-      const recentFile: RecentFile = {
-        id: Date.now().toString(),
-        name: file.name,
-        type: file.type,
-        size: file.size,
-        lastUsed: new Date(),
-        // Не создаем blob URL для предотвращения проблем после перезагрузки
-      };
+// Утильная функция для добавления файла в recent (F1.3 + F1.4)
+export function addFileToRecent(file: File): boolean {
+  try {
+    // Валидация входного файла
+    if (!file || !file.name || !file.type) {
+      console.warn('Invalid file provided to addFileToRecent');
+      return false;
+    }
 
-      const saved = localStorage.getItem(RECENT_FILES_KEY);
-      let recentFiles: RecentFile[] = [];
-      
-      if (saved) {
-        try {
-          recentFiles = JSON.parse(saved);
-        } catch (e) {
-          console.error('Failed to parse recent files:', e);
-        }
-      }
+    // Исключаем рисунки из recent files (они основаны на blob URLs и не могут быть переиспользованы)
+    if (file.name.startsWith('drawing-') && file.name.endsWith('.png')) {
+      console.log('Skipping drawing file from recent files:', file.name);
+      return true; // Возвращаем true чтобы не показывать ошибку
+    }
 
-      // Удаляем дубликаты по имени
-      const filtered = recentFiles.filter(f => f.name !== file.name);
-      const updated = [recentFile, ...filtered].slice(0, 50); // Храним больше в localStorage
-      
-      try {
-        localStorage.setItem(RECENT_FILES_KEY, JSON.stringify(updated));
-      } catch (e) {
-        console.error('Failed to save recent files:', e);
-      }
+    // Проверка размера файла (максимум 100MB для хранения метаданных)
+    if (file.size > 100 * 1024 * 1024) {
+      console.warn('File too large to add to recent:', file.name);
+      return false;
+    }
+
+    const recentFile: RecentFile = {
+      id: Date.now().toString(),
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      lastUsed: new Date(),
+      // preview and storageId will be filled later via addUploadedFileToRecent
     };
 
-    // Подписываемся на изменения в AttachmentsStore
-    const unsubscribe = useAttachmentsStore.subscribe((state, prevState) => {
-      // Если добавился новый файл, сохраняем его в recent
-      if (state.attachments.length > prevState.attachments.length) {
-        const newAttachment = state.attachments[state.attachments.length - 1];
-        addToRecent(newAttachment.file);
+    const saved = localStorage.getItem(RECENT_FILES_KEY);
+    let recentFiles: RecentFile[] = [];
+    
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        // Валидация загруженных данных
+        if (Array.isArray(parsed)) {
+          recentFiles = parsed.filter(item => 
+            item && 
+            typeof item.id === 'string' && 
+            typeof item.name === 'string' && 
+            typeof item.type === 'string' &&
+            typeof item.size === 'number'
+          ).map(item => ({
+            ...item,
+            lastUsed: new Date(item.lastUsed) // Конвертируем строку обратно в Date
+          }));
+        }
+      } catch (e) {
+        console.error('Failed to parse recent files, clearing corrupt data:', e);
+        recentFiles = [];
+        // Очищаем поврежденные данные
+        localStorage.removeItem(RECENT_FILES_KEY);
       }
-      
-      // Если файл был удален из attachments, НЕ удаляем его из recent
-      // Файлы остаются в recent для быстрого повторного использования
-    });
+    }
 
-    return unsubscribe;
-  }, []);
+    // Удаляем дубликаты по имени и типу
+    const filtered = recentFiles.filter(f => !(f.name === file.name && f.type === file.type));
+    const updated = [recentFile, ...filtered].slice(0, MAX_RECENT_FILES);
+    
+    localStorage.setItem(RECENT_FILES_KEY, JSON.stringify(updated));
+    return true;
+    
+  } catch (e) {
+    console.error('Failed to add file to recent:', e);
+    return false;
+  }
+}
+
+// Хук для интеграции с AttachmentsStore
+// УДАЛЕНО: автоматическое добавление файлов в recent при прикреплении
+// Теперь файлы добавляются в recent ТОЛЬКО после успешной отправки сообщения
+export function useRecentFilesIntegration() {
+  // Пустая функция - автоматическое добавление отключено
+  // Файлы будут добавляться в recent вручную после успешной отправки через addFileToRecent()
+}
+
+// Called after successful upload to Convex to enrich recent entry with storageId etc.
+export function addUploadedFileMetaToRecent(meta: { storageId: string; previewId?: string; name: string; type: string; size: number; previewUrl?: string; }) {
+  try {
+    const saved = localStorage.getItem(RECENT_FILES_KEY);
+    if (!saved) return;
+    const parsed: RecentFile[] = JSON.parse(saved);
+    const idx = parsed.findIndex(r => r.name === meta.name && r.type === meta.type && !r.storageId);
+    const base: RecentFile = {
+      id: Date.now().toString(),
+      name: meta.name,
+      type: meta.type,
+      size: meta.size,
+      lastUsed: new Date(),
+      storageId: meta.storageId,
+      previewId: meta.previewId,
+      preview: meta.previewUrl,
+    };
+    if (idx !== -1) {
+      parsed[idx] = { ...parsed[idx], ...base };
+    } else {
+      parsed.unshift(base);
+    }
+    localStorage.setItem(RECENT_FILES_KEY, JSON.stringify(parsed.slice(0, MAX_RECENT_FILES)));
+  } catch (e) {
+    console.error('Failed to add uploaded file meta to recent:', e);
+  }
 } 

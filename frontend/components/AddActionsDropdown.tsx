@@ -12,6 +12,7 @@ import {
 import { useAttachmentsStore } from '../stores/AttachmentsStore';
 import DrawingCanvas from './DrawingCanvas';
 import RecentFilesDropdown from './RecentFilesDropdown';
+import { toast } from 'sonner';
 
 interface AddActionsDropdownProps {
   className?: string;
@@ -34,13 +35,34 @@ export default function AddActionsDropdown({ className, messageCount = 0 }: AddA
   };
 
   const handleDrawingSave = (imageData: string) => {
-    // Конвертируем data URL в File объект
-    fetch(imageData)
-      .then(res => res.blob())
-      .then(blob => {
-        const file = new File([blob], `drawing-${Date.now()}.png`, { type: 'image/png' });
-        add(file);
-      });
+    try {
+      // Конвертируем data URL в File объект более надежным способом
+      const byteString = atob(imageData.split(',')[1]);
+      const mimeString = imageData.split(',')[0].split(':')[1].split(';')[0];
+      const ab = new ArrayBuffer(byteString.length);
+      const ia = new Uint8Array(ab);
+      for (let i = 0; i < byteString.length; i++) {
+        ia[i] = byteString.charCodeAt(i);
+      }
+      const blob = new Blob([ab], { type: mimeString });
+      const file = new File([blob], `drawing-${Date.now()}.png`, { type: 'image/png' });
+      add(file);
+      toast.success('Drawing saved and attached!');
+    } catch (error) {
+      console.error('Failed to save drawing:', error);
+      // Fallback to fetch method
+      fetch(imageData)
+        .then(res => res.blob())
+        .then(blob => {
+          const file = new File([blob], `drawing-${Date.now()}.png`, { type: 'image/png' });
+          add(file);
+          toast.success('Drawing saved and attached!');
+        })
+        .catch(err => {
+          console.error('Fallback method also failed:', err);
+          toast.error('Failed to save drawing');
+        });
+    }
   };
 
   return (

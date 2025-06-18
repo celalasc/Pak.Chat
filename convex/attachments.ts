@@ -12,11 +12,13 @@ export const save = mutation({
     attachments: v.array(
       v.object({
         storageId: v.string(),
+        previewId: v.optional(v.string()),
         name: v.string(),
         type: v.string(),
         messageId: v.union(v.string(), v.null()),
         width: v.optional(v.number()),
         height: v.optional(v.number()),
+        size: v.optional(v.number()),
       })
     ),
   },
@@ -26,16 +28,25 @@ export const save = mutation({
         const attachmentId = await ctx.db.insert('attachments', {
           threadId: args.threadId,
           fileId: a.storageId,
+          previewId: a.previewId,
           name: a.name,
           type: a.type,
           width: a.width,
           height: a.height,
+          size: a.size,
           // Временные ID от клиента игнорируем, messageId будет обновлен позже
           messageId: undefined,
         });
         
-        // Возвращаем URL для немедленного использования
-        const url = await ctx.storage.getUrl(a.storageId);
+        // Получаем URL для превью (если есть) иначе оригинал
+        let url: string | null = null;
+        if (a.previewId) {
+          url = await ctx.storage.getUrl(a.previewId);
+        } else if (!a.type.startsWith('image/')) {
+          // For non-image files we can safely return full URL (e.g. PDFs, text),
+          // since they are typically downloaded only on click.
+          url = await ctx.storage.getUrl(a.storageId);
+        }
         return {
           id: attachmentId,
           url,
@@ -43,6 +54,9 @@ export const save = mutation({
           type: a.type,
           width: a.width,
           height: a.height,
+          size: a.size,
+          previewId: a.previewId,
+          fileId: a.storageId,
         };
       })
     );
@@ -61,7 +75,14 @@ export const byThread = query({
     // Получаем URL параллельно для ускорения
     const attachmentsWithUrls = await Promise.all(
       attachments.map(async (a) => {
-        const url = await ctx.storage.getUrl(a.fileId);
+        let url: string | null = null;
+        if (a.previewId) {
+          url = await ctx.storage.getUrl(a.previewId);
+        } else if (!a.type.startsWith('image/')) {
+          // For non-image files we can safely return full URL (e.g. PDFs, text),
+          // since they are typically downloaded only on click.
+          url = await ctx.storage.getUrl(a.fileId);
+        }
         return {
           id: a._id,
           messageId: a.messageId,
@@ -69,6 +90,9 @@ export const byThread = query({
           type: a.type,
           width: a.width,
           height: a.height,
+          size: a.size,
+          previewId: a.previewId,
+          fileId: a.fileId,
           url,
         };
       })
@@ -90,5 +114,16 @@ export const updateMessageId = mutation({
         ctx.db.patch(id, { messageId: args.messageId })
       )
     );
+  },
+});
+
+// Return a signed URL for the *full* attachment (original file)
+export const getUrl = query({
+  args: { attachmentId: v.id('attachments') },
+  async handler(ctx, { attachmentId }) {
+    const attachment = await ctx.db.get(attachmentId);
+    if (!attachment) return null;
+    const url = await ctx.storage.getUrl(attachment.fileId);
+    return url;
   },
 });

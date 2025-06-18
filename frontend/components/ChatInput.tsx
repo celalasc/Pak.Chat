@@ -14,7 +14,7 @@ import {
 } from '@/frontend/components/ui/dropdown-menu';
 import useAutoResizeTextarea from '@/hooks/useAutoResizeTextArea';
 import { UseChatHelpers, useCompletion } from '@ai-sdk/react';
-import { useMutation } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { useAPIKeyStore, APIKeys } from '@/frontend/stores/APIKeyStore';
@@ -22,10 +22,12 @@ import { useModelStore, ReasoningEffort } from '@/frontend/stores/ModelStore';
 import { useModelVisibilityStore } from '@/frontend/stores/ModelVisibilityStore';
 import { useModelVisibilitySync } from '@/frontend/hooks/useModelVisibilitySync';
 import { useQuoteStore } from '@/frontend/stores/QuoteStore';
+import { useChatStore } from '@/frontend/stores/ChatStore';
 import { AI_MODELS, AIModel, getModelConfig } from '@/lib/models';
 import { UIMessage } from 'ai';
 import AttachmentsBar from './AttachmentsBar';
 import { useAttachmentsStore } from '../stores/AttachmentsStore';
+import type { LocalAttachment } from '../stores/AttachmentsStore';
 import { v4 as uuidv4 } from 'uuid';
 import { isConvexId } from '@/lib/ids';
 import { StopIcon } from './ui/icons';
@@ -34,8 +36,9 @@ import { useMessageSummary } from '../hooks/useMessageSummary';
 import QuoteDisplay from './QuoteDisplay';
 import { Input } from '@/frontend/components/ui/input';
 import { useRouter } from 'next/navigation';
-import { useRecentFilesIntegration } from './RecentFilesDropdown';
+import { useRecentFilesIntegration, addFileToRecent, addUploadedFileMetaToRecent } from './RecentFilesDropdown';
 import { getCompanyIcon } from '@/frontend/components/ui/provider-icons';
+import { createImagePreview } from '@/frontend/lib/image';
 
 // Helper to convert File objects to Base64 data URLs
 const fileToDataUrl = (file: File): Promise<string> => {
@@ -544,10 +547,18 @@ function PureChatInput({
   const generateUploadUrl = useMutation(api.attachments.generateUploadUrl);
   const saveAttachments = useMutation(api.attachments.save as any);
   const updateAttachmentMessageId = useMutation(api.attachments.updateMessageId);
+  // Remove this line as we'll use a different approach
   const { complete } = useMessageSummary();
   const { attachments, clear } = useAttachmentsStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { selectedModel, webSearchEnabled } = useModelStore();
+  const { consumeNextDialogVersion } = useChatStore();
+  
+  // Get current dialog version for existing threads
+  const currentVersion = useQuery(
+    api.messages.getCurrentDialogVersion,
+    isConvexId(threadId) ? { threadId: threadId as Id<'threads'> } : 'skip'
+  );
 
   // Интеграция с недавними файлами
   useRecentFilesIntegration();
@@ -600,14 +611,28 @@ function PureChatInput({
       }
 
       // 3. Оптимистично добавляем сообщение в UI
-      const attachmentsToUpload = [...attachments];
-      const attachmentsForMessage = await Promise.all(
-        attachmentsToUpload.map(async (att) => ({
-          ...att,
-          url: await fileToDataUrl(att.file),
-        }))
-      );
+      const localAttachments = attachments.filter((att): att is LocalAttachment => !att.remote);
+      const remoteAttachments = attachments.filter(att => att.remote);
       const clientMsgId = uuidv4();
+
+      // 3.a Создаем optimistic attachments для UI рендера
+      const attachmentsForMessage = await Promise.all(
+        attachments.map(async (att) => {
+          if (att.remote) {
+            return {
+              ...att,
+              url: att.preview || '',
+            };
+          } else {
+            return {
+              ...att,
+              url: await fileToDataUrl(att.file),
+            };
+          }
+        })
+      );
+
+      // 3.b Создаем и отображаем user message
       const userMessage = createUserMessage(
         clientMsgId,
         finalMessage,
@@ -623,34 +648,71 @@ function PureChatInput({
       });
       clear();
 
-      // 4. Сохраняем сообщение в БД
+      // 4. Загрузка файлов (оригинал + превью)
+      const uploadedFiles = await Promise.all(
+        localAttachments.map(async (attachment) => {
+          // 1. Upload the original file
+          const uploadUrl = await generateUploadUrl();
+          const resOrig = await fetch(uploadUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': attachment.file.type },
+            body: attachment.file,
+          });
+          if (!resOrig.ok) throw new Error(`Failed to upload ${attachment.name}`);
+          const { storageId } = await resOrig.json();
+
+          // 2. Create preview if needed and upload it
+          let previewId: string | undefined = undefined;
+          const previewFile = await createImagePreview(attachment.file);
+          if (previewFile) {
+            const previewUploadUrl = await generateUploadUrl();
+            const resPrev = await fetch(previewUploadUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': previewFile.type },
+              body: previewFile,
+            });
+            if (resPrev.ok) {
+              const { storageId: pId } = await resPrev.json();
+              previewId = pId;
+            }
+          }
+
+          // 3. Image dimensions
+          const dimensions = await getImageDimensions(attachment.file);
+
+          return {
+            storageId,
+            previewId,
+            name: attachment.name,
+            type: attachment.type,
+            messageId: clientMsgId,
+            width: dimensions?.width,
+            height: dimensions?.height,
+            size: attachment.size,
+          };
+        })
+      );
+
+      // 4b. Добавляем уже загруженные удаленные файлы
+      const reusedFiles = remoteAttachments.map(att => {
+        const remoteAtt = att as any; // Cast to access remote properties
+        return {
+          storageId: remoteAtt.storageId,
+          previewId: remoteAtt.previewId,
+          name: att.name,
+          type: att.type,
+          messageId: clientMsgId,
+          width: undefined,
+          height: undefined,
+          size: att.size,
+        };
+      });
+      uploadedFiles.push(...reusedFiles);
+
+      // 5. Сохраняем метаданные вложений в БД
       let savedAttachments: any[] = [];
-      if (attachmentsToUpload.length > 0) {
+      if (uploadedFiles.length > 0) {
         try {
-          const uploadedFiles = await Promise.all(
-            attachmentsToUpload.map(async (attachment) => {
-              const uploadUrl = await generateUploadUrl();
-              const result = await fetch(uploadUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': attachment.file.type },
-                body: attachment.file,
-              });
-              if (!result.ok) throw new Error(`Failed to upload ${attachment.name}`);
-              const { storageId } = await result.json();
-              
-              // Получаем размеры изображения если это изображение
-              const dimensions = await getImageDimensions(attachment.file);
-              
-              return {
-                storageId,
-                name: attachment.name,
-                type: attachment.type,
-                messageId: clientMsgId,
-                width: dimensions?.width,
-                height: dimensions?.height,
-              };
-            })
-          );
           savedAttachments = await saveAttachments({
             threadId: ensuredThreadId,
             attachments: uploadedFiles,
@@ -661,10 +723,15 @@ function PureChatInput({
         }
       }
 
+      // 6. Сохраняем текст сообщения в БД
+      // Определяем текущую версию диалога или используем 1 для новых тредов
+      const dialogVersion = currentVersion ?? 1;
       const dbMsgId = await sendMessage({
         threadId: ensuredThreadId,
         content: finalMessage,
         role: 'user',
+        dialogVersion: dialogVersion,
+        isActive: true,
       });
 
       if (savedAttachments.length > 0) {
@@ -674,10 +741,22 @@ function PureChatInput({
         });
       }
 
-      // 5. Обновляем UI с реальным ID
+      // 7. Добавляем файлы в recent ТОЛЬКО после успешной отправки (F1.2 + F1.4)
+      if (localAttachments.length > 0) {
+        localAttachments.forEach(attachment => {
+          const success = addFileToRecent(attachment.file);
+          if (!success) {
+            console.warn(`Failed to add file "${attachment.file.name}" to recent files`);
+          }
+        });
+        
+
+      }
+
+      // 8. Обновляем UI с реальным ID
       setMessages((prev) => prev.map((m) => (m.id === clientMsgId ? { ...m, id: dbMsgId } : m)));
 
-      // 6. Генерация заголовка в фоне для нового чата
+      // 9. Генерация заголовка в фоне для нового чата
       if (!isConvexId(threadId)) {
         complete(finalMessage, {
           body: { threadId: ensuredThreadId, messageId: dbMsgId, isTitle: true },
@@ -871,13 +950,8 @@ ChatInput.displayName = 'ChatInput';
 // Обёртка для решения проблемы с Rules of Hooks
 function ChatInputWrapper(props: ChatInputProps) {
   const { keysLoading } = useAPIKeyStore();
-  if (keysLoading) {
-    // Показать скелетон, чтобы сохранить высоту и не дёргать разметку
-    const ChatInputSkeleton = require('./ChatInputSkeleton').default;
-    return <ChatInputSkeleton />;
-  }
+  // Always render ChatInput immediately; if keys still loading, ChatInput will handle missing keys gracefully.
   return <ChatInput {...props} />;
 }
 
 export default ChatInputWrapper;
-

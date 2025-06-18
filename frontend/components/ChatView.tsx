@@ -17,6 +17,7 @@ import { isConvexId } from '@/lib/ids';
 import { Id } from '@/convex/_generated/dataModel';
 import type { UIMessage } from 'ai';
 import { useDebounceCallback } from 'usehooks-ts';
+import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 
 interface ChatViewProps {
   threadId: string;
@@ -29,6 +30,8 @@ function ChatView({ threadId, initialMessages, showNavBars }: ChatViewProps) {
   const { selectedModel, webSearchEnabled } = useModelStore();
   const { clearQuote } = useQuoteStore();
   const { clear: clearAttachments } = useAttachmentsStore();
+  const { isMobile } = useIsMobile();
+  const { consumeNextDialogVersion } = useChatStore();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [currentThreadId, setCurrentThreadId] = useState(threadId);
@@ -92,12 +95,18 @@ function ChatView({ threadId, initialMessages, showNavBars }: ChatViewProps) {
         !isConvexId(finalMsg.id) &&
         isConvexId(latestThreadId)
       ) {
-        // Persist the assistant message to Convex and obtain the real ID
+        // Persist the assistant message with the **model actually used**.
+        const { selectedModel: currentModel } = useModelStore.getState();
+
+        const dlgVersion = consumeNextDialogVersion() ?? 1;
+
         const realId = await sendMessage({
           threadId: latestThreadId as Id<'threads'>,
           role: 'assistant',
           content: finalMsg.content,
-          model: selectedModel,
+          model: currentModel,
+          dialogVersion: dlgVersion,
+          isActive: true,
         });
 
         // Replace the temporary message ID with the real Convex ID
@@ -109,7 +118,7 @@ function ChatView({ threadId, initialMessages, showNavBars }: ChatViewProps) {
           if (idx === -1) return prev;
 
           const next = [...prev];
-          next[idx] = { ...(next[idx] as any), id: realId, model: selectedModel } as any;
+          next[idx] = { ...(next[idx] as any), id: realId, model: currentModel } as any;
           return next;
         });
       }
@@ -212,7 +221,7 @@ function ChatView({ threadId, initialMessages, showNavBars }: ChatViewProps) {
         <div
           className={cn(
             'fixed left-1/2 -translate-x-1/2 w-full max-w-3xl px-4 transition-all duration-300 z-30',
-            messages.length > 0 ? 'bottom-0' : 'top-1/2 -translate-y-1/2',
+            isMobile ? 'bottom-0' : (messages.length > 0 ? 'bottom-0' : 'top-1/2 -translate-y-1/2'),
           )}
         >
           <ChatInput
@@ -229,6 +238,8 @@ function ChatView({ threadId, initialMessages, showNavBars }: ChatViewProps) {
             onThreadCreated={setCurrentThreadId}
           />
         </div>
+
+
       </div>
     </>
   );

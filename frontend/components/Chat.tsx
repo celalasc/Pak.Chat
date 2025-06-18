@@ -5,6 +5,9 @@ import NewChatButton from './NewChatButton';
 import SettingsButton from './SettingsButton';
 import ChatView from './ChatView';
 import { useRouter } from 'next/navigation';
+import { Button } from './ui/button';
+import { WithTooltip } from './WithTooltip';
+import { ArrowLeft } from 'lucide-react';
 import { useScrollHide } from '@/frontend/hooks/useScrollHide';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { useKeyboardInsets } from '../hooks/useKeyboardInsets';
@@ -52,41 +55,81 @@ function Chat({ threadId, initialMessages }: ChatProps) {
 
   return (
     <div className="w-full min-h-screen flex flex-col overflow-y-auto chat-smooth">
-      {/* Top-right control panel */}
-      <div
-        ref={panelRef}
-        className={cn(
-          'fixed right-4 top-4 z-20 flex gap-2 p-1 bg-background/60 backdrop-blur-md rounded-lg border border-border/20 transition-transform duration-300 ease-in-out',
-          isMobile && (!isHeaderVisible || isKeyboardVisible) && 'transform translate-x-[calc(100%+1rem)]',
-        )}
-      >
-        <NewChatButton className="backdrop-blur-sm" />
-        <ChatHistoryButton className="backdrop-blur-sm" />
-        <SettingsButton
-          className={cn(
-            'backdrop-blur-sm transition-opacity duration-300',
-            isMobile && (!isHeaderVisible || isKeyboardVisible) && 'opacity-0 pointer-events-none',
-          )}
-        />
-      </div>
-
-      {/* Top-left logo */}
-      <div
-        className={cn(
-          'fixed left-4 top-4 z-20 transition-all duration-300 ease-in-out',
-          isMobile && (!isHeaderVisible || isKeyboardVisible) && 'transform -translate-x-full opacity-0',
-        )}
-      >
-        <div className="relative">
-          {isMobile && <div className="absolute inset-0 -m-2 bg-background/60 backdrop-blur-md rounded-lg" />}
-          <span
-            className="relative text-xl font-bold text-foreground hover:text-primary transition-colors cursor-pointer"
-            onClick={() => router.push('/chat')}
+      {/* Header for new chat vs existing chat */}
+      {isMobile ? (
+        // МОБИЛЬНАЯ версия - плюсик везде
+        <>
+          {/* Top-right control panel - всегда показываем на мобильных */}
+          <div
+            ref={panelRef}
+            className={cn(
+              'fixed right-4 top-4 z-50 flex gap-2 p-1 bg-background/60 backdrop-blur-md rounded-lg border border-border/20 transition-transform duration-300 ease-in-out',
+              (!isHeaderVisible || isKeyboardVisible) && 'transform translate-x-[calc(100%+1rem)]',
+            )}
           >
-            Pak.Chat
-          </span>
-        </div>
-      </div>
+            <NewChatButton className="backdrop-blur-sm" />
+            {threadId && <ChatHistoryButton className="backdrop-blur-sm" />}
+          </div>
+
+          {threadId ? (
+            // Existing chat - show logo
+            <div
+              className={cn(
+                'fixed left-4 top-4 z-50 transition-all duration-300 ease-in-out',
+                (!isHeaderVisible || isKeyboardVisible) && 'transform -translate-x-full opacity-0',
+              )}
+            >
+              <div className="relative">
+                <div className="absolute inset-0 -m-2 bg-background/60 backdrop-blur-md rounded-lg" />
+                <span
+                  className="relative text-xl font-bold text-foreground hover:text-primary transition-colors cursor-pointer"
+                  onClick={() => router.push('/chat')}
+                >
+                  Pak.Chat
+                </span>
+              </div>
+            </div>
+          ) : (
+            // New chat - show back button
+            <div className="fixed left-4 top-4 z-50">
+              <WithTooltip label="Back to Home" side="bottom">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="bg-background/80 backdrop-blur-sm border-border/50"
+                  onClick={() => router.push(isMobile ? '/home' : '/chat')}
+                  aria-label="Back to home"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+              </WithTooltip>
+            </div>
+          )}
+        </>
+      ) : (
+        // ПК версия - всегда показываем заголовок и кнопки (как раньше)
+        <>
+          {/* Top-right control panel */}
+          <div
+            ref={panelRef}
+            className="fixed right-4 top-4 z-50 flex gap-2 p-1 bg-background/60 backdrop-blur-md rounded-lg border border-border/20"
+          >
+            <NewChatButton className="backdrop-blur-sm" />
+            <ChatHistoryButton className="backdrop-blur-sm" />
+            <SettingsButton className="backdrop-blur-sm" />
+          </div>
+
+          {/* Top-left logo */}
+          <div className="fixed left-4 top-4 z-50">
+            <span
+              className="text-xl font-bold text-foreground hover:text-primary transition-colors cursor-pointer"
+              onClick={() => router.push('/chat')}
+            >
+              Pak.Chat
+            </span>
+          </div>
+        </>
+      )}
 
       {/* Core chat UI */}
       <ChatView

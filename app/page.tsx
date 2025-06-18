@@ -3,17 +3,20 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/frontend/stores/AuthStore';
+import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { Button } from '@/frontend/components/ui/button';
 
 export default function IndexPage() {
   const { user, loading, login } = useAuthStore();
   const router = useRouter();
+  const { isMobile } = useIsMobile();
 
   useEffect(() => {
     if (!loading && user) {
-      router.push('/chat');
+      // ПК - сразу в чат, мобильные - в home с историей
+      router.push(isMobile ? '/home' : '/chat');
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, isMobile]);
 
   if (loading || (!loading && user)) {
     // Показываем пустой div, чтобы избежать моргания контента при редиректе

@@ -108,10 +108,12 @@ const ContentComponent = memo(function ContentComponent({
           </TabsList>
 
           <div className="flex-1 mt-4 min-h-0 overflow-y-auto scrollbar-none enhanced-scroll mobile-keyboard-fix">
-            {activeTab === 'customization' && <CustomizationTab />}
-            {activeTab === 'models' && <ModelsTab />}
-            {activeTab === 'profile' && <ProfileTab />}
-            {activeTab === 'api-keys' && <APIKeysTab />}
+            <div className="p-4">
+              {activeTab === 'customization' && <CustomizationTab />}
+              {activeTab === 'models' && <ModelsTab />}
+              {activeTab === 'profile' && <ProfileTab />}
+              {activeTab === 'api-keys' && <APIKeysTab />}
+            </div>
           </div>
         </Tabs>
       ) : (
@@ -207,32 +209,7 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
 
 
   if (!mounted) {
-    return (
-      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-        <DialogTrigger asChild>
-          {children}
-        </DialogTrigger>
-        <DialogContent className="max-w-3xl h-[80vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Settings className="h-5 w-5" />
-              Settings
-            </DialogTitle>
-            <DialogDescription className="sr-only">
-              Configure your application settings, profile, and API keys
-            </DialogDescription>
-          </DialogHeader>
-          <ContentComponent
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
-            isMobile={isMobile}
-            tabs={tabs}
-            getTabIcon={getTabIcon}
-            scrollRef={scrollRef}
-          />
-        </DialogContent>
-      </Dialog>
-    );
+    return null; // Don't render anything until mounted
   }
 
   if (isMobile) {
@@ -497,6 +474,15 @@ const CustomizationTab = memo(() => {
                 id="chat-preview"
                 checked={settings.showChatPreview}
                 onCheckedChange={(v) => handleSwitchChange('showChatPreview', v)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Label htmlFor="reg-history" className="text-sm">Save regeneration history</Label>
+              <Switch
+                id="reg-history"
+                checked={settings.saveRegenerationHistory}
+                onCheckedChange={(v) => handleSwitchChange('saveRegenerationHistory', v)}
               />
             </div>
           </CardContent>

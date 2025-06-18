@@ -49,6 +49,7 @@ export const saveSettings = mutation({
     uiFont: v.string(),
     codeFont: v.string(),
     hidePersonal: v.boolean(),
+    saveRegenerationHistory: v.boolean(),
   },
   async handler(ctx, args) {
     const uid = await currentUserId(ctx);
@@ -62,6 +63,7 @@ export const saveSettings = mutation({
         uiFont: args.uiFont,
         codeFont: args.codeFont,
         hidePersonal: args.hidePersonal,
+        saveRegenerationHistory: args.saveRegenerationHistory,
       });
     } else {
       await ctx.db.insert('userSettings', {
@@ -70,6 +72,7 @@ export const saveSettings = mutation({
         uiFont: args.uiFont,
         codeFont: args.codeFont,
         hidePersonal: args.hidePersonal,
+        saveRegenerationHistory: args.saveRegenerationHistory,
       });
     }
   },
