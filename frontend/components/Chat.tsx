@@ -2,13 +2,14 @@
 
 import ChatHistoryButton from './ChatHistoryButton';
 import NewChatButton from './NewChatButton';
-import SettingsButton from './SettingsButton';
+import SettingsDrawer from './SettingsDrawer';
 import MobileChatMenu from './MobileChatMenu';
 import ChatView from './ChatView';
+import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { Button } from './ui/button';
 import { WithTooltip } from './WithTooltip';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Settings } from 'lucide-react';
 import { useScrollHide } from '@/frontend/hooks/useScrollHide';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { useKeyboardInsets } from '../hooks/useKeyboardInsets';
@@ -33,6 +34,7 @@ function Chat({ threadId, thread, initialMessages }: ChatProps) {
   const isHeaderVisible = useScrollHide<HTMLDivElement>({ threshold: 15, panelRef });
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const { settings } = useSettingsStore();
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   useKeyboardInsets((h) => {
     document.documentElement.style.setProperty('--keyboard-inset-height', `${h}px`);
@@ -57,9 +59,26 @@ function Chat({ threadId, thread, initialMessages }: ChatProps) {
   }, [isMobile]);
 
   return (
-    <div className="w-full min-h-screen flex flex-col overflow-y-auto chat-smooth">
-      {/* Header for new chat vs existing chat */}
-      {isMobile ? (
+    <div className="relative h-screen overflow-hidden bg-background">
+      <motion.div
+        className="w-full min-h-screen flex flex-col overflow-y-auto chat-smooth origin-top"
+        animate={{
+          scale: isSettingsOpen ? 0.95 : 1,
+          y: isSettingsOpen ? '20px' : '0px',
+          filter: isSettingsOpen ? 'brightness(0.7)' : 'brightness(1)',
+        }}
+        transition={{
+          type: 'spring',
+          stiffness: 300,
+          damping: 30,
+        }}
+        style={{
+          borderRadius: isSettingsOpen ? '15px' : '0px',
+          overflow: 'hidden',
+        }}
+      >
+        {/* Header for new chat vs existing chat */}
+        {isMobile ? (
         // МОБИЛЬНАЯ версия - только меню с тремя точками для существующих чатов
         <>
           {threadId ? (
@@ -119,7 +138,19 @@ function Chat({ threadId, thread, initialMessages }: ChatProps) {
           >
             <NewChatButton className="backdrop-blur-sm" />
             <ChatHistoryButton className="backdrop-blur-sm" />
-            <SettingsButton className="backdrop-blur-sm" />
+            <SettingsDrawer isOpen={isSettingsOpen} setIsOpen={setIsSettingsOpen}>
+              <WithTooltip label="Settings" side="bottom">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="bg-background/80 backdrop-blur-sm border-border/50"
+                  aria-label="Open settings"
+                  onClick={() => setIsSettingsOpen(true)}
+                >
+                  <Settings className="h-5 w-5" />
+                </Button>
+              </WithTooltip>
+            </SettingsDrawer>
           </div>
 
           {/* Top-left logo */}
@@ -134,14 +165,15 @@ function Chat({ threadId, thread, initialMessages }: ChatProps) {
         </>
       )}
 
-      {/* Core chat UI */}
-      <ChatView
-        key={threadId}
-        threadId={threadId}
-        thread={thread}
-        initialMessages={initialMessages}
-        showNavBars={settings.showNavBars}
-      />
+        {/* Core chat UI */}
+        <ChatView
+          key={threadId}
+          threadId={threadId}
+          thread={thread}
+          initialMessages={initialMessages}
+          showNavBars={settings.showNavBars}
+        />
+      </motion.div>
     </div>
   );
 }
