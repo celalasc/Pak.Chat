@@ -1,13 +1,14 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useConvexAuth } from 'convex/react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { use } from 'react';
 import { api } from '@/convex/_generated/api';
 import MemoizedMarkdown from '@/frontend/components/MemoizedMarkdown';
 import { Button } from '@/frontend/components/ui/button';
 import { Card } from '@/frontend/components/ui/card';
-import { MessageSquare, User, Bot, ArrowRight, Copy, Check } from 'lucide-react';
+import { MessageSquare, ArrowRight, Copy, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import SelectableText from '@/frontend/components/SelectableText';
 import QuotedMessage from '@/frontend/components/QuotedMessage';
@@ -85,17 +86,19 @@ export default function SharePage({ params }: { params: Promise<{ shareId: strin
             <div className="flex items-center gap-3">
               <MessageSquare className="h-6 w-6 text-primary" />
               <div>
-                <h1 className="text-lg font-semibold">
-                  Chat "{thread.title}" shared by {sharedBy}
-                </h1>
+                  <h1 className="text-lg font-semibold">
+                    Chat &quot;{thread.title}&quot; shared by {sharedBy}
+                  </h1>
                 <div className="flex items-center gap-2">
-                  {thread.userInfo && !thread.isAnonymous && thread.userInfo.avatarUrl && (
-                    <img 
-                      src={thread.userInfo.avatarUrl} 
-                      alt={sharedBy}
-                      className="w-4 h-4 rounded-full"
-                    />
-                  )}
+                    {thread.userInfo && !thread.isAnonymous && thread.userInfo.avatarUrl && (
+                      <Image
+                        src={thread.userInfo.avatarUrl}
+                        alt={sharedBy}
+                        width={16}
+                        height={16}
+                        className="w-4 h-4 rounded-full"
+                      />
+                    )}
                   <p className="text-sm text-muted-foreground">
                     Shared chat • Pak.Chat
                   </p>

@@ -227,7 +227,7 @@ export async function POST(req: NextRequest) {
       messages: coreMessages,
       // Для Google моделей useSearchGrounding уже установлен при создании модели,
       // поэтому дополнительные tools не передаём.
-      onError: (e: any) => {
+      onError: (e: unknown) => {
         console.error('AI SDK streamText Error:', e);
       },
       system: `
@@ -252,7 +252,7 @@ export async function POST(req: NextRequest) {
 
     return result.toDataStreamResponse({
       sendReasoning: true,
-      getErrorMessage: (error: any) => (error as { message: string }).message,
+      getErrorMessage: (error: unknown) => (error as { message: string }).message,
     });
   } catch (error) {
     console.error('Chat API Error:', error);
