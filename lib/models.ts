@@ -105,7 +105,11 @@ export const MODEL_CONFIGS: Record<AIModel, ModelConfig> = {
 export const DEFAULT_MODEL: AIModel = 'Gemini 2.5 Flash';
 
 export const getModelConfig = (modelName: string): ModelConfig => {
-  return MODEL_CONFIGS[modelName as AIModel] ?? MODEL_CONFIGS[DEFAULT_MODEL];
+  const config = MODEL_CONFIGS[modelName as AIModel] ?? MODEL_CONFIGS[DEFAULT_MODEL];
+  return {
+    ...config,
+    reasoningEffort: config.reasoningEffort ?? 'medium',
+  };
 };
 
 // Группируем модели по компаниям
