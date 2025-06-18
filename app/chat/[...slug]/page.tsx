@@ -6,7 +6,6 @@ import { useQuery, useConvexAuth } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id, Doc } from '@/convex/_generated/dataModel';
 import { isConvexId } from '@/lib/ids';
-import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import Chat from '@/frontend/components/Chat';
 import ErrorBoundary from '@/frontend/components/ErrorBoundary';
 

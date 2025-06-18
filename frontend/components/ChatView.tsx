@@ -19,6 +19,7 @@ import type { UIMessage } from 'ai';
 import { useDebounceCallback } from 'usehooks-ts';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { loadDraft, saveDraft, clearDraft } from '@/frontend/lib/drafts';
+import { saveLastChatId } from '@/frontend/lib/lastChat';
 
 interface ChatViewProps {
   threadId: string;
@@ -250,6 +251,10 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
       if (draft.messages.length > 0) {
         setMessages((prev) => [...prev, ...draft.messages]);
       }
+    }
+    if (threadId) {
+      // Remember last active chat for automatic restoration on reload
+      saveLastChatId(threadId);
     }
   }, [threadId, setInput, clearQuote, clearAttachments, setMessages, initialMessages]);
 

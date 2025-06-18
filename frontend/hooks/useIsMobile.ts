@@ -1,21 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useLayoutEffect } from 'react';
 
 export function useIsMobile(breakpoint: number = 768) {
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== 'undefined' ? window.innerWidth < breakpoint : false
+  );
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const checkMobile = () => {
       const isMobileDevice = window.innerWidth < breakpoint;
       setIsMobile(isMobileDevice);
       
-      // Устанавливаем mounted только после первой проверки
-      if (!mounted) {
-        setMounted(true);
-      }
+      if (!mounted) setMounted(true);
     };
     
-    // Немедленно проверяем при монтировании
     checkMobile();
     
     window.addEventListener('resize', checkMobile);
