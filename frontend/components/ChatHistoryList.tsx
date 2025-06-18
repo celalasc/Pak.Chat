@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/frontend/hooks/useIsMobile";
+import { saveLastChatId, clearLastChatId } from "@/frontend/lib/lastChat";
 import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
@@ -146,6 +147,7 @@ function ChatHistoryList({
 
   const handleThreadClick = useCallback(
     (threadId: Id<"threads">) => {
+      saveLastChatId(threadId);
       if (onSelectThread) {
         onSelectThread(threadId);
       } else {
@@ -190,6 +192,7 @@ function ChatHistoryList({
       await removeThread({ threadId });
       if (id === threadId) {
         router.push("/chat");
+        clearLastChatId();
       }
       setDeletingThreadId(null);
       setLongPressThreadId(null);

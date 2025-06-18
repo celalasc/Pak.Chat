@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/frontend/stores/AuthStore';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { Button } from '@/frontend/components/ui/button';
+import { getLastChatId } from '@/frontend/lib/lastChat';
 
 export default function IndexPage() {
   const { user, loading, login } = useAuthStore();
@@ -14,6 +15,11 @@ export default function IndexPage() {
   useEffect(() => {
     // Ждем пока mounted станет true, чтобы избежать неправильного перенаправления
     if (!loading && user && mounted) {
+      const lastId = getLastChatId();
+      if (lastId) {
+        router.push(`/chat/${lastId}`);
+        return;
+      }
       // ПК - сразу в чат, мобильные - в home с историей
       router.push(isMobile ? '/home' : '/chat');
     }
