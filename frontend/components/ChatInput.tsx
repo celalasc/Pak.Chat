@@ -129,6 +129,7 @@ const PureChatModelDropdown = ({ messageCount = 0 }: ChatModelDropdownProps) => 
     toggleFavoriteModel,
     isProviderEnabled,
   } = useModelVisibilityStore();
+  const { saveToConvex } = useModelVisibilitySync();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [isReasoningEffortOpen, setIsReasoningEffortOpen] = useState(false);
@@ -175,11 +176,12 @@ const PureChatModelDropdown = ({ messageCount = 0 }: ChatModelDropdownProps) => 
     (model: AIModel) => {
       if (isModelEnabled(model)) {
         setModel(model);
+        saveToConvex();
         setIsOpen(false);
         setIsExpanded(false);
       }
     },
-    [isModelEnabled, setModel]
+    [isModelEnabled, setModel, saveToConvex]
   );
 
   const handleToggleFavorite = useCallback(
@@ -187,9 +189,10 @@ const PureChatModelDropdown = ({ messageCount = 0 }: ChatModelDropdownProps) => 
       e.stopPropagation();
       if (isModelEnabled(model)) {
         toggleFavoriteModel(model);
+        saveToConvex();
       }
     },
-    [toggleFavoriteModel, isModelEnabled]
+    [toggleFavoriteModel, isModelEnabled, saveToConvex]
   );
 
   const handleShowAll = useCallback(() => {
