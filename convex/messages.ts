@@ -133,6 +133,8 @@ export const send = mutation({
       isActive: args.isActive ?? true,
       regeneratedFromMessageId: args.regeneratedFromMessageId,
     });
+    // Clear saved draft after successful send
+    await ctx.db.patch(args.threadId, { draft: "" });
     return id as Id<"messages">;
   },
 });

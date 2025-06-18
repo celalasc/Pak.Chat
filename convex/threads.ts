@@ -318,4 +318,20 @@ export const getSharedThread = query({
   },
 });
 
+/** Save a message draft for a thread */
+export const saveDraft = mutation({
+  args: { threadId: v.id("threads"), draft: v.string() },
+  async handler(ctx, { threadId, draft }) {
+    const uid = await currentUserId(ctx);
+    if (!uid) throw new Error("Unauthenticated");
+
+    const thread = await ctx.db.get(threadId);
+    if (!thread || thread.userId !== uid) {
+      return; // Exit silently if thread not found to avoid client errors
+    }
+
+    await ctx.db.patch(threadId, { draft });
+  },
+});
+
 
