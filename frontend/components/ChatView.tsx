@@ -171,12 +171,13 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
         attachments: cm.attachments || [],
       }));
 
+    const getTime = (value: any) => {
+      if (!value) return 0;
+      return value instanceof Date ? value.getTime() : new Date(value).getTime();
+    };
+
     const allMessages = [...updatedMessages, ...missingConvexMessages]
-      .sort((a, b) => {
-        const aTime = a.createdAt ? a.createdAt.getTime() : Date.now();
-        const bTime = b.createdAt ? b.createdAt.getTime() : Date.now();
-        return aTime - bTime;
-      });
+      .sort((a, b) => getTime(a.createdAt) - getTime(b.createdAt));
 
     
     return allMessages;

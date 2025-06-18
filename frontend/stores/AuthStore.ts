@@ -1,4 +1,4 @@
-import { User, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
+import { User, GoogleAuthProvider, signInWithRedirect, signOut, onAuthStateChanged } from 'firebase/auth';
 import { create } from 'zustand';
 import { auth } from '@/firebase';
 import { useSettingsStore } from './SettingsStore';
@@ -20,7 +20,7 @@ export const useAuthStore = create<AuthState>((set) => {
     async login() {
       set({ loading: true });
       try {
-        await signInWithPopup(auth, new GoogleAuthProvider());
+        await signInWithRedirect(auth, new GoogleAuthProvider());
       } finally {
         set({ loading: false });
       }

@@ -8,6 +8,7 @@ export function useKeyboardInsets(onChange: (height: number) => void) {
         : 0;
       onChange(height);
     };
+    handle();
     window.visualViewport?.addEventListener('resize', handle);
     return () => window.visualViewport?.removeEventListener('resize', handle);
   }, [onChange]);

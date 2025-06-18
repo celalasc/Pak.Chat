@@ -94,7 +94,7 @@ export default function HomePage() {
         <ChatHistoryList
           onSelectThread={handleSelectThread}
           onNewChat={handleNewChat}
-          showSearch={true}
+          showSearch={!isMobile}
           className="h-full"
         />
       </div>

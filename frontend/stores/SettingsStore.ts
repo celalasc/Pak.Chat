@@ -52,7 +52,7 @@ const defaultSettings: Settings = {
   // Code font remains Berkeley Mono by default
   codeFont: 'Berkeley Mono',
   theme: 'light',
-  hidePersonal: false,
+  hidePersonal: true,
   showNavBars: true,
   showChatPreview: true,
 };
