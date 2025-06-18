@@ -3,6 +3,7 @@ import Chat from '@/frontend/components/Chat';
 import { useConvexAuth } from 'convex/react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 
 export default function NewChatPage() {
   const { isAuthenticated, isLoading } = useConvexAuth();
