@@ -83,8 +83,15 @@ const getTimePeriod = (date: Date): string => {
 
 // Group threads by time period
 const groupThreadsByTime = (threads: Thread[]): ThreadGroup[] => {
-  const pinned = threads.filter(t => t.pinned);
-  const unpinned = threads.filter(t => !t.pinned);
+  // Разделяем закреплённые и обычные треды
+  // Чтобы история отображалась корректно (новые сверху), сразу сортируем обе коллекции
+  const pinned = threads
+    .filter(t => t.pinned)
+    .sort((a, b) => b._creationTime - a._creationTime);
+
+  const unpinned = threads
+    .filter(t => !t.pinned)
+    .sort((a, b) => b._creationTime - a._creationTime);
   
   const groups: ThreadGroup[] = [];
   
@@ -108,7 +115,11 @@ const groupThreadsByTime = (threads: Thread[]): ThreadGroup[] => {
   const timeOrder = ["Today", "Yesterday", "Last Week", "Last Month", "Last Year", "Older"];
   timeOrder.forEach(period => {
     if (timeGroups[period] && timeGroups[period].length > 0) {
-      groups.push({ title: period, threads: timeGroups[period] });
+      // Сортируем внутри каждой временной группы так, чтобы новые диалоги были сверху
+      groups.push({
+        title: period,
+        threads: timeGroups[period].sort((a, b) => b._creationTime - a._creationTime),
+      });
     }
   });
   

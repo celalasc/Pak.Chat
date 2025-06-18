@@ -167,11 +167,21 @@ export async function POST(req: NextRequest) {
             // --- PDF ------------------------------------------------------
             if (mime === 'application/pdf') {
               try {
-                // pdf-parse is CommonJS, dynamic import returns module with default
-                const pdfModule = await import('pdf-parse');
-                const pdf = pdfModule.default as (data: Buffer) => Promise<{ text: string }>;
-                const data = await pdf(buf);
-                content.push({ type: 'text', text: `PDF ${attachment.name}:\n${data.text}` });
+                // Для Google провайдера передаем PDF напрямую как file data
+                if (modelConfig.provider === 'google') {
+                  // Gemini поддерживает нативную обработку PDF
+                  const base64 = buf.toString('base64');
+                  content.push({ 
+                    type: 'image', 
+                    image: `data:${mime};base64,${base64}` 
+                  });
+                } else {
+                  // Для других провайдеров используем pdf-parse для извлечения текста
+                  const pdfModule = await import('pdf-parse');
+                  const pdf = pdfModule.default as (data: Buffer) => Promise<{ text: string }>;
+                  const data = await pdf(buf);
+                  content.push({ type: 'text', text: `PDF ${attachment.name}:\n${data.text}` });
+                }
               } catch (err) {
                 console.error('PDF parse failed:', err);
                 content.push({ type: 'text', text: `Unable to parse PDF ${attachment.name}.` });
@@ -245,7 +255,13 @@ export async function POST(req: NextRequest) {
       - Display: 
       $$\\frac{d}{dx}\\sin(x) = \\cos(x)$$
 
-      When analyzing images or files, be descriptive and helpful. Explain what you see in detail and answer any questions about the content.
+      When analyzing images, PDF documents, or other files, be descriptive and helpful. For PDF documents:
+      - Analyze all text content, tables, charts, and images within the document
+      - Extract and understand structured information like tables and forms
+      - Maintain the logical flow and context of the document
+      - Answer questions about specific sections, data, or content within the PDF
+      - Summarize or explain the document content when requested
+      Explain what you see in detail and answer any questions about the content.
       `,
       abortSignal: req.signal,
         });

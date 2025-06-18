@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { X, FileText, File, Image as ImageIcon } from 'lucide-react';
+import { X, FileText, File, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface FilePreviewProps {
@@ -14,6 +14,7 @@ interface FilePreviewProps {
     ext: string;
     storageId?: string; // Для remote файлов
     remote?: boolean;   // Флаг remote файла
+    isUploading?: boolean; // Индикатор загрузки
   };
   onRemove: (id: string) => void;
   showPreview?: boolean;
@@ -67,15 +68,28 @@ export default function FilePreview({ file, onRemove, showPreview = true }: File
         onMouseLeave={() => setIsHovered(false)}
       >
         <div className="relative">
-                    {hasValidPreview ? (
+          {hasValidPreview ? (
             <img 
               src={file.preview} 
-              className="h-16 w-16 object-cover rounded-lg border-2 border-blue-200 dark:border-blue-800 shadow-sm" 
+              className={cn(
+                "h-16 w-16 object-cover rounded-lg border-2 border-blue-200 dark:border-blue-800 shadow-sm",
+                file.isUploading && "opacity-50"
+              )} 
               alt={file.name}
             />
           ) : (
-            <div className="h-16 w-16 bg-blue-50 border-2 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800 rounded-lg flex items-center justify-center">
+            <div className={cn(
+              "h-16 w-16 bg-blue-50 border-2 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800 rounded-lg flex items-center justify-center",
+              file.isUploading && "opacity-50"
+            )}>
               <ImageIcon className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+            </div>
+          )}
+          
+          {/* Индикатор загрузки */}
+          {file.isUploading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-lg">
+              <Loader2 className="w-6 h-6 text-white animate-spin" />
             </div>
           )}
           
@@ -120,11 +134,11 @@ export default function FilePreview({ file, onRemove, showPreview = true }: File
   const handleFileClick = () => {
     if (file.storageId) {
       // Открываем файл через наш API
-      console.log('Opening remote file:', file.name, 'storageId:', file.storageId);
+
       window.open(`/api/files/${file.storageId}`, '_blank');
     } else if (file.preview && file.preview.startsWith('blob:')) {
       // Для локальных файлов используем blob URL
-      console.log('Opening local file:', file.name, 'blob URL');
+
       window.open(file.preview, '_blank');
     } else {
       console.warn('Cannot open file - no storageId or blob URL:', file.name);
@@ -135,14 +149,22 @@ export default function FilePreview({ file, onRemove, showPreview = true }: File
     <div className="relative flex-shrink-0 group">
       <div 
         className={cn(
-          "h-16 w-20 rounded-lg border-2 flex flex-col items-center justify-center text-[10px] px-1 shadow-sm transition-all duration-200 hover:shadow-md cursor-pointer",
-          getFileColor()
+          "h-16 w-20 rounded-lg border-2 flex flex-col items-center justify-center text-[10px] px-1 shadow-sm transition-all duration-200 hover:shadow-md cursor-pointer relative",
+          getFileColor(),
+          file.isUploading && "opacity-50"
         )}
         onClick={handleFileClick}
       >
         <IconComponent className={cn("w-5 h-5 mb-1", getIconColor())} />
         <span className="line-clamp-1 text-center font-medium text-foreground leading-tight">{file.name}</span>
         <span className="text-muted-foreground mt-0.5">{formatFileSize(file.size)}</span>
+        
+        {/* Индикатор загрузки для не-изображений */}
+        {file.isUploading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-lg">
+            <Loader2 className="w-5 h-5 text-white animate-spin" />
+          </div>
+        )}
       </div>
       
       <button

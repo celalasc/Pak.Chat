@@ -67,7 +67,7 @@ export default function RecentFilesDropdown({ children, onFileSelect, messageCou
             
             // Удаляем старые рисунки без storageId (они неработающие)
             if (file.name.startsWith('drawing-') && file.name.endsWith('.png') && !file.storageId) {
-              console.log('Removing old drawing without storageId during load:', file.name);
+    
               return false;
             }
             
@@ -108,12 +108,7 @@ export default function RecentFilesDropdown({ children, onFileSelect, messageCou
     try {
       if (recentFile.storageId) {
         // Build remote attachment object and add to store
-        console.log('Reattaching file from recent:', {
-          name: recentFile.name,
-          storageId: recentFile.storageId,
-          previewId: recentFile.previewId,
-          hasPreview: !!recentFile.preview
-        });
+
         
         // Для изображений пытаемся получить актуальный URL
         let previewUrl = recentFile.preview;
@@ -124,16 +119,16 @@ export default function RecentFilesDropdown({ children, onFileSelect, messageCou
           if (recentFile.previewId) {
             // Для превью используем URL к preview файлу
             previewUrl = `/api/files/${recentFile.previewId}`;
-            console.log('Using previewId for image:', recentFile.name, previewUrl);
+  
           } else if (recentFile.storageId) {
             // Если нет превью, используем оригинальный файл
             previewUrl = `/api/files/${recentFile.storageId}`;
-            console.log('Using storageId for image:', recentFile.name, previewUrl);
+  
           }
         } else {
           // Для не-изображений не используем preview URL (он не нужен для иконок)
           previewUrl = '';
-          console.log('Non-image file, no preview URL:', recentFile.name);
+
         }
         
         addRemote({
@@ -415,12 +410,7 @@ export function useRecentFilesIntegration() {
 // Called after successful upload to Convex to enrich recent entry with storageId etc.
 export function addUploadedFileMetaToRecent(meta: { storageId: string; previewId?: string; name: string; type: string; size: number; previewUrl?: string; }) {
   try {
-    console.log('Adding uploaded file meta to recent:', {
-      name: meta.name,
-      storageId: meta.storageId,
-      previewId: meta.previewId,
-      hasPreviewUrl: !!meta.previewUrl
-    });
+
     const saved = localStorage.getItem(RECENT_FILES_KEY);
     if (!saved) return;
     
@@ -465,7 +455,7 @@ export function addUploadedFileMetaToRecent(meta: { storageId: string; previewId
     const uniqueParsed = parsed.filter((item, index, arr) => {
       // Удаляем старые рисунки без storageId (они неработающие)
       if (item.name.startsWith('drawing-') && item.name.endsWith('.png') && !item.storageId) {
-        console.log('Removing old drawing without storageId:', item.name);
+        
         return false;
       }
       
@@ -493,14 +483,14 @@ export function cleanupOldDrawings() {
     
     const cleaned = parsed.filter(item => {
       if (item.name.startsWith('drawing-') && item.name.endsWith('.png') && !item.storageId) {
-        console.log('Cleaning up old drawing:', item.name);
+        
         return false;
       }
       return true;
     });
     
     localStorage.setItem(RECENT_FILES_KEY, JSON.stringify(cleaned));
-    console.log(`Cleaned up ${parsed.length - cleaned.length} old drawing entries`);
+    
   } catch (e) {
     console.error('Failed to cleanup old drawings:', e);
   }

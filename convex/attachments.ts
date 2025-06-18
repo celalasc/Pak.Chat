@@ -136,3 +136,69 @@ export const getUrlByStorageId = query({
     return url;
   },
 });
+
+// Get attachments by message ID
+export const getByMessageId = query({
+  args: { messageId: v.id('messages') },
+  async handler(ctx, { messageId }) {
+    const attachments = await ctx.db
+      .query('attachments')
+      .withIndex('by_message', (q) => q.eq('messageId', messageId))
+      .collect();
+    
+    // Получаем URL параллельно для ускорения
+    const attachmentsWithUrls = await Promise.all(
+      attachments.map(async (a) => {
+        let url: string | null = null;
+        if (a.previewId) {
+          url = await ctx.storage.getUrl(a.previewId);
+        } else if (!a.type.startsWith('image/')) {
+          // For non-image files we can safely return full URL (e.g. PDFs, text),
+          // since they are typically downloaded only on click.
+          url = await ctx.storage.getUrl(a.fileId);
+        }
+        return {
+          id: a._id,
+          messageId: a.messageId,
+          name: a.name,
+          type: a.type,
+          width: a.width,
+          height: a.height,
+          size: a.size,
+          previewId: a.previewId,
+          fileId: a.fileId,
+          url,
+        };
+      })
+    );
+    
+    return attachmentsWithUrls;
+  },
+});
+
+// Remove attachments by message ID
+export const removeByMessageId = mutation({
+  args: { messageId: v.id('messages') },
+  async handler(ctx, { messageId }) {
+    const attachments = await ctx.db
+      .query('attachments')
+      .withIndex('by_message', (q) => q.eq('messageId', messageId))
+      .collect();
+    
+    // Удаляем файлы из storage и записи из БД
+    await Promise.all(
+      attachments.map(async (attachment) => {
+        // Удаляем оригинальный файл
+        await ctx.storage.delete(attachment.fileId);
+        
+        // Удаляем превью если есть
+        if (attachment.previewId) {
+          await ctx.storage.delete(attachment.previewId);
+        }
+        
+        // Удаляем запись из БД
+        await ctx.db.delete(attachment._id);
+      })
+    );
+  },
+});

@@ -3,6 +3,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { currentUserId } from "./utils";
+import { encrypt, tryDecrypt } from "./encryption";
 
 /** Get a single thread by ID */
 export const get = query({
@@ -99,7 +100,6 @@ export const create = mutation({
       createdAt: Date.now(),
       pinned: false,
       system: args.system ?? false,
-      currentDialogVersion: 1,
     });
   },
 });
@@ -150,7 +150,6 @@ export const clone = mutation({
       createdAt: Date.now(),
       clonedFrom: args.threadId,
       pinned: false,
-      currentDialogVersion: thread.currentDialogVersion ?? 1,
     });
     const messages = await ctx.db
       .query("messages")
@@ -238,13 +237,17 @@ export const createShareLink = mutation({
 
     const shareId = crypto.randomUUID().slice(0, 8);
 
+    const decryptedMessages = await Promise.all(
+      messages.map(async (m) => ({ role: m.role, content: await tryDecrypt(m.content) }))
+    );
+
     await ctx.db.insert("sharedThreads", {
       shareId,
       originalThreadId: threadId,
       userId: uid,
       title: thread.title,
       isAnonymous: isAnonymous ?? false,
-      messages: messages.map((m) => ({ role: m.role, content: m.content })),
+      messages: decryptedMessages,
     });
 
     return shareId;
@@ -279,7 +282,7 @@ export const continueFromShared = mutation({
         threadId: newThreadId,
         authorId: uid,
         role: message.role,
-        content: message.content,
+        content: await encrypt(message.content),
         createdAt: Date.now(),
       });
     }

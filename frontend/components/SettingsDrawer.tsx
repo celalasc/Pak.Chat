@@ -476,15 +476,6 @@ const CustomizationTab = memo(() => {
                 onCheckedChange={(v) => handleSwitchChange('showChatPreview', v)}
               />
             </div>
-
-            <div className="flex items-center justify-between">
-              <Label htmlFor="reg-history" className="text-sm">Save regeneration history</Label>
-              <Switch
-                id="reg-history"
-                checked={settings.saveRegenerationHistory}
-                onCheckedChange={(v) => handleSwitchChange('saveRegenerationHistory', v)}
-              />
-            </div>
           </CardContent>
         )}
       </Card>
@@ -816,20 +807,18 @@ const ModelsTab = memo(() => {
   const handleToggleProvider = useCallback((provider: Provider) => {
     try {
       toggleProvider(provider);
-      saveToConvex();
     } catch (error) {
       console.error('Failed to toggle provider:', error);
     }
-  }, [toggleProvider, saveToConvex]);
+  }, [toggleProvider]);
 
   const handleToggleFavoriteModel = useCallback((model: AIModel) => {
     try {
       toggleFavoriteModel(model);
-      saveToConvex();
     } catch (error) {
       console.error('Failed to toggle favorite model:', error);
     }
-  }, [toggleFavoriteModel, saveToConvex]);
+  }, [toggleFavoriteModel]);
 
   return (
     <div className="space-y-6 pb-4">

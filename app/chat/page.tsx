@@ -4,7 +4,6 @@ import { useConvexAuth } from 'convex/react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
-import AppShellSkeleton from '@/frontend/components/AppShellSkeleton';
 
 export default function NewChatPage() {
   const { isAuthenticated, isLoading } = useConvexAuth();
@@ -20,7 +19,7 @@ export default function NewChatPage() {
   // Убираем автоматическое перенаправление - пользователи должны иметь возможность заходить в чат с мобильных
 
   if (isLoading || !isAuthenticated) {
-    return <AppShellSkeleton />;
+    return <div className="w-full h-screen bg-background" />;
   }
 
   // Ключ "new-draft" гарантирует, что для нового чата всегда будет чистое состояние

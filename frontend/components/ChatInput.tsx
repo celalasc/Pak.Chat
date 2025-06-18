@@ -27,7 +27,6 @@ import { UIMessage } from 'ai';
 import AttachmentsBar from './AttachmentsBar';
 import { useAttachmentsStore } from '../stores/AttachmentsStore';
 import type { LocalAttachment } from '../stores/AttachmentsStore';
-import { v4 as uuidv4 } from 'uuid';
 import { isConvexId } from '@/lib/ids';
 import { StopIcon } from './ui/icons';
 import { toast } from 'sonner';
@@ -183,12 +182,11 @@ const PureChatModelDropdown = ({ messageCount = 0 }: ChatModelDropdownProps) => 
     (model: AIModel) => {
       if (isModelEnabled(model)) {
         setModel(model);
-        saveToConvex();
         setIsOpen(false);
         setIsExpanded(false);
       }
     },
-    [isModelEnabled, setModel, saveToConvex]
+    [isModelEnabled, setModel]
   );
 
   const handleToggleFavorite = useCallback(
@@ -196,10 +194,9 @@ const PureChatModelDropdown = ({ messageCount = 0 }: ChatModelDropdownProps) => 
       e.stopPropagation();
       if (isModelEnabled(model)) {
         toggleFavoriteModel(model);
-        saveToConvex();
       }
     },
-    [toggleFavoriteModel, isModelEnabled, saveToConvex]
+    [toggleFavoriteModel, isModelEnabled]
   );
 
   const handleShowAll = useCallback(() => {
@@ -548,11 +545,11 @@ function PureChatInput({
   const sendMessage = useMutation<typeof api.messages.send>(api.messages.send);
   const generateUploadUrl = useMutation(api.attachments.generateUploadUrl);
   const saveAttachments = useMutation(api.attachments.save as any);
-  const updateAttachmentMessageId = useMutation(api.attachments.updateMessageId);
   const saveDraftMutation = useMutation(api.threads.saveDraft);
+  const updateAttachmentMessageId = useMutation(api.attachments.updateMessageId);
   // Remove this line as we'll use a different approach
   const { complete } = useMessageSummary();
-  const { attachments, clear } = useAttachmentsStore();
+  const { attachments, clear, setUploading } = useAttachmentsStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { selectedModel, webSearchEnabled } = useModelStore();
 
@@ -602,9 +599,20 @@ function PureChatInput({
     // Reset UI early
     setInput('');
     clearQuote();
+    clear(); // Очищаем файлы и вложения после отправки
     adjustHeight(true);
 
     try {
+      // Проверка: PDF вложения разрешены только для Google (Gemini) моделей
+      const provider = getModelConfig(selectedModel).provider;
+      if (attachments.some((a) => a.type === 'application/pdf') && provider !== 'google') {
+        toast.error(
+          "PDF files are only supported by the Gemini model. Please select the Gemini model or remove the PDF.",
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
       // 1. Если это черновик, создаем тред заранее и сразу приводим тип
       const ensuredThreadId: Id<'threads'> = isConvexId(threadId)
         ? (threadId as Id<'threads'>)
@@ -621,56 +629,34 @@ function PureChatInput({
         }
       }
 
-      // 3. Оптимистично добавляем сообщение в UI
+      // 3. Сохраняем текст сообщения в БД СРАЗУ, чтобы порядок (user → assistant) был корректным
+      const dbMsgId = await sendMessage({
+        threadId: ensuredThreadId,
+        content: finalMessage,
+        role: 'user',
+      });
+
+      // 4. Оптимистично добавляем сообщение в UI
       const localAttachments = attachments.filter((att): att is LocalAttachment => !att.remote);
       const remoteAttachments = attachments.filter(att => att.remote);
-      const clientMsgId = uuidv4();
+      const clientMsgId = dbMsgId; // используем реальный ID для UI и для связывания вложений
 
-      // 3.a Создаем optimistic attachments для UI рендера
-      const attachmentsForMessage = await Promise.all(
-        attachments.map(async (att) => {
-          if (att.remote) {
-            return {
-              ...att,
-              url: att.preview || '',
-            };
-          } else {
-            return {
-              ...att,
-              url: await fileToDataUrl(att.file),
-            };
-          }
-        })
-      );
-
-      // 3.b Создаем и отображаем user message
-      const userMessage = createUserMessage(
-        clientMsgId,
-        finalMessage,
-        attachmentsForMessage,
-      );
-      append(userMessage, {
-        body: {
-          model: selectedModel,
-          apiKeys: keys,
-          threadId: ensuredThreadId,
-          search: webSearchEnabled,
-        },
-      });
-      clear();
-
-      // 4. Загрузка файлов (оригинал + превью)
+      // 5. Загрузка файлов (оригинал + превью)
+      // Устанавливаем состояние загрузки для всех локальных файлов
+      localAttachments.forEach(att => setUploading(att.id, true));
+      
       const uploadedFiles = await Promise.all(
         localAttachments.map(async (attachment) => {
-          // 1. Upload the original file
-          const uploadUrl = await generateUploadUrl();
-          const resOrig = await fetch(uploadUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': attachment.file.type },
-            body: attachment.file,
-          });
-          if (!resOrig.ok) throw new Error(`Failed to upload ${attachment.name}`);
-          const { storageId } = await resOrig.json();
+          try {
+            // 1. Upload the original file
+            const uploadUrl = await generateUploadUrl();
+            const resOrig = await fetch(uploadUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': attachment.file.type },
+              body: attachment.file,
+            });
+            if (!resOrig.ok) throw new Error(`Failed to upload ${attachment.name}`);
+            const { storageId } = await resOrig.json();
 
           // 2. Create preview if needed and upload it
           let previewId: string | undefined = undefined;
@@ -686,7 +672,7 @@ function PureChatInput({
             if (resPrev.ok) {
               const { storageId: pId } = await resPrev.json();
               previewId = pId;
-              console.log('Created preview for drawing:', attachment.file.name, 'previewId:', pId);
+              
             }
           } else {
             // Для обычных изображений используем сжатый preview
@@ -718,6 +704,11 @@ function PureChatInput({
             height: dimensions?.height,
             size: attachment.size,
           };
+          } catch (error) {
+            console.error('Failed to upload file:', attachment.name, error);
+            setUploading(attachment.id, false);
+            throw error;
+          }
         })
       );
 
@@ -734,10 +725,14 @@ function PureChatInput({
           height: undefined,
           size: att.size,
         };
-      });
+      }      );
+      
+      // Убираем состояние загрузки после завершения
+      localAttachments.forEach(att => setUploading(att.id, false));
+      
       uploadedFiles.push(...reusedFiles);
 
-      // 5. Сохраняем метаданные вложений в БД
+      // 6. Сохраняем метаданные вложений в БД
       let savedAttachments: any[] = [];
       if (uploadedFiles.length > 0) {
         try {
@@ -746,32 +741,37 @@ function PureChatInput({
             attachments: uploadedFiles,
           });
         } catch (err) {
-          toast.error('Failed to upload attachments');
+          toast.error('Failed to save attachment metadata');
           console.error(err);
+          setIsSubmitting(false);
+          return;
         }
       }
 
-      // 6. Сохраняем текст сообщения в БД
-      const dbMsgId = await sendMessage({
-        threadId: ensuredThreadId,
-        content: finalMessage,
-        role: 'user',
-      });
+      // 7. Теперь, когда файлы загружены и привязаны к сообщению (или их не было), отправляем запрос к LLM
+      append(
+        {
+          id: dbMsgId,
+          role: 'user',
+          content: finalMessage,
+        } as any,
+        {
+          body: {
+            model: selectedModel,
+            apiKeys: keys,
+            threadId: ensuredThreadId,
+            search: webSearchEnabled,
+          },
+        }
+      );
 
-      if (savedAttachments.length > 0) {
-        await updateAttachmentMessageId({
-          attachmentIds: savedAttachments.map((a) => a.id),
-          messageId: dbMsgId,
-        });
-      }
-
-      // 7. Добавляем файлы в recent ТОЛЬКО после успешной отправки (F1.2 + F1.4)
-      // НО: для рисунков пропускаем этот шаг, потому что они будут добавлены в шаге 8 с правильными storageId
+      // 8. Добавляем файлы в recent ТОЛЬКО после успешной отправки (F1.2 + F1.4)
+      // НО: для рисунков пропускаем этот шаг, потому что они будут добавлены в шаге 9 с правильными storageId
       if (localAttachments.length > 0) {
         localAttachments.forEach(attachment => {
-          // Пропускаем рисунки - они будут добавлены в шаге 8 с storageId
+          // Пропускаем рисунки - они будут добавлены в шаге 9 с storageId
           if (attachment.file.name.startsWith('drawing-') && attachment.file.name.endsWith('.png')) {
-            console.log('Skipping drawing from step 7, will be added in step 8 with storageId');
+            
             return;
           }
           
@@ -782,7 +782,7 @@ function PureChatInput({
         });
       }
 
-      // 8. Обновляем записи в Recent Files с информацией о загруженных файлах
+      // 9. Обновляем записи в Recent Files с информацией о загруженных файлах
       if (savedAttachments.length > 0) {
         savedAttachments.forEach((savedAttachment, index) => {
           // Находим соответствующий локальный файл по индексу или имени/типу/размеру
@@ -814,13 +814,20 @@ function PureChatInput({
         });
       }
 
-      // 9. Обновляем UI с реальным ID
-      setMessages((prev) => prev.map((m) => (m.id === clientMsgId ? { ...m, id: dbMsgId } : m)));
+      // 10. UI обновится автоматически через useConvexMessages после добавления в DB
 
-      // 10. Генерация заголовка в фоне для нового чата
+      // 11. Генерация заголовка в фоне для нового чата
       if (!isConvexId(threadId)) {
         complete(finalMessage, {
           body: { threadId: ensuredThreadId, messageId: dbMsgId, isTitle: true },
+        });
+      }
+
+      // Первоначальный save не проставляет messageId, поэтому патчим отдельно
+      if (savedAttachments.length > 0) {
+        await updateAttachmentMessageId({
+          attachmentIds: savedAttachments.map((a) => a.id),
+          messageId: dbMsgId,
         });
       }
 
@@ -844,7 +851,6 @@ function PureChatInput({
     sendMessage,
     generateUploadUrl,
     saveAttachments,
-    updateAttachmentMessageId,
     setMessages,
     complete,
     router,
@@ -853,6 +859,7 @@ function PureChatInput({
     selectedModel,
     webSearchEnabled,
     keys,
+    updateAttachmentMessageId,
   ]);
 
   const handleKeyDown = useCallback(
@@ -916,20 +923,7 @@ function PureChatInput({
             </div>
           )}
           <div className="relative rounded-[16px] overflow-hidden">
-            {/* Provider links when no API keys */}
-            {!canChat && messageCount > 1 && (
-              <div className="flex flex-wrap justify-around gap-4 px-4 py-2 bg-secondary">
-                <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline">
-                  Create Google API Key
-                </a>
-                <a href="https://openrouter.ai/settings/keys" target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline">
-                  Create OpenRouter API Key
-                </a>
-                <a href="https://platform.openai.com/settings/organization/api-keys" target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline">
-                  Create OpenAI API Key
-                </a>
-              </div>
-            )}
+            {/* (Provider links removed to avoid unnecessary flicker) */}
 
             <div className="flex flex-col">
               {/* Attachments at the top */}
@@ -1009,11 +1003,8 @@ const ChatInput = memo(PureChatInput, (prevProps, nextProps) => {
 });
 ChatInput.displayName = 'ChatInput';
 
-
-// Обёртка для решения проблемы с Rules of Hooks
 function ChatInputWrapper(props: ChatInputProps) {
-  const { keysLoading } = useAPIKeyStore();
-  // Always render ChatInput immediately; if keys still loading, ChatInput will handle missing keys gracefully.
+  // Отображаем ChatInput сразу; сам компонент корректно блокирует ввод, если ключи ещё не загружены.
   return <ChatInput {...props} />;
 }
 

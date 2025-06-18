@@ -8,7 +8,6 @@ import { Id, Doc } from '@/convex/_generated/dataModel';
 import { isConvexId } from '@/lib/ids';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import Chat from '@/frontend/components/Chat';
-import AppShellSkeleton from '@/frontend/components/AppShellSkeleton';
 import ErrorBoundary from '@/frontend/components/ErrorBoundary';
 
 function CatchAllChatPageInner({ params }: { params: Promise<{ slug: string[] }> }) {
@@ -93,12 +92,9 @@ function CatchAllChatPageInner({ params }: { params: Promise<{ slug: string[] }>
     }
   }, [authLoading, isAuthenticated, isValidId, router, chatId, thread]);
 
-  // Автоматическое переключение между версиями при изменении размера экрана
-  useEffect(() => {
-    if (mounted && isAuthenticated && isMobile && isValidId) {
-      router.push('/home');
-    }
-  }, [isMobile, mounted, isAuthenticated, isValidId, router]);
+  // Убираем автоматический переход на /home при мобильном разрешении,
+  // чтобы пользователь оставался в текущем чате даже после перезагрузки.
+  // При необходимости навигацией займётся пользователь вручную.
 
   const isLoading =
     authLoading ||
@@ -114,7 +110,7 @@ function CatchAllChatPageInner({ params }: { params: Promise<{ slug: string[] }>
   }, [isLoading]);
 
   if (isInitialLoad) {
-    return <AppShellSkeleton />;
+    return <div className="w-full h-screen bg-background" />;
   }
 
   if (thread === null) {

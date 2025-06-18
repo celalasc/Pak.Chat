@@ -3,6 +3,7 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { currentUserId } from "./utils";
+import { encrypt, tryDecrypt } from "./encryption";
 
 /** Get messages for a thread */
 export const get = query({
@@ -20,11 +21,57 @@ export const get = query({
     const thread = await ctx.db.get(args.threadId);
     if (!thread || thread.userId !== uid)
       throw new Error("Thread not found or permission denied");
-    return ctx.db
+    const msgs = await ctx.db
       .query("messages")
       .withIndex("by_thread_and_time", (q) => q.eq("threadId", args.threadId))
       .order("asc")
       .collect();
+    
+    // Decrypt message contents and load attachments
+    const decrypted = await Promise.all(
+      msgs.map(async (m) => {
+        // Load attachments for this message
+        const attachments = await ctx.db
+          .query("attachments")
+          .withIndex("by_message", (q) => q.eq("messageId", m._id))
+          .collect();
+        
+        // Get URLs for attachments
+        const attachmentsWithUrls = await Promise.all(
+          attachments.map(async (a) => {
+            let url: string | null = null;
+            // Для изображений используем превью если есть, иначе оригинал
+            if (a.type.startsWith('image/')) {
+              if (a.previewId) {
+                url = await ctx.storage.getUrl(a.previewId);
+              } else {
+                url = await ctx.storage.getUrl(a.fileId);
+              }
+            } else {
+              // For non-image files return full URL
+              url = await ctx.storage.getUrl(a.fileId);
+            }
+            return {
+              id: a._id,
+              url,
+              name: a.name,
+              type: a.type,
+              ext: a.name.split('.').pop() ?? '',
+              size: a.size,
+              width: a.width,
+              height: a.height,
+            };
+          })
+        );
+        
+        return { 
+          ...m, 
+          content: await tryDecrypt(m.content),
+          attachments: attachmentsWithUrls,
+        };
+      })
+    );
+    return decrypted;
   },
 });
 
@@ -56,7 +103,7 @@ export const getOne = query({
       throw new Error("Permission denied: User does not own this thread.");
     }
 
-    return msg;
+    return { ...msg, content: await tryDecrypt(msg.content) };
   },
 });
 
@@ -75,7 +122,10 @@ export const preview = query({
       .order("desc")
       .collect();
 
-    return msgs.slice(0, limit ?? 4);
+    const decrypted = await Promise.all(
+      msgs.map(async (m) => ({ ...m, content: await tryDecrypt(m.content) }))
+    );
+    return decrypted.slice(0, limit ?? 4);
   },
 });
 
@@ -98,7 +148,7 @@ export const send = mutation({
       threadId: args.threadId,
       authorId: uid,
       role: args.role,
-      content: args.content,
+      content: await encrypt(args.content),
       createdAt: Date.now(),
       model: args.model,
     });
@@ -119,7 +169,7 @@ export const edit = mutation({
     const thread = await ctx.db.get(message.threadId);
     if (!thread || thread.userId !== uid)
       throw new Error("Permission denied");
-    await ctx.db.patch(args.messageId, { content: args.content });
+    await ctx.db.patch(args.messageId, { content: await encrypt(args.content) });
   },
 });
 
@@ -193,6 +243,6 @@ export const prepareForRegeneration = mutation({
 
     await Promise.all(toDelete.map((m) => ctx.db.delete(m._id)));
 
-    return userMessage;
+    return { ...userMessage, content: await tryDecrypt(userMessage.content) };
   },
 });

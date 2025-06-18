@@ -45,8 +45,8 @@ export function useAPIKeyStore() {
   // Получаем состояние из baseStore
   const storeState = baseStore();
   
-  // Loading is finished only after API keys are fetched
-  const keysLoading = apiKeysData === undefined;
+  // Reflect loading status stored in baseStore, which becomes false after the first successful/failed fetch
+  const { keysLoading } = storeState;
 
   // Возвращаем keys и утилиты из состояния
   const { keys, getKey, hasRequiredKeys } = storeState;

@@ -43,6 +43,8 @@ function PureMessage({
   const [mobileControlsVisible, setMobileControlsVisible] = useState(false);
   const isWelcome = message.id === 'welcome';
   const attachments = (message as any).attachments as { id: string; url: string; name: string; type: string; ext?: string; size?: number }[] | undefined;
+  
+
   const [lightbox, setLightbox] = useState<{
     url: string;
     name: string;

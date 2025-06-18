@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { encrypt, tryDecrypt } from "./encryption";
 
 // Get current user ID from auth
 async function getCurrentUserId(ctx: any) {
@@ -40,10 +41,10 @@ export const getApiKeys = query({
     }
 
     return {
-      google: apiKeys.google || "",
-      openrouter: apiKeys.openrouter || "",
-      openai: apiKeys.openai || "",
-      groq: apiKeys.groq || "",
+      google: await tryDecrypt(apiKeys.google || ""),
+      openrouter: await tryDecrypt(apiKeys.openrouter || ""),
+      openai: await tryDecrypt(apiKeys.openai || ""),
+      groq: await tryDecrypt(apiKeys.groq || ""),
     };
   },
 });
@@ -67,23 +68,18 @@ export const setApiKeys = mutation({
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .first();
 
+    const payload = {
+      google: args.google ? await encrypt(args.google) : "",
+      openrouter: args.openrouter ? await encrypt(args.openrouter) : "",
+      openai: args.openai ? await encrypt(args.openai) : "",
+      groq: args.groq ? await encrypt(args.groq) : "",
+      encryptedAt: Date.now(),
+    };
+
     if (existing) {
-      await ctx.db.patch(existing._id, {
-        google: args.google || "",
-        openrouter: args.openrouter || "",
-        openai: args.openai || "",
-        groq: args.groq || "",
-        encryptedAt: Date.now(),
-      });
+      await ctx.db.patch(existing._id, payload);
     } else {
-      await ctx.db.insert("apiKeys", {
-        userId,
-        google: args.google || "",
-        openrouter: args.openrouter || "",
-        openai: args.openai || "",
-        groq: args.groq || "",
-        encryptedAt: Date.now(),
-      });
+      await ctx.db.insert("apiKeys", { userId, ...payload });
     }
   },
 }); 

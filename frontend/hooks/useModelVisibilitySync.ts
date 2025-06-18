@@ -11,7 +11,6 @@ export function useModelVisibilitySync() {
     setLoading,
   } = store();
 
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isSavingRef = useRef(false);
 
   // Fetch model visibility settings from Convex
@@ -30,44 +29,51 @@ export function useModelVisibilitySync() {
     }
   }, [visibilityData, syncWithConvex, setLoading]);
 
-  // Save changes to Convex with debouncing and duplicate prevention
-  const saveToConvex = useCallback(() => {
+  // Save changes to Convex immediately without debouncing
+  const saveToConvex = useCallback(async () => {
     if (!isAuthenticated || isSavingRef.current) return;
 
-    // Очищаем предыдущий таймер
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
+    const { favoriteModels, enabledProviders, selectedModel } = store.getState();
+
+    isSavingRef.current = true;
+    try {
+      await saveVisibility({
+        favoriteModels: [...favoriteModels], // клонируем массив для новой ссылки
+        enabledProviders: [...enabledProviders], // клонируем массив для новой ссылки
+        selectedModel,
+      });
+    } catch (error) {
+      console.error('Failed to save model visibility settings:', error);
+    } finally {
+      isSavingRef.current = false;
     }
-
-    // Устанавливаем новый таймер
-    saveTimeoutRef.current = setTimeout(async () => {
-      if (isSavingRef.current) return;
-
-      const { favoriteModels, enabledProviders, selectedModel } = store.getState(); // Актуальные данные
-
-      isSavingRef.current = true;
-      try {
-        await saveVisibility({
-          favoriteModels,
-          enabledProviders,
-          selectedModel,
-        });
-      } catch (error) {
-        console.error('Failed to save model visibility settings:', error);
-      } finally {
-        isSavingRef.current = false;
-      }
-    }, 150);
   }, [isAuthenticated, saveVisibility]);
 
-  // Очищаем таймер при размонтировании
+  // Очищаем флаги при размонтировании
   useEffect(() => {
     return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
+      isSavingRef.current = false;
     };
   }, []);
+
+  // Auto-persist изменения сразу без дебаунса
+  useEffect(() => {
+    const unsubscribe = useModelVisibilityStore.subscribe((state, prevState) => {
+      if (isAuthenticated && !isSavingRef.current) {
+        // Проверяем что действительно изменились нужные нам поля
+        const hasChanges = 
+          state.favoriteModels !== prevState.favoriteModels ||
+          state.enabledProviders !== prevState.enabledProviders ||
+          state.selectedModel !== prevState.selectedModel;
+        
+        if (hasChanges && !state.loading) {
+          saveToConvex();
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, [isAuthenticated, saveToConvex]);
 
   return { saveToConvex };
 } 

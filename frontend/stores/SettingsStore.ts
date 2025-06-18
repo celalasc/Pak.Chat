@@ -19,7 +19,6 @@ type Settings = {
   hidePersonal: boolean;
   showNavBars: boolean;
   showChatPreview: boolean;
-  saveRegenerationHistory: boolean;
 };
 
 type SettingsStore = {
@@ -56,7 +55,6 @@ const defaultSettings: Settings = {
   hidePersonal: false,
   showNavBars: true,
   showChatPreview: true,
-  saveRegenerationHistory: true,
 };
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -104,12 +102,11 @@ export function useSettingsSync() {
   // hydrate from server - только один раз при инициализации
   useEffect(() => {
     if (settingsDoc && !isInitialized.current) {
-      const { uiFont, codeFont, hidePersonal, saveRegenerationHistory: srh } = settingsDoc;
+      const { uiFont, codeFont, hidePersonal } = settingsDoc;
       const serverSettings = {
         generalFont: (uiFont as GeneralFont) ?? 'Proxima Vara',
         codeFont: (codeFont as CodeFont) ?? 'Berkeley Mono',
         hidePersonal: hidePersonal ?? false,
-        saveRegenerationHistory: srh ?? true,
       };
       
       setSettings(serverSettings);
@@ -118,7 +115,6 @@ export function useSettingsSync() {
         theme: settings.theme,
         showNavBars: settings.showNavBars,
         showChatPreview: settings.showChatPreview,
-        saveRegenerationHistory: settings.saveRegenerationHistory,
       };
       isInitialized.current = true;
     }
@@ -131,8 +127,7 @@ export function useSettingsSync() {
     
     const hasChanges = settings.generalFont !== lastSaved.current.generalFont ||
                       settings.codeFont !== lastSaved.current.codeFont ||
-                      settings.hidePersonal !== lastSaved.current.hidePersonal ||
-                      settings.saveRegenerationHistory !== lastSaved.current.saveRegenerationHistory;
+                      settings.hidePersonal !== lastSaved.current.hidePersonal;
     
     if (hasChanges) {
       lastSaved.current = { ...lastSaved.current, ...settings };
@@ -140,8 +135,7 @@ export function useSettingsSync() {
         uiFont: settings.generalFont,
         codeFont: settings.codeFont,
         hidePersonal: settings.hidePersonal,
-        saveRegenerationHistory: settings.saveRegenerationHistory,
       } as any);
     }
-  }, [settings.generalFont, settings.codeFont, settings.hidePersonal, settings.saveRegenerationHistory, save, convexUser]); // Только конкретные поля
+  }, [settings.generalFont, settings.codeFont, settings.hidePersonal, save, convexUser]); // Только конкретные поля
 }

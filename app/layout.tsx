@@ -33,9 +33,15 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        {/* Устанавливаем класc темы до загрузки React, чтобы избежать мигания света/темноты */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark');}else{document.documentElement.classList.remove('dark');}}catch(e){}})();`,
+          }}
+        />
       </head>
       <body suppressHydrationWarning className="antialiased font-sans font-mono">
-        <Suspense fallback={<AppShellSkeleton />}>
+        <Suspense fallback={null}>
           <ConvexClientProvider>
             <Providers>
               <AuthListener>

@@ -25,10 +25,17 @@ export const getModelVisibility = query({
       return null;
     }
 
-    const settings = await ctx.db
+    const docs = await ctx.db
       .query("modelVisibility")
       .withIndex("by_user", (q) => q.eq("userId", userId))
-      .first();
+      .collect();
+
+    // Выбираем наиболее релевантный документ: тот, где есть избранные модели.
+    // Если таких нет – самый новый.
+    let settings = docs.find((d) => d.favoriteModels && d.favoriteModels.length > 0) || null;
+    if (!settings && docs.length > 0) {
+      settings = docs.reduce((latest, doc) => (doc._creationTime > latest._creationTime ? doc : latest), docs[0]);
+    }
 
     if (!settings) {
       return {
@@ -59,10 +66,24 @@ export const setModelVisibility = mutation({
       throw new Error("Not authenticated");
     }
 
-    const existing = await ctx.db
+    const allDocs = await ctx.db
       .query("modelVisibility")
       .withIndex("by_user", (q) => q.eq("userId", userId))
-      .first();
+      .collect();
+
+    let existing = allDocs.find((d) => d.favoriteModels && d.favoriteModels.length > 0) || null;
+    if (!existing && allDocs.length > 0) {
+      existing = allDocs.reduce((latest, doc) => (doc._creationTime > latest._creationTime ? doc : latest), allDocs[0]);
+    }
+
+    // delete duplicates (any besides existing)
+    if (allDocs.length > 1) {
+      for (const doc of allDocs) {
+        if (!existing || doc._id !== existing._id) {
+          await ctx.db.delete(doc._id);
+        }
+      }
+    }
 
     const updateData: any = {
       favoriteModels: args.favoriteModels,

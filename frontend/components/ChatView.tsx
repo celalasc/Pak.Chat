@@ -11,7 +11,7 @@ import { useAttachmentsStore } from '@/frontend/stores/AttachmentsStore';
 import { useChatStore } from '@/frontend/stores/ChatStore';
 import { cn } from '@/lib/utils';
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { useMutation } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { isConvexId } from '@/lib/ids';
 import { Id, Doc } from '@/convex/_generated/dataModel';
@@ -122,15 +122,74 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
     },
   });
 
+  // Загружаем сообщения с файлами из Convex (если это Convex тред)
+  const convexMessages = useQuery(
+    api.messages.get,
+    isConvexId(currentThreadId) ? { threadId: currentThreadId as Id<'threads'> } : 'skip'
+  );
+
+  // Синхронизируем сообщения с Convex, если они загружены
+  const mergedMessages = React.useMemo(() => {
+    // Если нет Convex сообщений, используем UI сообщения как есть
+    if (!convexMessages || convexMessages.length === 0) {
+  
+      return messages;
+    }
+
+
+
+    // Создаем мапу Convex сообщений для быстрого поиска
+    const convexMap = new Map(convexMessages.map(cm => [cm._id as string, cm]));
+
+    // Обновляем UI сообщения с данными из Convex
+    const updatedMessages = messages.map(uiMessage => {
+      const convexMessage = convexMap.get(uiMessage.id);
+      if (convexMessage) {
+        const merged = {
+          ...uiMessage,
+          attachments: convexMessage.attachments || [],
+        };
+        if (convexMessage.attachments && convexMessage.attachments.length > 0) {
+  
+        }
+        return merged;
+      }
+      return uiMessage;
+    });
+
+    // Добавляем сообщения из Convex, которых нет в UI (например, при обновлении страницы)
+    const uiIds = new Set(messages.map(m => m.id));
+    const missingConvexMessages = convexMessages
+      .filter(cm => !uiIds.has(cm._id as string))
+      .map(cm => ({
+        id: cm._id as string,
+        role: cm.role as 'user' | 'assistant',
+        content: cm.content,
+        createdAt: new Date(cm.createdAt),
+        parts: [{ type: 'text' as const, text: cm.content }],
+        attachments: cm.attachments || [],
+      }));
+
+    const allMessages = [...updatedMessages, ...missingConvexMessages]
+      .sort((a, b) => {
+        const aTime = a.createdAt ? a.createdAt.getTime() : Date.now();
+        const bTime = b.createdAt ? b.createdAt.getTime() : Date.now();
+        return aTime - bTime;
+      });
+
+    
+    return allMessages;
+  }, [messages, convexMessages]);
+
   // Функция для отслеживания видимых сообщений
   const updateCurrentMessage = useCallback(() => {
-    const userMessages = messages.filter(message => message.role === 'user');
+    const userMessages = mergedMessages.filter((message: UIMessage) => message.role === 'user');
     if (userMessages.length === 0) return;
 
     let currentMsg = userMessages[0];
     let minDistance = Infinity;
 
-    userMessages.forEach(message => {
+    userMessages.forEach((message: UIMessage) => {
       const element = document.getElementById(`message-${message.id}`);
       if (element) {
         const rect = element.getBoundingClientRect();
@@ -147,7 +206,7 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
     if (currentMessageId !== currentMsg.id) {
       setCurrentMessageId(currentMsg.id);
     }
-  }, [messages, currentMessageId]);
+  }, [mergedMessages, currentMessageId]);
   
   const debouncedUpdateCurrentMessage = useDebounceCallback(updateCurrentMessage, 50, { leading: true });
 
@@ -209,9 +268,9 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
 
   return (
     <>
-      {messages.length > 0 && showNavBars && (
+      {mergedMessages.length > 0 && showNavBars && (
         <ChatNavigationBars 
-          messages={messages} 
+          messages={mergedMessages} 
           scrollToMessage={scrollToMessage} 
           currentMessageId={currentMessageId}
         />
@@ -220,10 +279,10 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
       <div className="flex-1 flex flex-col relative">
         <div className="flex-1 overflow-y-auto" id="messages-scroll-area">
           <main className="w-full max-w-3xl mx-auto pt-24 pb-44 px-4 min-h-full flex-1">
-            {messages.length > 0 && (
+            {mergedMessages.length > 0 && (
               <Messages
                 threadId={currentThreadId}
-                messages={messages}
+                messages={mergedMessages}
                 status={status}
                 setMessages={setMessages}
                 reload={reload}
@@ -239,7 +298,7 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
         <div
           className={cn(
             'fixed left-1/2 -translate-x-1/2 w-full max-w-3xl px-4 transition-all duration-300 z-30',
-            isMobile ? 'bottom-0' : (messages.length > 0 ? 'bottom-0' : 'top-1/2 -translate-y-1/2'),
+            isMobile ? 'bottom-0' : (mergedMessages.length > 0 ? 'bottom-0' : 'top-1/2 -translate-y-1/2'),
           )}
         >
           <ChatInput
@@ -253,7 +312,7 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
             append={append}
             stop={stop}
             error={error}
-            messageCount={messages.length}
+            messageCount={mergedMessages.length}
             onThreadCreated={setCurrentThreadId}
           />
         </div>

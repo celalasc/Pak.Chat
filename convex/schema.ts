@@ -18,7 +18,7 @@ export default defineSchema({
     uiFont: v.optional(v.string()),
     codeFont: v.optional(v.string()),
     hidePersonal: v.optional(v.boolean()),
-    // Whether to keep full history of regenerations (dialog snapshots)
+    // DEPRECATED: saveRegenerationHistory - no longer used
     saveRegenerationHistory: v.optional(v.boolean()),
   }).index("by_user", ["userId"]),
 
