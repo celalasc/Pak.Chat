@@ -63,6 +63,82 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
+interface ContentComponentProps {
+  className?: string;
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
+  isMobile: boolean;
+  tabs: { value: string; label: string; icon: string }[];
+  getTabIcon: (iconName: string) => React.ReactNode;
+  scrollRef: React.RefObject<HTMLDivElement>;
+}
+
+const ContentComponent = memo(function ContentComponent({
+  className,
+  activeTab,
+  setActiveTab,
+  isMobile,
+  tabs,
+  getTabIcon,
+  scrollRef,
+}: ContentComponentProps) {
+  return (
+    <div className={cn('flex gap-4 flex-1 min-h-0', className)}>
+      {isMobile ? (
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+          <TabsList className="grid w-full flex-shrink-0 grid-cols-4">
+            <TabsTrigger value="customization" className="flex items-center gap-1 text-xs">
+              <Palette className="h-3 w-3" />
+              <span className="hidden xs:inline">Style</span>
+            </TabsTrigger>
+            <TabsTrigger value="models" className="flex items-center gap-1 text-xs">
+              <Bot className="h-3 w-3" />
+              <span className="hidden xs:inline">Models</span>
+            </TabsTrigger>
+            <TabsTrigger value="profile" className="flex items-center gap-1 text-xs">
+              <User className="h-3 w-3" />
+              <span className="hidden xs:inline">User</span>
+            </TabsTrigger>
+            <TabsTrigger value="api-keys" className="flex items-center gap-1 text-xs">
+              <Key className="h-3 w-3" />
+              <span className="hidden xs:inline">Keys</span>
+            </TabsTrigger>
+          </TabsList>
+
+          <div className="flex-1 mt-4 min-h-0 overflow-y-auto scrollbar-none enhanced-scroll mobile-keyboard-fix">
+            {activeTab === 'customization' && <CustomizationTab />}
+            {activeTab === 'models' && <ModelsTab />}
+            {activeTab === 'profile' && <ProfileTab />}
+            {activeTab === 'api-keys' && <APIKeysTab />}
+          </div>
+        </Tabs>
+      ) : (
+        <div className="flex gap-4 flex-1 min-h-0">
+          <div className="flex flex-col w-48 flex-shrink-0">
+            <AnimatedTabs
+              tabs={tabs.map((tab) => ({ ...tab, icon: getTabIcon(tab.icon) }))}
+              value={activeTab}
+              onValueChange={setActiveTab}
+              className="w-full"
+            />
+          </div>
+
+          <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto scrollbar-none enhanced-scroll pl-4">
+            <div className="scroll-auto" style={{ scrollBehavior: 'auto', overscrollBehavior: 'contain' }}>
+              {activeTab === 'customization' && <CustomizationTab />}
+              {activeTab === 'models' && <ModelsTab />}
+              {activeTab === 'profile' && <ProfileTab />}
+              {activeTab === 'api-keys' && <APIKeysTab />}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+});
+
+ContentComponent.displayName = 'ContentComponent';
+
 const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawerProps) => {
   const { isMobile, mounted } = useIsMobile(600);
   const [activeTab, setActiveTab] = useState("customization");
@@ -71,6 +147,18 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
   const handleOpenChange = useCallback((open: boolean) => {
     setIsOpen(open);
   }, [setIsOpen]);
+
+  // Prevent body scroll when drawer is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
 
   // Стабилизируем состояние диалога
   const dialogKey = useMemo(() => `settings-dialog-${isOpen}`, [isOpen]);
@@ -115,67 +203,6 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
     }
   }, []);
 
-  // Мемоизируем ContentComponent чтобы предотвратить ненужные перерендеры
-  const ContentComponent = useCallback(({ className }: { className?: string }) => {
-    return (
-      <div className={cn("flex gap-4 flex-1 min-h-0", className)}>
-        {isMobile ? (
-          // Мобильная версия - горизонтальные табы сверху
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-            <TabsList className="grid w-full flex-shrink-0 grid-cols-4">
-              <TabsTrigger value="customization" className="flex items-center gap-1 text-xs">
-                <Palette className="h-3 w-3" />
-                <span className="hidden xs:inline">Style</span>
-              </TabsTrigger>
-              <TabsTrigger value="models" className="flex items-center gap-1 text-xs">
-                <Bot className="h-3 w-3" />
-                <span className="hidden xs:inline">Models</span>
-              </TabsTrigger>
-              <TabsTrigger value="profile" className="flex items-center gap-1 text-xs">
-                <User className="h-3 w-3" />
-                <span className="hidden xs:inline">User</span>
-              </TabsTrigger>
-              <TabsTrigger value="api-keys" className="flex items-center gap-1 text-xs">
-                <Key className="h-3 w-3" />
-                <span className="hidden xs:inline">Keys</span>
-              </TabsTrigger>
-            </TabsList>
-            
-            <div className="flex-1 mt-4 min-h-0 overflow-y-auto scrollbar-none enhanced-scroll mobile-keyboard-fix">
-              {activeTab === 'customization' && <CustomizationTab />}
-              {activeTab === 'models' && <ModelsTab />}
-              {activeTab === 'profile' && <ProfileTab />}
-              {activeTab === 'api-keys' && <APIKeysTab />}
-            </div>
-          </Tabs>
-        ) : (
-          // Десктопная версия - анимированные табы слева
-          <div className="flex gap-4 flex-1 min-h-0">
-            <div className="flex flex-col w-48 flex-shrink-0">
-              <AnimatedTabs
-                tabs={tabs.map(tab => ({
-                  ...tab,
-                  icon: getTabIcon(tab.icon)
-                }))}
-                value={activeTab}
-                onValueChange={setActiveTab}
-                className="w-full"
-              />
-            </div>
-            
-            <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto scrollbar-none enhanced-scroll pl-4">
-              <div className="scroll-auto" style={{ scrollBehavior: 'auto', overscrollBehavior: 'contain' }}>
-                {activeTab === 'customization' && <CustomizationTab />}
-                {activeTab === 'models' && <ModelsTab />}
-                {activeTab === 'profile' && <ProfileTab />}
-                {activeTab === 'api-keys' && <APIKeysTab />}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }, [activeTab, isMobile, tabs, getTabIcon]);
 
   if (!mounted) {
     return (
@@ -193,7 +220,14 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
               Configure your application settings, profile, and API keys
             </DialogDescription>
           </DialogHeader>
-          <ContentComponent />
+          <ContentComponent
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            isMobile={isMobile}
+            tabs={tabs}
+            getTabIcon={getTabIcon}
+            scrollRef={scrollRef}
+          />
         </DialogContent>
       </Dialog>
     );
@@ -223,7 +257,14 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
           
           {/* Content area with proper scrolling */}
           <div className="flex-1 min-h-0 px-4 pb-safe overflow-y-auto scrollbar-none enhanced-scroll">
-            <ContentComponent />
+            <ContentComponent
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              isMobile={isMobile}
+              tabs={tabs}
+              getTabIcon={getTabIcon}
+              scrollRef={scrollRef}
+            />
           </div>
         </DrawerContent>
       </Drawer>
@@ -245,7 +286,14 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
             Configure your application settings, profile, and API keys
           </DialogDescription>
         </DialogHeader>
-        <ContentComponent />
+        <ContentComponent
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          isMobile={isMobile}
+          tabs={tabs}
+          getTabIcon={getTabIcon}
+          scrollRef={scrollRef}
+        />
       </DialogContent>
     </Dialog>
   );
@@ -837,6 +885,9 @@ const ProviderSection = memo(({
   isFavoriteModel,
 }: ProviderSectionProps) => {
   const [isExpanded, setIsExpanded] = useState(true);
+  const { getKey } = useAPIKeyStore();
+  // Provider is considered active only when user has an API key for it
+  const providerHasKey = !!getKey(provider);
   
   const providerNames = {
     google: 'Google',
@@ -848,7 +899,10 @@ const ProviderSection = memo(({
   return (
     <div className="space-y-3">
       {/* Закрепленный заголовок провайдера */}
-      <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-10 pb-2">
+      <div className={cn(
+        "sticky top-0 bg-background/95 backdrop-blur-sm z-10 pb-2",
+        !providerHasKey && "opacity-60"
+      )}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <ProviderIcon provider={provider} className="h-4 w-4" />
@@ -857,11 +911,12 @@ const ProviderSection = memo(({
               {models.length} models
             </Badge>
           </div>
-          <div className="flex items-center gap-2">
+          <div className={cn('flex items-center gap-2', !providerHasKey && 'pointer-events-none')}>
             <CustomSwitch
               checked={isEnabled}
               onCheckedChange={onToggleProvider}
               id={`provider-${provider}`}
+              disabled={!providerHasKey}
             />
             <Button
               variant="ghost"
@@ -886,7 +941,7 @@ const ProviderSection = memo(({
             <ModelRow
               key={model}
               model={model}
-              isProviderEnabled={isEnabled}
+              isProviderEnabled={isEnabled && providerHasKey}
               isFavoriteModel={isFavoriteModel(model)}
               onToggleFavoriteModel={() => onToggleFavoriteModel(model)}
             />

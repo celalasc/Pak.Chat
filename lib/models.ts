@@ -97,7 +97,7 @@ export const MODEL_CONFIGS: Record<AIModel, ModelConfig> = {
     modelId: 'qwen/qwen3-32b',
     provider: 'groq',
     company: 'Groq',
-    reasoningEffort: 'default' as any,
+    // Use provider default reasoning effort
   },
 } as const satisfies Record<AIModel, ModelConfig>;
 
