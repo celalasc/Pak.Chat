@@ -26,6 +26,7 @@ import {
 } from "@/frontend/components/ui/dialog";
 import { Button, buttonVariants } from "./ui/button";
 import { Input } from "./ui/input";
+import CopyButton from "./ui/CopyButton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { useRouter, useParams } from "next/navigation";
 import {
@@ -36,6 +37,7 @@ import {
   MessageSquare,
   Plus,
   Edit2,
+  Share2,
   Check,
   GitBranch,
 } from "lucide-react";
@@ -130,7 +132,11 @@ function ChatHistoryDrawerComponent({
   const [longPressThreadId, setLongPressThreadId] =
     useState<Id<"threads"> | null>(null);
   const [selectedThreadIndex, setSelectedThreadIndex] = useState<number>(-1);
-  const [mobileMenuThreadId, setMobileMenuThreadId] = useState<Id<"threads"> | null>(null);
+  const [mobileMenuThreadId, setMobileMenuThreadId] =
+    useState<Id<"threads"> | null>(null);
+  const itemRefs = useRef<Map<number, HTMLDivElement | null>>(new Map());
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [shareLink, setShareLink] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
   const { isMobile, mounted } = useIsMobile(600);
@@ -150,6 +156,8 @@ function ChatHistoryDrawerComponent({
   const removeThread = useMutation(api.threads.remove);
   const renameThread = useMutation(api.threads.rename);
   const togglePin = useMutation(api.threads.togglePin);
+  const createShareLink = useMutation(api.threads.createShareLink);
+  const createShareLink = useMutation(api.threads.createShareLink);
 
   const handleOpenChange = useCallback(
     (open: boolean) => {
@@ -248,6 +256,19 @@ function ChatHistoryDrawerComponent({
     [togglePin, threads],
   );
 
+
+  const handleShare = useCallback(
+    async (thread: Thread) => {
+      const shareId = await createShareLink({ threadId: thread._id });
+      const url = `${window.location.origin}/share/${shareId}`;
+      setShareLink(url);
+      setShareDialogOpen(true);
+      setLongPressThreadId(null);
+      setMobileMenuThreadId(null);
+    },
+    [createShareLink],
+  );
+
   const handleNewChat = useCallback(() => {
     router.push("/chat");
     handleOpenChange(false);
@@ -292,6 +313,26 @@ function ChatHistoryDrawerComponent({
     }
   }, [isOpen, isMobile, handleKeyDown]);
 
+  useEffect(() => {
+    if (selectedThreadIndex >= 0 && !isMobile) {
+      const node = itemRefs.current.get(selectedThreadIndex);
+      node?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [selectedThreadIndex, isMobile]);
+
+  useEffect(() => {
+    const handleGlobalClick = (e: MouseEvent) => {
+      if (mobileMenuThreadId !== null) {
+        const menu = document.getElementById(`mobile-menu-${mobileMenuThreadId}`);
+        if (menu && !menu.contains(e.target as Node)) {
+          setMobileMenuThreadId(null);
+        }
+      }
+    };
+    document.addEventListener('click', handleGlobalClick);
+    return () => document.removeEventListener('click', handleGlobalClick);
+  }, [mobileMenuThreadId]);
+
   const previewThreadId = useMemo(() => {
     if (debouncedHoverId) return debouncedHoverId;
     if (selectedThreadIndex >= 0 && allThreadsFlat[selectedThreadIndex]) {
@@ -306,6 +347,10 @@ function ChatHistoryDrawerComponent({
       <div
         key={thread._id}
         data-thread-index={threadIndex}
+        ref={(node) => {
+          if (node) itemRefs.current.set(threadIndex, node);
+          else itemRefs.current.delete(threadIndex);
+        }}
         onMouseEnter={() => {
           setHoveredThreadId(thread._id);
           if (!isMobile) {
@@ -425,7 +470,10 @@ function ChatHistoryDrawerComponent({
             <>
               {/* Mobile action menu */}
               {isMobile && mobileMenuThreadId === thread._id && (
-                <div className="absolute right-2 top-0 bottom-0 flex items-center bg-background shadow-lg rounded-lg p-1 z-10">
+                <div
+                  id={`mobile-menu-${thread._id}`}
+                  className="absolute right-2 top-0 bottom-0 flex items-center bg-background shadow-lg rounded-lg p-1 z-10"
+                >
                   <Button
                     size="sm"
                     variant="ghost"
@@ -442,6 +490,19 @@ function ChatHistoryDrawerComponent({
                     ) : (
                       <Pin className="size-4" />
                     )}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 w-8 p-0"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleShare(thread);
+                      setMobileMenuThreadId(null);
+                    }}
+                  >
+                    <Share2 className="size-4" />
                   </Button>
                   <Button
                     size="sm"
@@ -505,27 +566,44 @@ function ChatHistoryDrawerComponent({
                     <TooltipContent>Edit</TooltipContent>
                   </Tooltip>
                   <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className={cn("h-6 w-6 sm:h-7 sm:w-7", isMobile && "h-8 w-8")}
-                        onClick={(e) => handlePinToggle(thread._id, e)}
-                      >
-                        {thread.pinned ? (
-                          <PinOff className={cn("size-2.5 sm:size-3", isMobile && "size-3.5")} />
-                        ) : (
-                          <Pin className={cn("size-2.5 sm:size-3", isMobile && "size-3.5")} />
-                        )}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>{thread.pinned ? "Unpin" : "Pin"}</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        size="icon"
-                        variant="ghost"
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className={cn("h-6 w-6 sm:h-7 sm:w-7", isMobile && "h-8 w-8")}
+                      onClick={(e) => handlePinToggle(thread._id, e)}
+                    >
+                      {thread.pinned ? (
+                        <PinOff className={cn("size-2.5 sm:size-3", isMobile && "size-3.5")} />
+                      ) : (
+                        <Pin className={cn("size-2.5 sm:size-3", isMobile && "size-3.5")} />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{thread.pinned ? "Unpin" : "Pin"}</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className={cn("h-6 w-6 sm:h-7 sm:w-7", isMobile && "h-8 w-8")}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleShare(thread);
+                      }}
+                    >
+                      <Share2 className={cn("size-2.5 sm:size-3", isMobile && "size-3.5")} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Share</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
                         className={cn("h-6 w-6 sm:h-7 sm:w-7", isMobile && "h-8 w-8")}
                         onClick={(e) => {
                           e.preventDefault();
@@ -561,6 +639,7 @@ function ChatHistoryDrawerComponent({
       handleSaveEdit,
       handleCancelEdit,
       setEditingTitle,
+      handleShare,
       setMobileMenuThreadId,
     ],
   );
@@ -634,7 +713,7 @@ function ChatHistoryDrawerComponent({
   if (!mounted) return null; // SSR guard
 
   if (isMobile) {
-    return (
+    const main = (
       <Drawer open={isOpen} onOpenChange={handleOpenChange}>
         <DrawerTrigger asChild>{children}</DrawerTrigger>
         <DrawerContent className="max-h-[95vh] flex flex-col w-full">
@@ -678,9 +757,30 @@ function ChatHistoryDrawerComponent({
         </DrawerContent>
       </Drawer>
     );
+    return (
+      <>
+        {main}
+        <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Share link</DialogTitle>
+            </DialogHeader>
+            <div className="flex items-center gap-2">
+              <Input
+                value={shareLink ?? ''}
+                readOnly
+                className="flex-1"
+                onFocus={(e) => e.currentTarget.select()}
+              />
+              {shareLink && <CopyButton code={shareLink} />}
+            </div>
+          </DialogContent>
+        </Dialog>
+      </>
+    );
   }
 
-  return (
+  const desktop = (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className={cn(
@@ -727,6 +827,28 @@ function ChatHistoryDrawerComponent({
         </div>
       </DialogContent>
     </Dialog>
+  );
+
+  return (
+    <>
+      {desktop}
+      <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Share link</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center gap-2">
+            <Input
+              value={shareLink ?? ''}
+              readOnly
+              className="flex-1"
+              onFocus={(e) => e.currentTarget.select()}
+            />
+            {shareLink && <CopyButton code={shareLink} />}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
