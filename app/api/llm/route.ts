@@ -76,9 +76,9 @@ export async function POST(req: NextRequest) {
         }
         break;
       case 'openai':
-        // Применяем reasoningEffort только если он есть в конфигурации модели
+        // Применяем reasoningEffort только для o1/o4 моделей (моделей с reasoning)
         const openaiConfig: { reasoningEffort?: "low" | "medium" | "high" } = {};
-        if (reasoningEffort) {
+        if (reasoningEffort && model === 'o4-mini') {
           openaiConfig.reasoningEffort = reasoningEffort;
         }
         aiModel = createOpenAI({ apiKey })(modelConfig.modelId, openaiConfig);
