@@ -400,11 +400,9 @@ export function addFileToRecent(file: File): boolean {
 }
 
 // Хук для интеграции с AttachmentsStore
-// УДАЛЕНО: автоматическое добавление файлов в recent при прикреплении
-// Теперь файлы добавляются в recent ТОЛЬКО после успешной отправки сообщения
+// Файлы добавляются в recent ТОЛЬКО после успешной отправки сообщения
 export function useRecentFilesIntegration() {
-  // Пустая функция - автоматическое добавление отключено
-  // Файлы будут добавляться в recent вручную после успешной отправки через addFileToRecent()
+  // Пустая функция - файлы будут добавляться в recent только после отправки
 }
 
 // Called after successful upload to Convex to enrich recent entry with storageId etc.
