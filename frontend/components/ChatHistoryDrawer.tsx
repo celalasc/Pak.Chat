@@ -145,6 +145,8 @@ function ChatHistoryDrawerComponent({
   const [longPressThreadId, setLongPressThreadId] =
     useState<Id<"threads"> | null>(null);
   const [selectedThreadIndex, setSelectedThreadIndex] = useState<number>(-1);
+  // Tracks whether navigation was triggered via keyboard arrows
+  const autoScrollRef = useRef(false);
   const [mobileMenuThreadId, setMobileMenuThreadId] =
     useState<Id<"threads"> | null>(null);
   const itemRefs = useRef<Map<number, HTMLDivElement | null>>(new Map());
@@ -186,6 +188,7 @@ function ChatHistoryDrawerComponent({
           setLongPressThreadId(null);
           setSelectedThreadIndex(-1);
           setMobileMenuThreadId(null);
+          autoScrollRef.current = false;
         }
       }
     },
@@ -311,11 +314,13 @@ function ChatHistoryDrawerComponent({
         case "ArrowDown":
           e.preventDefault();
           setHoveredThreadId(null);
+          autoScrollRef.current = true;
           setSelectedThreadIndex((prev) => (prev < allThreadsFlat.length - 1 ? prev + 1 : prev));
           break;
         case "ArrowUp":
           e.preventDefault();
           setHoveredThreadId(null);
+          autoScrollRef.current = true;
           setSelectedThreadIndex((prev) => (prev > 0 ? prev - 1 : prev));
           break;
         case "Enter":
@@ -341,7 +346,7 @@ function ChatHistoryDrawerComponent({
   }, [isOpen, isMobile, handleKeyDown]);
 
   useEffect(() => {
-    if (selectedThreadIndex >= 0 && !isMobile) {
+    if (selectedThreadIndex >= 0 && !isMobile && autoScrollRef.current) {
       const node = itemRefs.current.get(selectedThreadIndex);
       node?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
@@ -381,6 +386,7 @@ function ChatHistoryDrawerComponent({
         onMouseEnter={() => {
           setHoveredThreadId(thread._id);
           if (!isMobile) {
+            autoScrollRef.current = false;
             setSelectedThreadIndex(threadIndex);
           }
           // Сбрасываем состояние удаления при наведении на другой элемент

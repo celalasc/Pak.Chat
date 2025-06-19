@@ -601,10 +601,9 @@ function PureChatInput({
       finalMessage = `> ${currentQuote.text.replace(/\n/g, '\n> ')}\n\n${currentInput.trim()}`;
     }
 
-    // Reset UI early
+    // Reset UI early but keep attachments until they finish uploading
     setInput('');
     clearQuote();
-    clear(); // Очищаем файлы и вложения после отправки
     adjustHeight(true);
 
     try {
@@ -849,6 +848,9 @@ function PureChatInput({
           }
         });
       }
+
+      // Clear attachments only after successful upload
+      clear();
 
       // 11. UI обновится автоматически через useConvexMessages после добавления в DB
 
