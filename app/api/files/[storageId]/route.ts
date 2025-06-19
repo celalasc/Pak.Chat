@@ -10,6 +10,12 @@ export async function GET(
   try {
     const { storageId } = await params;
     
+    // Validate storageId format
+    if (!storageId || typeof storageId !== 'string' || storageId.length === 0) {
+      console.log('API: Invalid storageId:', storageId);
+      return new Response('Invalid storage ID', { status: 400 });
+    }
+    
     console.log('API: Getting file for storageId:', storageId);
     
     // Получаем URL файла из Convex Storage
@@ -29,6 +35,17 @@ export async function GET(
     
   } catch (error) {
     console.error('API Error getting file:', error);
+    
+    // Provide more specific error handling
+    if (error instanceof Error) {
+      if (error.message.includes('Invalid document ID')) {
+        return new Response('Invalid storage ID format', { status: 400 });
+      }
+      if (error.message.includes('not found')) {
+        return new Response('File not found', { status: 404 });
+      }
+    }
+    
     return new Response('Internal Server Error', { status: 500 });
   }
 } 

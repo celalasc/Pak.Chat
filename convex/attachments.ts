@@ -138,8 +138,19 @@ export const getUrl = query({
 export const getUrlByStorageId = query({
   args: { storageId: v.string() },
   async handler(ctx, { storageId }) {
-    const url = await ctx.storage.getUrl(storageId);
-    return url;
+    try {
+      // Validate storage ID format (should be a valid Convex storage ID)
+      if (!storageId || storageId.length === 0) {
+        return null;
+      }
+      
+      const url = await ctx.storage.getUrl(storageId);
+      return url;
+    } catch (error) {
+      // Handle invalid storage ID gracefully
+      console.error('Error getting URL for storage ID:', storageId, error);
+      return null;
+    }
   },
 });
 

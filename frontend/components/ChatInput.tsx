@@ -784,6 +784,15 @@ function PureChatInput({
         await new Promise(resolve => setTimeout(resolve, 100));
       }
 
+      // Подготавливаем данные о вложениях для передачи в LLM API
+      const attachmentsForLLM = savedAttachments.map((a) => ({
+        id: a.id,
+        messageId: dbMsgId,
+        name: a.name,
+        type: a.type,
+        url: a.url ?? '',
+      }));
+
       append(
         createUserMessage(dbMsgId, finalMessage, attachmentsForUI),
         {
@@ -792,6 +801,8 @@ function PureChatInput({
             apiKeys: keys,
             threadId: ensuredThreadId,
             search: webSearchEnabled,
+            // Передаем вложения напрямую чтобы избежать race condition
+            attachments: attachmentsForLLM,
           },
         }
       );
