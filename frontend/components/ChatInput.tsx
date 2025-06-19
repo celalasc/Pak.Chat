@@ -177,6 +177,8 @@ const PureChatModelDropdown = ({ messageCount = 0 }: ChatModelDropdownProps) => 
 
   const enabledNonFavorites = visibleGeneralModels.filter(isModelEnabled);
 
+  // We want a single scroll container for the whole dropdown, so avoid
+  // adding inner overflow-y-auto wrappers later.
   const allOtherModelsSorted = [...enabledNonFavorites, ...disabledModels];
 
   const handleModelSelect = useCallback(
@@ -241,7 +243,7 @@ const PureChatModelDropdown = ({ messageCount = 0 }: ChatModelDropdownProps) => 
           sideOffset={12}
           avoidCollisions
         >
-          <div className="overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted-foreground/30 scrollbar-thumb-rounded-full max-h-[45vh]">
+          <div className="overflow-y-auto max-h-[45vh] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-muted-foreground/20 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb:hover]:bg-muted-foreground/30">
             {!isExpanded ? (
               <div className="p-3">
                 <div className="flex items-center justify-between mb-3">
@@ -251,7 +253,7 @@ const PureChatModelDropdown = ({ messageCount = 0 }: ChatModelDropdownProps) => 
                   </div>
                   <button
                     onClick={handleShowAll}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg hover:scale-105"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg"
                   >
                     Show all
                     <ChevronUp className="w-3 h-3" />
@@ -262,7 +264,7 @@ const PureChatModelDropdown = ({ messageCount = 0 }: ChatModelDropdownProps) => 
                     No favorite models
                   </div>
                 ) : (
-                  <div className="space-y-2 mb-4 max-h-64 overflow-y-auto pr-2">
+                  <div className="space-y-2 mb-4">
                     {enabledFavorites.map((model) => {
                       const enabled = isModelEnabled(model);
                       return (
@@ -270,10 +272,10 @@ const PureChatModelDropdown = ({ messageCount = 0 }: ChatModelDropdownProps) => 
                           key={model}
                           onClick={() => handleModelSelect(model)}
                           className={cn(
-                            'relative flex items-center justify-between p-3 rounded-xl border-2 cursor-pointer group hover:scale-[1.02] transition-all',
+                            'relative flex items-center justify-between p-3 rounded-xl border-2 cursor-pointer group transition-all',
                             selectedModel === model
                               ? 'border-primary bg-primary/10 shadow-md'
-                              : 'border-border/60 hover:border-primary/40 hover:bg-accent hover:shadow-md',
+                                                              : 'border-border/60 hover:border-primary/40 hover:bg-accent',
                             !enabled && 'opacity-50 bg-muted/20 border-border/30'
                           )}
                         >
@@ -312,15 +314,19 @@ const PureChatModelDropdown = ({ messageCount = 0 }: ChatModelDropdownProps) => 
                   </div>
                   <button
                     onClick={handleBackToFavorites}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg hover:scale-105"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg"
                   >
                     <ChevronLeft className="w-3 h-3" />
                     Back to Favorites
                   </button>
                 </div>
-                {enabledFavorites.length > 0 && (
-                  <div className="mb-6">
-                    <div className="grid grid-cols-3 gap-2 overflow-visible">
+                <div className="mb-6">
+                  {enabledFavorites.length === 0 ? (
+                    <div className="text-center py-8 text-sm text-muted-foreground">
+                      No favorite models
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3">
                       {enabledFavorites.map((model) => {
                         const enabled = isModelEnabled(model);
                         return (
@@ -328,32 +334,32 @@ const PureChatModelDropdown = ({ messageCount = 0 }: ChatModelDropdownProps) => 
                             key={model}
                             onClick={() => handleModelSelect(model)}
                             className={cn(
-                              'relative flex flex-col items-center justify-center p-3 rounded-xl border-2 cursor-pointer group h-20 hover:scale-[1.05] hover:shadow-lg transition-all',
+                              'relative flex flex-col items-center justify-center p-3 rounded-xl border-2 cursor-pointer group min-h-[80px] w-full transition-colors',
                               selectedModel === model
                                 ? 'border-primary bg-primary/10 shadow-md'
                                 : 'border-border/60 hover:border-primary/40 hover:bg-accent',
                               !enabled && 'opacity-50 bg-muted/20 border-border/30'
                             )}
                           >
-                            <div className="mb-1 opacity-70 group-hover:opacity-100 transition-opacity">
+                            <div className="mb-2 opacity-70 group-hover:opacity-100 transition-opacity flex-shrink-0">
                               {getProviderIcon(model)}
                             </div>
-                            <div className="text-xs font-medium text-center leading-tight">{model}</div>
+                            <div className="text-xs font-medium text-center leading-tight w-full px-1 break-words">{model}</div>
                             {!enabled && (
-                              <div className="text-xs text-muted-foreground/70 text-center mt-1">
+                              <div className="text-xs text-muted-foreground/70 text-center mt-1 w-full">
                                 No API key
                               </div>
                             )}
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="absolute top-0.5 right-0.5 w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="absolute top-1 right-1 w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity"
                               onClick={(e) => handleToggleFavorite(model, e)}
                             >
-                              <Star className="w-2.5 h-2.5 text-yellow-500 fill-yellow-500" />
+                              <Star className="w-2 h-2 text-yellow-500 fill-yellow-500" />
                             </Button>
                             {selectedModel === model && (
-                              <div className="absolute top-0.5 left-0.5">
+                              <div className="absolute top-1 left-1">
                                 <Check className="w-3 h-3 text-primary" />
                               </div>
                             )}
@@ -361,15 +367,14 @@ const PureChatModelDropdown = ({ messageCount = 0 }: ChatModelDropdownProps) => 
                         );
                       })}
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
                 {allOtherModelsSorted.length > 0 && (
                   <div className="mb-4">
                     <div className="px-2 py-1 text-xs font-semibold text-muted-foreground/80 mb-3 uppercase tracking-wide">
                       Others
                     </div>
-                    <div className="max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted-foreground/30 scrollbar-thumb-rounded-full">
-                      <div className="grid grid-cols-3 gap-2 pr-2 overflow-visible">
+                    <div className="grid grid-cols-2 gap-3">
                         {allOtherModelsSorted.map((model) => {
                           const enabled = isModelEnabled(model);
                           const isFav = isFavoriteModel(model);
@@ -378,19 +383,19 @@ const PureChatModelDropdown = ({ messageCount = 0 }: ChatModelDropdownProps) => 
                               key={model}
                               onClick={() => handleModelSelect(model)}
                               className={cn(
-                                'relative flex flex-col items-center justify-center p-3 rounded-xl border-2 cursor-pointer group h-20 hover:scale-[1.05] hover:shadow-lg transition-all',
+                                'relative flex flex-col items-center justify-center p-3 rounded-xl border-2 cursor-pointer group min-h-[80px] w-full transition-colors',
                                 selectedModel === model
                                   ? 'border-primary bg-primary/10 shadow-md'
                                   : 'border-border/60 hover:border-primary/40 hover:bg-accent',
                                 !enabled && 'bg-muted/50 border-muted-foreground/20 opacity-60'
                               )}
                             >
-                              <div className="mb-1 opacity-70 group-hover:opacity-100 transition-opacity">
+                              <div className="mb-2 opacity-70 group-hover:opacity-100 transition-opacity flex-shrink-0">
                                 {getProviderIcon(model)}
                               </div>
-                              <div className="text-xs font-medium text-center leading-tight">{model}</div>
+                              <div className="text-xs font-medium text-center leading-tight w-full px-1 break-words">{model}</div>
                               {!enabled && (
-                                <div className="text-xs text-muted-foreground/70 text-center mt-1">
+                                <div className="text-xs text-muted-foreground/70 text-center mt-1 w-full">
                                   No API key
                                 </div>
                               )}
@@ -398,22 +403,21 @@ const PureChatModelDropdown = ({ messageCount = 0 }: ChatModelDropdownProps) => 
                                 variant="ghost"
                                 size="icon"
                                 className={cn(
-                                  'absolute top-0.5 right-0.5 w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity',
+                                  'absolute top-1 right-1 w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity',
                                   isFav && 'hidden'
                                 )}
                                 onClick={(e) => handleToggleFavorite(model, e)}
                               >
-                                <Star className="w-2.5 h-2.5 text-muted-foreground hover:text-yellow-500" />
+                                <Star className="w-2 h-2 text-muted-foreground hover:text-yellow-500" />
                               </Button>
                               {selectedModel === model && (
-                                <div className="absolute top-0.5 left-0.5">
+                                <div className="absolute top-1 left-1">
                                   <Check className="w-3 h-3 text-primary" />
                                 </div>
                               )}
                             </div>
                           );
                         })}
-                      </div>
                     </div>
                   </div>
                 )}
@@ -624,11 +628,15 @@ function PureChatInput({
       // 2. Если тред новый, обновляем состояние без редиректа
       if (!isConvexId(threadId)) {
         onThreadCreated?.(ensuredThreadId);
+        // Сохраняем ID нового чата сразу в localStorage
         saveLastChatId(ensuredThreadId);
         // Обновляем URL плавно без перезагрузки страницы (только на клиенте)
         if (typeof window !== 'undefined') {
           window.history.replaceState(null, '', `/chat/${ensuredThreadId}`);
         }
+      } else {
+        // Для существующих чатов тоже обновляем lastChatId
+        saveLastChatId(threadId);
       }
 
       // 3. Сохраняем текст сообщения в БД СРАЗУ, чтобы порядок (user → assistant) был корректным
@@ -750,7 +758,16 @@ function PureChatInput({
         }
       }
 
-      // 7. Теперь, когда файлы загружены и привязаны к сообщению (или их не было), отправляем запрос к LLM
+      // 7. Генерация заголовка в фоне для нового чата (СРАЗУ, параллельно с LLM запросом)
+      const isNewChat = !isConvexId(threadId);
+      if (isNewChat) {
+        // Запускаем генерацию заголовка в фоне, не ждем результата
+        complete(finalMessage, {
+          body: { threadId: ensuredThreadId, messageId: dbMsgId, isTitle: true },
+        });
+      }
+
+      // 8. Теперь, когда файлы загружены и привязаны к сообщению (или их не было), отправляем запрос к LLM
       const attachmentsForUI = savedAttachments.map((a) => ({
         id: a.id,
         url: a.url ?? '',
@@ -783,7 +800,7 @@ function PureChatInput({
         }
       );
 
-      // 8. Добавляем файлы в recent ТОЛЬКО после успешной отправки
+      // 9. Добавляем файлы в recent ТОЛЬКО после успешной отправки
       if (localAttachments.length > 0) {
         localAttachments.forEach(attachment => {
           const success = addFileToRecent(attachment.file);
@@ -793,7 +810,7 @@ function PureChatInput({
         });
       }
 
-      // 9. Обновляем записи в Recent Files с информацией о загруженных файлах
+      // 10. Обновляем записи в Recent Files с информацией о загруженных файлах
       if (savedAttachments.length > 0) {
         savedAttachments.forEach((savedAttachment, index) => {
           // Находим соответствующий локальный файл по индексу или имени/типу/размеру
@@ -825,14 +842,7 @@ function PureChatInput({
         });
       }
 
-      // 10. UI обновится автоматически через useConvexMessages после добавления в DB
-
-      // 11. Генерация заголовка в фоне для нового чата
-      if (!isConvexId(threadId)) {
-        complete(finalMessage, {
-          body: { threadId: ensuredThreadId, messageId: dbMsgId, isTitle: true },
-        });
-      }
+      // 11. UI обновится автоматически через useConvexMessages после добавления в DB
 
     } catch (error) {
       toast.error('Failed to send message.');
