@@ -43,8 +43,9 @@ export default function Page() {
     }
 
     // Если пользователь не авторизован, скрываем глобальный лоадер
-    if (!user && !loading && typeof window !== 'undefined' && (window as any).__hideGlobalLoader) {
-      (window as any).__hideGlobalLoader();
+    if (!user && !loading && typeof window !== 'undefined') {
+      const globalWindow = window as typeof window & { __hideGlobalLoader?: () => void };
+      globalWindow.__hideGlobalLoader?.();
     }
   }, [user, loading, mounted, hasRedirected, router, isMobile]);
 
