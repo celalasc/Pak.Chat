@@ -9,7 +9,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from '@/components/ui/drawer';
 import { useAttachmentsStore } from '../stores/AttachmentsStore';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -38,6 +46,7 @@ export default function RecentFilesDropdown({ children, onFileSelect, messageCou
   const { add, addRemote } = useAttachmentsStore();
   const [recentFiles, setRecentFiles] = useState<RecentFile[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const { isMobile } = useIsMobile();
 
   // Мемоизируем отображаемые файлы для предотвращения ререндеров
   const displayedFiles = useMemo(() => 
@@ -256,6 +265,128 @@ export default function RecentFilesDropdown({ children, onFileSelect, messageCou
     return 'FILE';
   }, []);
 
+  // Компонент для отображения файлов (общий для мобильной и десктопной версий)
+  const renderFilesList = () => (
+    displayedFiles.length === 0 ? (
+      <div className="flex flex-col items-center justify-center py-8 text-center">
+        <Clock className="w-8 h-8 text-muted-foreground mb-2" />
+        <p className="text-sm text-muted-foreground">No recent files</p>
+      </div>
+    ) : (
+      <div className={cn("space-y-1", isMobile && "space-y-2")}>
+        <div className={cn(
+          "flex items-center gap-2 px-2 py-1 text-xs font-semibold text-muted-foreground/80 uppercase tracking-wide",
+          isMobile && "px-4 py-2"
+        )}>
+          <Clock className="w-3 h-3" />
+          Recent Files
+        </div>
+        {displayedFiles.map((file) => {
+          const IconComponent = getFileIcon(file.type, file.name);
+          const iconColor = getFileColor(file.type, file.name);
+          const fileTypeLabel = getFileTypeLabel(file.type, file.name);
+          
+          const fileItem = (
+            <div
+              key={file.id}
+              className={cn(
+                "flex items-center gap-3 cursor-pointer group rounded-xl transition-all duration-200",
+                isMobile 
+                  ? "p-4 hover:bg-accent active:bg-accent/80 active:scale-[0.98]" 
+                  : "p-3 hover:scale-[1.02] hover:shadow-sm focus:bg-accent"
+              )}
+              onClick={() => handleFileSelect(file)}
+            >
+              {/* File Icon/Preview */}
+              <div className="flex-shrink-0 relative">
+                <div className={cn(
+                  "bg-muted rounded-xl border border-border flex flex-col items-center justify-center relative",
+                  isMobile ? "w-12 h-12" : "w-10 h-10"
+                )}>
+                  <IconComponent className={cn(isMobile ? "w-6 h-6" : "w-5 h-5", iconColor)} />
+                  {/* Тип файла */}
+                  <div className="absolute -bottom-1 -right-1 bg-background border border-border rounded px-1 text-[10px] font-medium text-muted-foreground">
+                    {fileTypeLabel}
+                  </div>
+                </div>
+              </div>
+
+              {/* File Info */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <p className={cn(
+                    "font-medium truncate pr-2",
+                    isMobile ? "text-base" : "text-sm"
+                  )}>
+                    {file.name}
+                  </p>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      "transition-all duration-200 flex-shrink-0",
+                      isMobile 
+                        ? "w-8 h-8 opacity-100" 
+                        : "w-6 h-6 opacity-0 group-hover:opacity-100 hover:scale-110"
+                    )}
+                    onClick={(e) => removeFromRecent(file.id, e)}
+                  >
+                    <X className={cn(isMobile ? "w-4 h-4" : "w-3 h-3")} />
+                  </Button>
+                </div>
+                <div className={cn(
+                  "flex items-center gap-2 text-muted-foreground",
+                  isMobile ? "text-sm" : "text-xs"
+                )}>
+                  <span>{formatFileSize(file.size)}</span>
+                  <span>•</span>
+                  <span>{formatDate(file.lastUsed)}</span>
+                </div>
+              </div>
+            </div>
+          );
+
+          return isMobile ? fileItem : (
+            <DropdownMenuItem key={file.id} className="p-0" asChild>
+              {fileItem}
+            </DropdownMenuItem>
+          );
+        })}
+      </div>
+    )
+  );
+
+  // Мобильная версия с Drawer
+  if (isMobile) {
+    return (
+      <Drawer open={isOpen} onOpenChange={setIsOpen}>
+        <DrawerTrigger asChild>
+          {children}
+        </DrawerTrigger>
+        <DrawerContent className="max-h-[80vh] flex flex-col">
+          {/* Pull handle */}
+          <div className="flex justify-center pt-2 pb-1 flex-shrink-0">
+            <div className="w-12 h-1 bg-muted-foreground/30 rounded-full" />
+          </div>
+          
+          {/* Header */}
+          <DrawerHeader className="pb-3 flex-shrink-0">
+            <DrawerTitle className="flex items-center gap-2 text-lg">
+              <Clock className="h-5 w-5" />
+              Recent Files
+            </DrawerTitle>
+          </DrawerHeader>
+          
+          {/* Content */}
+          <div className="flex-1 min-h-0 px-2 pb-safe overflow-y-auto scrollbar-none">
+            {renderFilesList()}
+          </div>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  // Десктопная версия с DropdownMenu
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
@@ -270,63 +401,7 @@ export default function RecentFilesDropdown({ children, onFileSelect, messageCou
         sideOffset={8}
         alignOffset={0}
       >
-        {displayedFiles.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <Clock className="w-8 h-8 text-muted-foreground mb-2" />
-            <p className="text-sm text-muted-foreground">No recent files</p>
-          </div>
-        ) : (
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 px-2 py-1 text-xs font-semibold text-muted-foreground/80 uppercase tracking-wide">
-              <Clock className="w-3 h-3" />
-              Recent Files
-            </div>
-            {displayedFiles.map((file) => {
-              const IconComponent = getFileIcon(file.type, file.name);
-              const iconColor = getFileColor(file.type, file.name);
-              const fileTypeLabel = getFileTypeLabel(file.type, file.name);
-              
-              return (
-                <DropdownMenuItem
-                  key={file.id}
-                  className="flex items-center gap-3 p-3 cursor-pointer focus:bg-accent group rounded-xl transition-all duration-200 hover:scale-[1.02] hover:shadow-sm"
-                  onClick={() => handleFileSelect(file)}
-                >
-                  {/* File Icon/Preview */}
-                  <div className="flex-shrink-0 relative">
-                    <div className="w-10 h-10 bg-muted rounded-xl border border-border flex flex-col items-center justify-center relative">
-                      <IconComponent className={cn("w-5 h-5", iconColor)} />
-                      {/* Тип файла */}
-                      <div className="absolute -bottom-1 -right-1 bg-background border border-border rounded px-1 text-[10px] font-medium text-muted-foreground">
-                        {fileTypeLabel}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* File Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium truncate pr-2">{file.name}</p>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="opacity-0 group-hover:opacity-100 transition-all duration-200 w-6 h-6 flex-shrink-0 hover:scale-110"
-                        onClick={(e) => removeFromRecent(file.id, e)}
-                      >
-                        <X className="w-3 h-3" />
-                      </Button>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span>{formatFileSize(file.size)}</span>
-                      <span>•</span>
-                      <span>{formatDate(file.lastUsed)}</span>
-                    </div>
-                  </div>
-                </DropdownMenuItem>
-              );
-            })}
-          </div>
-        )}
+        {renderFilesList()}
       </DropdownMenuContent>
     </DropdownMenu>
   );
