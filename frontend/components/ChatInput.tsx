@@ -628,11 +628,15 @@ function PureChatInput({
       // 2. Если тред новый, обновляем состояние без редиректа
       if (!isConvexId(threadId)) {
         onThreadCreated?.(ensuredThreadId);
+        // Сохраняем ID нового чата сразу в localStorage
         saveLastChatId(ensuredThreadId);
         // Обновляем URL плавно без перезагрузки страницы (только на клиенте)
         if (typeof window !== 'undefined') {
           window.history.replaceState(null, '', `/chat/${ensuredThreadId}`);
         }
+      } else {
+        // Для существующих чатов тоже обновляем lastChatId
+        saveLastChatId(threadId);
       }
 
       // 3. Сохраняем текст сообщения в БД СРАЗУ, чтобы порядок (user → assistant) был корректным
