@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
         break;
       case 'openai':
         // Применяем reasoningEffort только если он есть в конфигурации модели
-        const openaiConfig: any = {};
+        const openaiConfig: { reasoningEffort?: "low" | "medium" | "high" } = {};
         if (reasoningEffort) {
           openaiConfig.reasoningEffort = reasoningEffort;
         }
