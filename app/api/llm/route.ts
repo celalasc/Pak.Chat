@@ -76,9 +76,12 @@ export async function POST(req: NextRequest) {
         }
         break;
       case 'openai':
-        aiModel = createOpenAI({ apiKey })(modelConfig.modelId, {
-          reasoningEffort: reasoningEffort,
-        });
+        // Применяем reasoningEffort только если он есть в конфигурации модели
+        const openaiConfig: any = {};
+        if (reasoningEffort) {
+          openaiConfig.reasoningEffort = reasoningEffort;
+        }
+        aiModel = createOpenAI({ apiKey })(modelConfig.modelId, openaiConfig);
         break;
       case 'openrouter':
         aiModel = createOpenRouter({ apiKey })(modelConfig.modelId);

@@ -9,6 +9,7 @@ import ConvexClientProvider from '@/frontend/components/ConvexClientProvider';
 import UserSync from '@/frontend/components/UserSync';
 import PWAInstallPrompt from '@/frontend/components/PWAInstallPrompt';
 import MobileEnhancements from '@/frontend/components/MobileEnhancements';
+import ClientScripts from '@/frontend/components/ClientScripts';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,33 +52,14 @@ export default function RootLayout({
         {/* Полноэкранный режим */}
         <meta name="apple-touch-fullscreen" content="yes" />
         <meta name="mobile-web-app-status-bar-style" content="black-translucent" />
-        {/* Устанавливаем класc темы до загрузки React, чтобы избежать мигания света/темноты */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark');}else{document.documentElement.classList.remove('dark');}}catch(e){}})();`,
-          }}
-        />
         
-        {/* Регистрация Service Worker для PWA */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js')
-                    .then(function(registration) {
-                      console.log('SW registered: ', registration);
-                    })
-                    .catch(function(registrationError) {
-                      console.log('SW registration failed: ', registrationError);
-                    });
-                });
-              }
-            `,
-          }}
-        />
+        {/* Theme initialization script - static to avoid hydration issues */}
+        <script suppressHydrationWarning dangerouslySetInnerHTML={{
+          __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark');}else{document.documentElement.classList.remove('dark');}}catch(e){}})();`
+        }} />
       </head>
       <body suppressHydrationWarning className="antialiased font-sans font-mono">
+        <ClientScripts />
         <Suspense fallback={null}>
           <ConvexClientProvider>
             <Providers>
