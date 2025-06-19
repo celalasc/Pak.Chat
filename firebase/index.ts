@@ -22,7 +22,8 @@ try {
     // Provide an empty object during build when env vars are missing
     auth = {} as Auth;
   }
-} catch {
+} catch (error) {
+  console.error('Firebase initialization error:', error);
   auth = {} as Auth;
 }
 
