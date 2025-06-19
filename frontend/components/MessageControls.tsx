@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { Check, Copy, RefreshCcw, SquarePen, GitBranch } from 'lucide-react';
 import { UIMessage } from 'ai';
 import { UseChatHelpers } from '@ai-sdk/react';
+import { copyText } from '@/lib/copyText';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 import { useModelStore } from '@/frontend/stores/ModelStore';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
@@ -73,7 +74,7 @@ export default function MessageControls({
 
   // Copy message contents to clipboard.
   const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(content);
+    copyText(content);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }, [content]);

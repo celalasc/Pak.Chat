@@ -56,6 +56,7 @@ export default function ScrollToBottomButton({
         className
       )}
       onClick={scrollToBottom}
+      style={{ touchAction: 'manipulation' }}
       {...props}
     >
       <ChevronDown className="h-4 w-4" />

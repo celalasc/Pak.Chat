@@ -48,6 +48,7 @@ import { toast } from 'sonner';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { Switch } from '@/frontend/components/ui/switch';
 import { CustomSwitch } from '@/frontend/components/ui/custom-switch';
+import { copyText } from '@/lib/copyText';
 
 interface SettingsDrawerProps {
   children: React.ReactNode;
@@ -707,7 +708,7 @@ const ApiKeyField = ({
   const handleCopy = useCallback(async () => {
     if (inputValue.trim()) {
       try {
-        await navigator.clipboard.writeText(inputValue.trim());
+        await copyText(inputValue.trim());
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       } catch (err) {
