@@ -9,7 +9,7 @@ import AppShellSkeleton from '@/frontend/components/AppShellSkeleton';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 
 export default function Page() {
-  const { user, loading, login } = useAuthStore();
+  const { user, loading, loginWithPopup } = useAuthStore();
   const router = useRouter();
   const { isMobile, mounted } = useIsMobile();
   const [hasRedirected, setHasRedirected] = useState(false);
@@ -65,7 +65,7 @@ export default function Page() {
         Your high-performance LLM application.
       </p>
 
-      <Button size="lg" onClick={login} disabled={loading} className="mt-4">
+      <Button size="lg" onClick={loginWithPopup} disabled={loading} className="mt-4">
         Sign In with Google to Continue
       </Button>
     </main>

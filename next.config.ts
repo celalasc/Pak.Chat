@@ -62,6 +62,10 @@ const nextConfig = {
             key: 'Cross-Origin-Embedder-Policy',
             value: 'unsafe-none',
           },
+          {
+            key: 'Content-Security-Policy',
+            value: "frame-ancestors 'self' https://*.google.com https://*.googleapis.com https://accounts.google.com;",
+          },
         ],
       },
     ];
