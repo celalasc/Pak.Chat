@@ -91,14 +91,14 @@ export default function ChatNavigationBars({ messages, scrollToMessage, currentM
   }
 
   return (
-    <div 
-      ref={sidebarRef} 
-      className="fixed left-0 top-0 w-20 h-full flex flex-col items-start justify-center py-4 pl-3 z-30"
+    <div
+      ref={sidebarRef}
+      className="fixed left-0 top-0 w-20 h-full flex flex-col items-start justify-center py-4 pl-3 z-30 pointer-events-none"
       onMouseLeave={handleMouseLeave}
     >
       {isHovered ? (
         // Плитка при наведении в стиле Notion
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-2 min-w-[200px] max-w-[280px]">
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-2 min-w-[200px] max-w-[280px] pointer-events-auto">
           {userMessages.map((message, index) => {
             const messageTitle = getMessageTitle(message.content)
             const isCurrentHovered = hoveredMessageId === message.id
@@ -132,9 +132,9 @@ export default function ChatNavigationBars({ messages, scrollToMessage, currentM
         </div>
       ) : (
         // Полоски в стиле Notion с прокруткой при большом количестве сообщений
-        <div 
+        <div
           ref={scrollContainerRef}
-          className="flex flex-col items-start space-y-1.5 max-h-[70vh] overflow-y-auto scrollbar-none"
+          className="flex flex-col items-start space-y-1.5 max-h-[70vh] overflow-y-auto scrollbar-none pointer-events-auto"
         >
           {userMessages.map((message) => {
             const barLength = getBarLength(message.content.length)
