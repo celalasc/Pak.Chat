@@ -751,12 +751,17 @@ function PureChatInput({
       }
 
       // 7. Теперь, когда файлы загружены и привязаны к сообщению (или их не было), отправляем запрос к LLM
+      const attachmentsForUI = savedAttachments.map((a) => ({
+        id: a.id,
+        url: a.url ?? '',
+        name: a.name,
+        type: a.type,
+        ext: a.name.split('.').pop() ?? '',
+        size: a.size,
+      }));
+
       append(
-        {
-          id: dbMsgId,
-          role: 'user',
-          content: finalMessage,
-        } as any,
+        createUserMessage(dbMsgId, finalMessage, attachmentsForUI),
         {
           body: {
             model: selectedModel,
