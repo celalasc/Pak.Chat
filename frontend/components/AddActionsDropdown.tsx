@@ -14,6 +14,7 @@ import DrawingCanvas from './DrawingCanvas';
 import RecentFilesDropdown from './RecentFilesDropdown';
 import { toast } from 'sonner';
 import { convertToSupportedImage } from '../lib/fileHelpers';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 interface AddActionsDropdownProps {
   className?: string;
@@ -24,6 +25,7 @@ export default function AddActionsDropdown({ className, messageCount = 0 }: AddA
   const { add } = useAttachmentsStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDrawingOpen, setIsDrawingOpen] = useState(false);
+  const { isMobile } = useIsMobile();
 
   const handleFileClick = () => {
     fileInputRef.current?.click();
@@ -90,7 +92,12 @@ export default function AddActionsDropdown({ className, messageCount = 0 }: AddA
           
           <div className="relative">
             <RecentFilesDropdown messageCount={messageCount}>
-              <DropdownMenuItem className="flex items-center gap-2 justify-between cursor-pointer">
+              <DropdownMenuItem
+                onSelect={e => {
+                  if (isMobile) e.preventDefault();
+                }}
+                className="flex items-center gap-2 justify-between cursor-pointer"
+              >
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4" />
                   Recent
