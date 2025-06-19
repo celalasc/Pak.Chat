@@ -558,17 +558,28 @@ function PureChatInput({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { selectedModel, webSearchEnabled } = useModelStore();
 
+  // ИСПРАВЛЕНИЕ: Локальное состояние для отслеживания созданного треда в сессии
+  const [sessionThreadId, setSessionThreadId] = useState<string | null>(null);
+
   // Initialize input from server-side draft when thread changes
   useEffect(() => {
     const initialText = thread?.draft ?? '';
     setInput(initialText);
     adjustHeight();
+    
+    // ИСПРАВЛЕНИЕ: Сбрасываем sessionThreadId при смене треда
+    if (isConvexId(threadId)) {
+      setSessionThreadId(threadId);
+    } else {
+      setSessionThreadId(null);
+    }
   }, [threadId, thread, setInput, adjustHeight]);
 
   // Debounced draft saver to reduce server load
   const debouncedSaveDraft = useDebouncedCallback((draftText: string) => {
-    if (isConvexId(threadId)) {
-      saveDraftMutation({ threadId: threadId as Id<'threads'>, draft: draftText });
+    const currentThreadId = sessionThreadId || threadId;
+    if (isConvexId(currentThreadId)) {
+      saveDraftMutation({ threadId: currentThreadId as Id<'threads'>, draft: draftText });
     }
   }, 500);
   
@@ -618,16 +629,27 @@ function PureChatInput({
         return;
       }
 
-      // 1. Если это черновик, создаем тред заранее и сразу приводим тип
-      const ensuredThreadId: Id<'threads'> = isConvexId(threadId)
-        ? (threadId as Id<'threads'>)
-        : await createThread({
-            title: finalMessage.slice(0, 30) || 'New Chat',
-          });
-
-      // 2. Если тред новый, обновляем состояние без редиректа
-      if (!isConvexId(threadId)) {
+      // ИСПРАВЛЕНИЕ: Используем sessionThreadId если доступен, иначе создаем новый тред
+      let ensuredThreadId: Id<'threads'>;
+      
+      if (sessionThreadId && isConvexId(sessionThreadId)) {
+        // Используем уже созданный тред из сессии
+        ensuredThreadId = sessionThreadId as Id<'threads'>;
+      } else if (isConvexId(threadId)) {
+        // Используем существующий тред
+        ensuredThreadId = threadId as Id<'threads'>;
+      } else {
+        // Создаем новый тред только если его еще нет
+        ensuredThreadId = await createThread({
+          title: finalMessage.slice(0, 30) || 'New Chat',
+        });
+        
+        // Сохраняем созданный тред в сессии
+        setSessionThreadId(ensuredThreadId);
+        
+        // Уведомляем родительский компонент
         onThreadCreated?.(ensuredThreadId);
+        
         // Обновляем URL плавно без перезагрузки страницы (только на клиенте)
         if (typeof window !== 'undefined') {
           window.history.replaceState(null, '', `/chat/${ensuredThreadId}`);
@@ -756,7 +778,7 @@ function PureChatInput({
       }
 
       // 7. Генерация заголовка в фоне для нового чата (СРАЗУ, параллельно с LLM запросом)
-      const isNewChat = !isConvexId(threadId);
+      const isNewChat = !isConvexId(threadId) && !sessionThreadId;
       if (isNewChat) {
         // Запускаем генерацию заголовка в фоне, не ждем результата
         complete(finalMessage, {
@@ -862,6 +884,7 @@ function PureChatInput({
     isDisabled,
     input,
     threadId,
+    sessionThreadId, // ДОБАВЛЕНО В ЗАВИСИМОСТИ
     attachments,
     currentQuote,
     setInput,
