@@ -12,6 +12,7 @@ export function useModelVisibilitySync() {
   } = store();
 
   const isSavingRef = useRef(false);
+  const hasInitializedRef = useRef(false);
 
   // Fetch model visibility settings from Convex
   const visibilityData = useQuery(
@@ -20,18 +21,27 @@ export function useModelVisibilitySync() {
   );
   const saveVisibility = useMutation(api.modelVisibility.setModelVisibility);
 
+  // Set loading state when starting
+  useEffect(() => {
+    if (isAuthenticated && !hasInitializedRef.current) {
+      setLoading(true);
+    }
+  }, [isAuthenticated, setLoading]);
+
   // Sync data from Convex to local store
   useEffect(() => {
     if (visibilityData) {
       syncWithConvex(visibilityData);
+      hasInitializedRef.current = true;
     } else if (visibilityData === null) {
       setLoading(false);
+      hasInitializedRef.current = true;
     }
   }, [visibilityData, syncWithConvex, setLoading]);
 
   // Save changes to Convex immediately without debouncing
   const saveToConvex = useCallback(async () => {
-    if (!isAuthenticated || isSavingRef.current) return;
+    if (!isAuthenticated || isSavingRef.current || !hasInitializedRef.current) return;
 
     const { favoriteModels, enabledProviders, selectedModel } = store.getState();
 
@@ -53,13 +63,14 @@ export function useModelVisibilitySync() {
   useEffect(() => {
     return () => {
       isSavingRef.current = false;
+      hasInitializedRef.current = false;
     };
   }, []);
 
   // Auto-persist изменения сразу без дебаунса
   useEffect(() => {
     const unsubscribe = useModelVisibilityStore.subscribe((state, prevState) => {
-      if (isAuthenticated && !isSavingRef.current) {
+      if (isAuthenticated && !isSavingRef.current && hasInitializedRef.current) {
         // Проверяем что действительно изменились нужные нам поля
         const hasChanges = 
           state.favoriteModels !== prevState.favoriteModels ||

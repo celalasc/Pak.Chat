@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { auth } from '@/firebase';
 import { useSettingsStore } from './SettingsStore';
 import { clearLastChatId } from '@/frontend/lib/lastChat';
+import { useModelVisibilityStore } from './ModelVisibilityStore';
 
 interface AuthState {
   user: User | null;
@@ -42,6 +43,13 @@ export const useAuthStore = create<AuthState>((set) => {
       try {
         await signOut(auth);
         clearLastChatId();
+        // Clear model visibility data to prevent data leakage between users
+        useModelVisibilityStore.setState({
+          favoriteModels: [],
+          enabledProviders: ['google', 'openrouter', 'openai', 'groq'],
+          selectedModel: 'Gemini 2.5 Flash',
+          loading: false,
+        });
       } catch {
         /* ignore logout failure */
       }
