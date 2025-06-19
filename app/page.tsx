@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/frontend/stores/AuthStore';
 import { Button } from '@/frontend/components/ui/button';
-import { getLastChatId, getLastPath, isReload, saveLastPath } from '@/frontend/lib/lastChat';
+import { getLastPath, isReload, saveLastPath } from '@/frontend/lib/lastChat';
 import AppShellSkeleton from '@/frontend/components/AppShellSkeleton';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 
@@ -22,8 +22,8 @@ export default function Page() {
       setIsInitialized(true);
       
       // Если пользователь не авторизован, скрываем глобальный лоадер
-      if (!user && typeof window !== 'undefined' && (window as any).__hideGlobalLoader) {
-        (window as any).__hideGlobalLoader();
+      if (!user && typeof window !== 'undefined' && window.__hideGlobalLoader) {
+        window.__hideGlobalLoader();
       }
     }
   }, [mounted, loading, isInitialized, user]);

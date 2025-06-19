@@ -21,8 +21,8 @@ export default function NewChatPage() {
   useEffect(() => {
     // Скрываем глобальный лоадер когда страница готова
     if (isAuthenticated && !isLoading) {
-      if (typeof window !== 'undefined' && (window as any).__hideGlobalLoader) {
-        (window as any).__hideGlobalLoader();
+      if (typeof window !== 'undefined' && window.__hideGlobalLoader) {
+        window.__hideGlobalLoader();
       }
       // Сохраняем текущий путь
       saveLastPath('/chat');
