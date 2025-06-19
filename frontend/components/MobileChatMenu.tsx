@@ -5,6 +5,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { MoreHorizontal, Share2, Edit2, Trash2, Pin, PinOff, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { copyText } from '@/lib/copyText';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
@@ -95,7 +96,7 @@ export default function MobileChatMenu({ threadId, className }: MobileChatMenuPr
 
   const copyShareLink = () => {
     if (shareLink) {
-      navigator.clipboard.writeText(shareLink);
+      copyText(shareLink);
     }
   };
 

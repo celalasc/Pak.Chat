@@ -12,6 +12,7 @@ import SelectableText from "./SelectableText";
 import QuotedMessage from "./QuotedMessage";
 import { Button } from "./ui/button";
 import { Check, Copy, GitBranch } from "lucide-react";
+import { copyText } from '@/lib/copyText';
 import { useMutation, useQuery as useConvexQuery } from "convex/react";
 import { isConvexId } from "@/lib/ids";
 import { useRouter } from "next/navigation";
@@ -54,7 +55,7 @@ const PreviewMessageControls = memo(
     const router = useRouter();
 
     const handleCopy = () => {
-      navigator.clipboard.writeText(content);
+      copyText(content);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     };

@@ -8,6 +8,7 @@ import type { ComponentProps } from 'react';
 import type { ExtraProps } from 'react-markdown';
 import { Check, Copy, Download } from 'lucide-react';
 import { useCallback } from 'react';
+import { copyText } from '@/lib/copyText';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 
@@ -67,7 +68,7 @@ function Codebar({ lang, codeString }: { lang: string; codeString: string }) {
 
   const copyToClipboard = async () => {
     try {
-      await navigator.clipboard.writeText(codeString);
+      await copyText(codeString);
       setCopied(true);
       setTimeout(() => {
         setCopied(false);

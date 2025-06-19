@@ -255,14 +255,9 @@
     padding-right: env(safe-area-inset-right);
   }
   
-  /* Предотвращение выделения текста на мобильных (кроме текстовых полей) */
+  /* Разрешаем выделение текста на мобильных устройствах */
   html {
     -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    -khtml-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
   }
   
   /* Разрешаем выделение в текстовых полях */
