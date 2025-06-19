@@ -27,7 +27,14 @@ const EXTRA_TEXT_MIME_TYPES = new Set([
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, model, apiKeys, threadId, search } = await req.json();
+    const {
+      messages,
+      model,
+      apiKeys,
+      threadId,
+      search,
+      attachments: requestAttachments,
+    } = await req.json();
 
     if (!threadId && messages.length > 1) {
       return NextResponse.json(
@@ -79,6 +86,15 @@ export async function POST(req: NextRequest) {
       } catch (e) {
         console.error('Attachment fetch failed:', e);
       }
+    }
+
+    // Include attachments passed directly in the request to avoid race conditions
+    if (Array.isArray(requestAttachments)) {
+      const map = new Map(attachments.map((a) => [a.id, a]));
+      for (const att of requestAttachments as Attachment[]) {
+        map.set(att.id, att);
+      }
+      attachments = Array.from(map.values());
     }
 
     // Преобразуем сообщения в формат Google AI
