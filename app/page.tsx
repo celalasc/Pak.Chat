@@ -9,30 +9,17 @@ import AppShellSkeleton from '@/frontend/components/AppShellSkeleton';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 
 export default function Page() {
-  const { user, loading, login } = useAuthStore();
+  const { user, loading, loginWithPopup } = useAuthStore();
   const router = useRouter();
   const { isMobile, mounted } = useIsMobile();
-  const [isRedirecting, setIsRedirecting] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [hasRedirected, setHasRedirected] = useState(false);
 
   useEffect(() => {
-    // Помечаем что компонент инициализирован
-    if (!isInitialized && mounted && !loading) {
-      setIsInitialized(true);
-      
-      // Если пользователь не авторизован, скрываем глобальный лоадер
-      if (!user && typeof window !== 'undefined' && window.__hideGlobalLoader) {
-        window.__hideGlobalLoader();
-      }
-    }
-  }, [mounted, loading, isInitialized, user]);
+    if (loading || !mounted) return;
 
-  useEffect(() => {
-    if (!isInitialized || loading) return;
-
-    if (user && !isRedirecting) {
-      console.log('User authenticated, starting redirect...');
-      setIsRedirecting(true);
+    if (user && !hasRedirected) {
+      console.log('User authenticated, redirecting...');
+      setHasRedirected(true);
       
       const lastChatId = getLastChatId();
       const lastPath = getLastPath();
@@ -54,14 +41,19 @@ export default function Page() {
         router.replace(targetPath);
       }
     }
-  }, [user, router, isInitialized, loading, isRedirecting, isMobile]);
 
-  // Показываем скелет во время инициализации или загрузки
-  if (loading || !isInitialized) {
+    // Если пользователь не авторизован, скрываем глобальный лоадер
+    if (!user && !loading && typeof window !== 'undefined' && (window as any).__hideGlobalLoader) {
+      (window as any).__hideGlobalLoader();
+    }
+  }, [user, loading, mounted, hasRedirected, router, isMobile]);
+
+  // Показываем скелет во время загрузки
+  if (loading || !mounted) {
     return <AppShellSkeleton />;
   }
 
-  // Если пользователь авторизован, показываем скелет пока идет перенаправление
+  // Если пользователь авторизован, показываем скелет
   if (user) {
     return <AppShellSkeleton />;
   }
@@ -73,7 +65,7 @@ export default function Page() {
         Your high-performance LLM application.
       </p>
 
-      <Button size="lg" onClick={login} disabled={loading} className="mt-4">
+      <Button size="lg" onClick={loginWithPopup} disabled={loading} className="mt-4">
         Sign In with Google to Continue
       </Button>
     </main>
