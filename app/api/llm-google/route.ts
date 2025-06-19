@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
         if (a.messageId === message.id) return true;
         
         if (!a.messageId && message.role === 'user') {
-          const userMessages = messages.filter((m: any) => m.role === 'user');
+          const userMessages = messages.filter((m: { id: string; role: string; content: string }) => m.role === 'user');
           const lastUserMessage = userMessages[userMessages.length - 1];
           return message.id === lastUserMessage.id;
         }
