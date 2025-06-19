@@ -41,8 +41,8 @@ export default function HomePage() {
   useEffect(() => {
     // Скрываем глобальный лоадер когда страница готова
     if (mounted && isAuthenticated && !isLoading) {
-      if (typeof window !== 'undefined' && (window as any).__hideGlobalLoader) {
-        (window as any).__hideGlobalLoader();
+      if (typeof window !== 'undefined' && window.__hideGlobalLoader) {
+        window.__hideGlobalLoader();
       }
       // Сохраняем текущий путь
       saveLastPath('/home');
