@@ -7,6 +7,11 @@ import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { Button } from '@/frontend/components/ui/button';
 import { getLastChatId } from '@/frontend/lib/lastChat';
 
+// Determines if the current navigation was triggered by a page reload
+const isReload =
+  typeof window !== 'undefined' &&
+  performance.getEntriesByType('navigation')[0]?.type === 'reload';
+
 export default function IndexPage() {
   const { user, loading, login } = useAuthStore();
   const router = useRouter();
@@ -15,10 +20,12 @@ export default function IndexPage() {
   useEffect(() => {
     // Ждем пока mounted станет true, чтобы избежать неправильного перенаправления
     if (!loading && user && mounted) {
-      const lastId = getLastChatId();
-      if (lastId) {
-        router.push(`/chat/${lastId}`);
-        return;
+      if (isReload) {
+        const lastId = getLastChatId();
+        if (lastId) {
+          router.push(`/chat/${lastId}`);
+          return;
+        }
       }
       // ПК - сразу в чат, мобильные - в home с историей
       router.push(isMobile ? '/home' : '/chat');
