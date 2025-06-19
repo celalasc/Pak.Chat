@@ -304,8 +304,9 @@ export default function MessageEditor({
       uploadedFiles.push(...reusedFiles);
 
       // Сохраняем метаданные вложений в БД
+      let savedAttachments: any[] = [];
       if (uploadedFiles.length > 0) {
-        await saveAttachments({
+        savedAttachments = await saveAttachments({
           threadId: threadId as Id<'threads'>,
           attachments: uploadedFiles,
         });
