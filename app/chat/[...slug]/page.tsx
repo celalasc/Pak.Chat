@@ -116,8 +116,8 @@ function CatchAllChatPageInner({ params }: { params: Promise<{ slug: string[] }>
     if (!isLoading) {
       setIsInitialLoad(false);
       // Скрываем глобальный лоадер когда страница готова
-      if (typeof window !== 'undefined' && (window as any).__hideGlobalLoader) {
-        (window as any).__hideGlobalLoader();
+      if (typeof window !== 'undefined' && window.__hideGlobalLoader) {
+        window.__hideGlobalLoader();
       }
     }
   }, [isLoading]);

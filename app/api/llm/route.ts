@@ -117,8 +117,6 @@ export async function POST(req: NextRequest) {
       messages.map(async (message: { id: string; role: string; content: string }) => {
         // Получаем вложения для сообщения
         const messageAttachments = attachments.filter((a) => {
-          if (!a.url) return false;
-          
           // Если вложение привязано к конкретному сообщению
           if (a.messageId === message.id) return true;
           

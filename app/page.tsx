@@ -21,8 +21,8 @@ export default function Page() {
       setIsInitialized(true);
       
       // Если пользователь не авторизован, скрываем глобальный лоадер
-      if (!user && typeof window !== 'undefined' && (window as any).__hideGlobalLoader) {
-        (window as any).__hideGlobalLoader();
+      if (!user && typeof window !== 'undefined' && window.__hideGlobalLoader) {
+        window.__hideGlobalLoader();
       }
     }
   }, [mounted, loading, isInitialized, user]);
