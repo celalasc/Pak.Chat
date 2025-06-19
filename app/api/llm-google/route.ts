@@ -109,11 +109,13 @@ export async function POST(req: NextRequest) {
 
       // Обрабатываем вложения
       for (const attachment of messageAttachments) {
-        if (!attachment.url) continue;
-
         try {
-          const res = await fetch(attachment.url);
-          if (!res.ok) throw new Error(`Failed to fetch attachment ${attachment.url}`);
+          // Always resolve the original file URL to ensure Gemini receives the full data
+          const fileUrl = await fetchQuery(api.attachments.getUrl, { attachmentId: attachment.id });
+          if (!fileUrl) continue;
+
+          const res = await fetch(fileUrl);
+          if (!res.ok) throw new Error(`Failed to fetch attachment ${fileUrl}`);
 
           const arrayBuffer = await res.arrayBuffer();
           const sizeBytes = arrayBuffer.byteLength;
