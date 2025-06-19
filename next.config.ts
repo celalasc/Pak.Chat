@@ -5,23 +5,45 @@ const require = createRequire(import.meta.url)
 const withAnalyzer = require('@next/bundle-analyzer')({ enabled: process.env.ANALYZE === 'true' });
 const withPWA = require('next-pwa')({ 
   dest: 'public', 
-  disable: process.env.NODE_ENV === 'development',
+  disable: true, // ВРЕМЕННО ОТКЛЮЧАЕМ PWA ПОЛНОСТЬЮ
   sw: 'sw.js',
-  register: false, // Мы регистрируем SW вручную в layout.tsx
+  register: false,
   skipWaiting: true,
   fallbacks: {
     document: '/offline',
   },
-  publicExcludes: ['!sw.js'],
-  buildExcludes: [/middleware-manifest\.json$/],
+  publicExcludes: ['!sw.js', '!workbox-*.js'],
+  buildExcludes: [
+    /middleware-manifest\.json$/,
+    /app-build-manifest\.json$/,
+    /build-manifest\.json$/,
+    /_buildManifest\.js$/,
+    /_ssgManifest\.js$/,
+    /chunks\/.*\.js$/
+  ],
   cacheOnFrontEndNav: true,
   reloadOnOnline: true,
   disableDevLogs: true,
   mode: 'production',
   clientsClaim: true,
-  // skipWaiting defined above
   navigateFallback: '/offline',
-  navigateFallbackDenylist: [/^\/_/, /^\/api/]
+  navigateFallbackDenylist: [/^\/_/, /^\/api/, /^\/favicon\.ico$/, /^\/manifest\.webmanifest$/],
+  // Дополнительные настройки для стабильности
+  scope: '/',
+  runtimeCaching: [
+    {
+      urlPattern: /^https:\/\/.*\.convex\.cloud\/.*/,
+      handler: 'NetworkFirst',
+      options: {
+        cacheName: 'api-cache',
+        networkTimeoutSeconds: 10,
+        expiration: {
+          maxEntries: 100,
+          maxAgeSeconds: 24 * 60 * 60, // 24 часа
+        },
+      },
+    },
+  ],
 });
 
 /** @type {import('next').NextConfig} */

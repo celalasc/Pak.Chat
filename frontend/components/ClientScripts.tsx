@@ -4,6 +4,18 @@ import { useEffect } from 'react';
 
 export default function ClientScripts() {
   useEffect(() => {
+    // ВРЕМЕННО ОТКЛЮЧАЕМ И УДАЛЯЕМ СУЩЕСТВУЮЩИЙ SERVICE WORKER
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        registrations.forEach((registration) => {
+          console.log('Unregistering SW:', registration);
+          registration.unregister();
+        });
+      });
+    }
+    
+    return;
+    
     // Register Service Worker for PWA only in production
     if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
       window.addEventListener('load', () => {
@@ -13,6 +25,7 @@ export default function ClientScripts() {
           })
           .catch((registrationError) => {
             console.log('SW registration failed: ', registrationError);
+            // Тихо игнорируем ошибки PWA в production
           });
       });
     }
