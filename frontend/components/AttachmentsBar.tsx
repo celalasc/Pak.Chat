@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { useAttachmentsStore } from '../stores/AttachmentsStore';
 import AddActionsDropdown from './AddActionsDropdown';
 import FilePreview from './FilePreview';
+import { convertToSupportedImage } from '../lib/fileHelpers';
 
 interface AttachmentsBarProps {
   mode?: 'compact' | 'full';
@@ -38,9 +39,12 @@ export default function AttachmentsBar({ mode = 'full', messageCount = 0 }: Atta
         hidden
         multiple
         accept="image/*,application/pdf,text/*"
-        onChange={(e) => {
+        onChange={async (e) => {
           const files = Array.from(e.target.files ?? []);
-          files.forEach(add);
+          for (const file of files) {
+            const processed = await convertToSupportedImage(file);
+            add(processed);
+          }
           e.target.value = '';
         }}
       />

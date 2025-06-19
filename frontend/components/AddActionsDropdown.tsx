@@ -13,6 +13,7 @@ import { useAttachmentsStore } from '../stores/AttachmentsStore';
 import DrawingCanvas from './DrawingCanvas';
 import RecentFilesDropdown from './RecentFilesDropdown';
 import { toast } from 'sonner';
+import { convertToSupportedImage } from '../lib/fileHelpers';
 
 interface AddActionsDropdownProps {
   className?: string;
@@ -28,9 +29,12 @@ export default function AddActionsDropdown({ className, messageCount = 0 }: AddA
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
-    files.forEach(add);
+    for (const file of files) {
+      const processed = await convertToSupportedImage(file);
+      add(processed);
+    }
     e.target.value = '';
   };
 
