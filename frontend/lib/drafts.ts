@@ -1,6 +1,7 @@
 import type { UIMessage } from 'ai';
 
-const key = (threadId: string) => `draft-${threadId}`;
+// Ensure new chats use a stable key so old drafts don't reappear
+const key = (threadId: string) => `draft-${threadId || 'new'}`;
 
 export function loadDraft(threadId: string): { input: string; messages: UIMessage[] } | null {
   if (typeof window === 'undefined') return null;
