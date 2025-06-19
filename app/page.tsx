@@ -9,10 +9,9 @@ import AppShellSkeleton from '@/frontend/components/AppShellSkeleton';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 
 export default function Page() {
-  const { user, loading, loginWithPopup } = useAuthStore();
+  const { user, loading, login } = useAuthStore();
   const router = useRouter();
   const { isMobile, mounted } = useIsMobile();
-  // Начинаем с false для SSR совместимости
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -29,40 +28,41 @@ export default function Page() {
   }, [mounted, loading, isInitialized, user]);
 
   useEffect(() => {
-    // Обрабатываем перенаправления только после инициализации
-    if (!isInitialized) return;
+    if (!isInitialized || loading) return;
 
-    // Если пользователь не авторизован, просто показываем страницу входа
-    if (!user) {
-      // Сохраняем что мы на странице входа
-      saveLastPath('/');
-      return;
-    }
-
-    // Пользователь авторизован - начинаем перенаправление
-    setIsRedirecting(true);
-    
-    // Проверяем это перезагрузка или новый заход
-    const isPageReload = isReload();
-    const lastPath = getLastPath();
-    
-    if (isPageReload && lastPath) {
-      // При перезагрузке возвращаем на последнюю страницу
-      router.replace(lastPath);
-    } else {
-      // При новом заходе направляем на главную страницу
-      if (isMobile) {
-        router.replace('/home');
-      } else {
-        // Для ПК пока используем /chat как главную
-        // TODO: создать отдельную главную страницу для ПК
-        router.replace('/chat');
+    if (user && !isRedirecting) {
+      console.log('User authenticated, starting redirect...');
+      setIsRedirecting(true);
+      
+      const lastChatId = getLastChatId();
+      const lastPath = getLastPath();
+      
+      // Если это перезагрузка и есть последний путь, переходим туда
+      if (isReload() && lastPath && lastPath !== '/') {
+        console.log('Redirecting to last path:', lastPath);
+        router.replace(lastPath);
+      }
+      // Если есть последний чат, переходим к нему
+      else if (lastChatId) {
+        console.log('Redirecting to last chat:', lastChatId);
+        router.replace(`/chat/${lastChatId}`);
+      }
+      // Иначе переходим на соответствующую главную страницу
+      else {
+        const targetPath = isMobile ? '/home' : '/chat';
+        console.log('Redirecting to:', targetPath);
+        router.replace(targetPath);
       }
     }
-  }, [user, router, isMobile, isInitialized]);
+  }, [user, router, isInitialized, loading, isRedirecting, isMobile]);
 
-  // Показываем загрузчик пока не инициализировано или идет перенаправление
-  if (!isInitialized || isRedirecting) {
+  // Показываем скелет во время инициализации или загрузки
+  if (loading || !isInitialized) {
+    return <AppShellSkeleton />;
+  }
+
+  // Если пользователь авторизован, показываем скелет пока идет перенаправление
+  if (user) {
     return <AppShellSkeleton />;
   }
 
@@ -73,9 +73,10 @@ export default function Page() {
         Your high-performance LLM application.
       </p>
 
-      <Button size="lg" onClick={loginWithPopup} disabled={loading} className="mt-4">
+      <Button size="lg" onClick={login} disabled={loading} className="mt-4">
         Sign In with Google to Continue
       </Button>
     </main>
   );
 }
+
