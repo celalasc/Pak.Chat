@@ -566,14 +566,16 @@ function PureChatInput({
     const initialText = thread?.draft ?? '';
     setInput(initialText);
     adjustHeight();
-    
-    // ИСПРАВЛЕНИЕ: Сбрасываем sessionThreadId при смене треда
+  }, [threadId, thread]);
+
+  // Track the created thread only when the incoming threadId changes
+  useEffect(() => {
     if (isConvexId(threadId)) {
       setSessionThreadId(threadId);
     } else {
       setSessionThreadId(null);
     }
-  }, [threadId, thread, setInput, adjustHeight]);
+  }, [threadId]);
 
   // Debounced draft saver to reduce server load
   const debouncedSaveDraft = useDebouncedCallback((draftText: string) => {
