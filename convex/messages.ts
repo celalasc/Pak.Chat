@@ -123,7 +123,43 @@ export const preview = query({
       .collect();
 
     const decrypted = await Promise.all(
-      msgs.map(async (m) => ({ ...m, content: await tryDecrypt(m.content) }))
+      msgs.map(async (m) => {
+        const attachments = await ctx.db
+          .query("attachments")
+          .withIndex("by_message", (q) => q.eq("messageId", m._id))
+          .collect();
+
+        const attachmentsWithUrls = await Promise.all(
+          attachments.map(async (a) => {
+            let url: string | null = null;
+            if (a.type.startsWith('image/')) {
+              if (a.previewId) {
+                url = await ctx.storage.getUrl(a.previewId);
+              } else {
+                url = await ctx.storage.getUrl(a.fileId);
+              }
+            } else {
+              url = await ctx.storage.getUrl(a.fileId);
+            }
+            return {
+              id: a._id,
+              url,
+              name: a.name,
+              type: a.type,
+              ext: a.name.split('.').pop() ?? '',
+              size: a.size,
+              width: a.width,
+              height: a.height,
+            };
+          })
+        );
+
+        return {
+          ...m,
+          content: await tryDecrypt(m.content),
+          attachments: attachmentsWithUrls,
+        };
+      })
     );
     return decrypted.slice(0, limit ?? 4);
   },

@@ -4,6 +4,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { memo, useState, useMemo } from "react";
+import Image from 'next/image';
 import MarkdownRenderer from "./MemoizedMarkdown";
 import MessageReasoning from "./MessageReasoning";
 import { cn } from "@/lib/utils";
@@ -104,6 +105,14 @@ const PreviewMessage = memo(
     onClose?: () => void;
   }) => {
     const isUser = message.role === "user";
+    const attachments = (message as any).attachments as {
+      id: string;
+      url: string;
+      name: string;
+      type: string;
+      ext?: string;
+      size?: number;
+    }[] | undefined;
 
     // Извлекаем reasoning из сообщения
     const reasoningData = useMemo(() => {
@@ -135,6 +144,32 @@ const PreviewMessage = memo(
       <div className={cn("flex flex-col", isUser ? "items-end mb-2" : "items-start mb-4")}>
         {isUser ? (
           <div className="relative group px-4 py-3 rounded-xl bg-secondary max-w-[85%] break-words mb-2">
+            {attachments && attachments.length > 0 && (
+              <div className="flex gap-2 flex-wrap mb-3">
+                {attachments.map((a, index) =>
+                  a.type.startsWith('image') ? (
+                    <Image
+                      key={`${a.id}-${index}`}
+                      src={a.url}
+                      className="h-16 w-16 rounded object-cover"
+                      alt={a.name}
+                      width={64}
+                      height={64}
+                    />
+                  ) : (
+                    <a
+                      key={`${a.id}-${index}`}
+                      href={a.url}
+                      target="_blank"
+                      className="h-8 w-24 bg-muted rounded flex flex-col items-center justify-center text-[10px] px-1 hover:bg-accent"
+                    >
+                      <span className="line-clamp-1">{a.name}</span>
+                      <span className="text-muted-foreground">{a.ext}</span>
+                    </a>
+                  )
+                )}
+              </div>
+            )}
             <QuotedMessage content={message.content} />
             <PreviewMessageControls
               threadId={threadId}
@@ -160,6 +195,33 @@ const PreviewMessage = memo(
                 <MarkdownRenderer content={message.content} />
               </div>
             </SelectableText>
+
+            {attachments && attachments.length > 0 && (
+              <div className="flex gap-2 flex-wrap mt-2">
+                {attachments.map((a, index) =>
+                  a.type.startsWith('image') ? (
+                    <Image
+                      key={`${a.id}-${index}`}
+                      src={a.url}
+                      className="h-12 w-12 rounded object-cover"
+                      alt={a.name}
+                      width={48}
+                      height={48}
+                    />
+                  ) : (
+                    <a
+                      key={`${a.id}-${index}`}
+                      href={a.url}
+                      target="_blank"
+                      className="h-8 w-24 bg-muted rounded flex flex-col items-center justify-center text-[10px] px-1 hover:bg-accent"
+                    >
+                      <span className="line-clamp-1">{a.name}</span>
+                      <span className="text-muted-foreground">{a.ext}</span>
+                    </a>
+                  )
+                )}
+              </div>
+            )}
 
             <PreviewMessageControls
               threadId={threadId}
