@@ -4,6 +4,7 @@ import { useConvexAuth } from 'convex/react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
+import { saveLastPath } from '@/frontend/lib/lastChat';
 
 export default function NewChatPage() {
   const { isAuthenticated, isLoading } = useConvexAuth();
@@ -16,6 +17,17 @@ export default function NewChatPage() {
       router.replace('/');
     }
   }, [isLoading, isAuthenticated, router]);
+  
+  useEffect(() => {
+    // Скрываем глобальный лоадер когда страница готова
+    if (isAuthenticated && !isLoading) {
+      if (typeof window !== 'undefined' && (window as any).__hideGlobalLoader) {
+        (window as any).__hideGlobalLoader();
+      }
+      // Сохраняем текущий путь
+      saveLastPath('/chat');
+    }
+  }, [isAuthenticated, isLoading]);
 
   // Убираем автоматическое перенаправление - пользователи должны иметь возможность заходить в чат с мобильных
 

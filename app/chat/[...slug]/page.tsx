@@ -9,6 +9,7 @@ import { isConvexId } from '@/lib/ids';
 import Chat from '@/frontend/components/Chat';
 import ErrorBoundary from '@/frontend/components/ErrorBoundary';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
+import { saveLastChatId, saveLastPath } from '@/frontend/lib/lastChat';
 
 function CatchAllChatPageInner({ params }: { params: Promise<{ slug: string[] }> }) {
   const resolvedParams = use(params);
@@ -90,6 +91,13 @@ function CatchAllChatPageInner({ params }: { params: Promise<{ slug: string[] }>
     }
     if (thread === null) {
       router.replace('/chat');
+      return;
+    }
+    
+    // Если чат успешно загружен, сохраняем его как последний
+    if (thread && isValidId) {
+      saveLastChatId(chatId);
+      saveLastPath(`/chat/${chatId}`);
     }
   }, [authLoading, isAuthenticated, isValidId, router, chatId, thread]);
 
@@ -107,6 +115,10 @@ function CatchAllChatPageInner({ params }: { params: Promise<{ slug: string[] }>
   useEffect(() => {
     if (!isLoading) {
       setIsInitialLoad(false);
+      // Скрываем глобальный лоадер когда страница готова
+      if (typeof window !== 'undefined' && (window as any).__hideGlobalLoader) {
+        (window as any).__hideGlobalLoader();
+      }
     }
   }, [isLoading]);
 

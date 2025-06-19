@@ -59,6 +59,25 @@ export default function RootLayout({
         }} />
       </head>
       <body suppressHydrationWarning className="antialiased font-sans font-mono">
+        {/* Глобальный прелоадер для предотвращения миганий */}
+        <div id="global-loader" className="fixed inset-0 bg-background z-[100] flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+        <script dangerouslySetInnerHTML={{
+          __html: `
+            // Скрываем лоадер после инициализации приложения
+            if (typeof window !== 'undefined') {
+              window.__hideGlobalLoader = function() {
+                const loader = document.getElementById('global-loader');
+                if (loader) {
+                  loader.style.transition = 'opacity 200ms ease-out';
+                  loader.style.opacity = '0';
+                  setTimeout(() => loader.remove(), 200);
+                }
+              };
+            }
+          `
+        }} />
         <ClientScripts />
         <Suspense fallback={null}>
           <ConvexClientProvider>

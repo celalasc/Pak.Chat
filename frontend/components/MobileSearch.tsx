@@ -10,6 +10,7 @@ import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useDebounce } from 'use-debounce';
 import type { Id } from '@/convex/_generated/dataModel';
+import { saveLastChatId } from '@/frontend/lib/lastChat';
 
 interface MobileSearchProps {
   isOpen: boolean;

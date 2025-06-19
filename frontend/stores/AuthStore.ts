@@ -2,7 +2,7 @@ import { User, GoogleAuthProvider, signInWithRedirect, signInWithPopup, signOut,
 import { create } from 'zustand';
 import { auth } from '@/firebase';
 import { useSettingsStore } from './SettingsStore';
-import { clearLastChatId } from '@/frontend/lib/lastChat';
+import { clearLastChatId, clearSession } from '@/frontend/lib/lastChat';
 import { useModelVisibilityStore } from './ModelVisibilityStore';
 
 interface AuthState {
@@ -43,6 +43,7 @@ export const useAuthStore = create<AuthState>((set) => {
       try {
         await signOut(auth);
         clearLastChatId();
+        clearSession();
         // Clear model visibility data to prevent data leakage between users
         useModelVisibilityStore.setState({
           favoriteModels: [],

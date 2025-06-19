@@ -38,7 +38,7 @@ import { useRecentFilesIntegration, addFileToRecent, addUploadedFileMetaToRecent
 import { getCompanyIcon } from '@/frontend/components/ui/provider-icons';
 import { useDebouncedCallback } from 'use-debounce';
 import { createImagePreview } from '@/frontend/lib/image';
-import { saveLastChatId } from '@/frontend/lib/lastChat';
+import { saveLastChatId, saveLastPath } from '@/frontend/lib/lastChat';
 
 // Helper to convert File objects to Base64 data URLs
 const fileToDataUrl = (file: File): Promise<string> => {
@@ -628,15 +628,12 @@ function PureChatInput({
       // 2. Если тред новый, обновляем состояние без редиректа
       if (!isConvexId(threadId)) {
         onThreadCreated?.(ensuredThreadId);
-        // Сохраняем ID нового чата сразу в localStorage
-        saveLastChatId(ensuredThreadId);
         // Обновляем URL плавно без перезагрузки страницы (только на клиенте)
         if (typeof window !== 'undefined') {
           window.history.replaceState(null, '', `/chat/${ensuredThreadId}`);
+          // Сохраняем новый путь
+          saveLastPath(`/chat/${ensuredThreadId}`);
         }
-      } else {
-        // Для существующих чатов тоже обновляем lastChatId
-        saveLastChatId(threadId);
       }
 
       // 3. Сохраняем текст сообщения в БД СРАЗУ, чтобы порядок (user → assistant) был корректным
