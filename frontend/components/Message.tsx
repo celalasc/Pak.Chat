@@ -70,6 +70,10 @@ function PureMessage({
   const handleMobileMessageClick = () => {
     if (isMobile && !isWelcome) {
       setMobileControlsVisible(!mobileControlsVisible);
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        selection.removeAllRanges();
+      }
     }
   };
 
