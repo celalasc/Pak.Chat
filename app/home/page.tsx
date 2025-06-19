@@ -12,6 +12,7 @@ import MobileSearch from '@/frontend/components/MobileSearch';
 import AppShellSkeleton from '@/frontend/components/AppShellSkeleton';
 import { WithTooltip } from '@/frontend/components/WithTooltip';
 import type { Id } from '@/convex/_generated/dataModel';
+import { saveLastPath } from '@/frontend/lib/lastChat';
 
 export default function HomePage() {
   const { isAuthenticated, isLoading } = useConvexAuth();
@@ -26,13 +27,8 @@ export default function HomePage() {
     }
   }, [isLoading, isAuthenticated, router]);
 
-  // Автоматическое переключение на ПК версию при увеличении размера экрана
-  // Но только если пользователь уже находится на /home, не перенаправляем из чата
-  useEffect(() => {
-    if (!isLoading && isAuthenticated && mounted && !isMobile && window.location.pathname === '/home') {
-      router.push('/chat');
-    }
-  }, [isMobile, mounted, isLoading, isAuthenticated, router]);
+  // Убираем автоматическое перенаправление при изменении размера экрана
+  // Пользователь сам решит когда переходить
 
   const handleSelectThread = (threadId: Id<'threads'>) => {
     router.push(`/chat/${threadId}`);
@@ -41,6 +37,17 @@ export default function HomePage() {
   const handleNewChat = () => {
     router.push('/chat');
   };
+
+  useEffect(() => {
+    // Скрываем глобальный лоадер когда страница готова
+    if (mounted && isAuthenticated && !isLoading) {
+      if (typeof window !== 'undefined' && (window as any).__hideGlobalLoader) {
+        (window as any).__hideGlobalLoader();
+      }
+      // Сохраняем текущий путь
+      saveLastPath('/home');
+    }
+  }, [mounted, isAuthenticated, isLoading]);
 
   if (isLoading || !isAuthenticated) {
     return <AppShellSkeleton />;

@@ -7,20 +7,18 @@ import { auth } from '@/firebase';
 export default function AuthListener({ children }: { children: ReactNode }) {
   const init = useAuthStore((s) => s.init);
   const loading = useAuthStore((s) => s.loading);
-  const [ready, setReady] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
     
-    // Сначала инициализируем слушатель auth state
+    // Инициализируем слушатель auth state один раз
     const unsub = init();
     
-    // Затем проверяем результат редиректа
+    // Проверяем результат редиректа параллельно
     getRedirectResult(auth)
       .then((result) => {
-        if (result && isMounted) {
-          // Пользователь уже будет установлен через onAuthStateChanged
-        }
+        // Результат обрабатывается в onAuthStateChanged
       })
       .catch((error) => {
         if (error?.code !== 'auth/popup-blocked-by-browser' && error?.code !== 'auth/cancelled-popup-request') {
@@ -29,7 +27,16 @@ export default function AuthListener({ children }: { children: ReactNode }) {
       })
       .finally(() => {
         if (isMounted) {
-          setReady(true);
+          // Даем время на обработку auth state
+          setTimeout(() => {
+            if (isMounted) {
+              setIsInitialized(true);
+              // Скрываем глобальный лоадер
+              if (typeof window !== 'undefined' && (window as any).__hideGlobalLoader) {
+                (window as any).__hideGlobalLoader();
+              }
+            }
+          }, 100);
         }
       });
 
@@ -39,6 +46,8 @@ export default function AuthListener({ children }: { children: ReactNode }) {
     };
   }, [init]);
 
-  if (!ready || loading) return null;
+  // Показываем детей только после полной инициализации
+  if (!isInitialized) return null;
+  
   return <>{children}</>;
 }

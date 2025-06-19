@@ -146,7 +146,6 @@ function ChatHistoryList({
 
   const handleThreadClick = useCallback(
     (threadId: Id<"threads">) => {
-      saveLastChatId(threadId);
       if (onSelectThread) {
         onSelectThread(threadId);
       } else {
