@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/frontend/stores/AuthStore';
 import { Button } from '@/frontend/components/ui/button';
-import { getLastChatId, getLastPath, isReload, saveLastPath } from '@/frontend/lib/lastChat';
+import { getLastChatId, getLastPath, isReload } from '@/frontend/lib/lastChat';
 import AppShellSkeleton from '@/frontend/components/AppShellSkeleton';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 
