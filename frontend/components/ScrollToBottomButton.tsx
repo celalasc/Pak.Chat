@@ -18,21 +18,36 @@ export default function ScrollToBottomButton({
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    // Listen to scroll events on the chat container rather than the window
-    // so mobile devices correctly report scroll position.
-    const scrollArea = document.getElementById('messages-scroll-area');
-    if (!scrollArea) return;
+    // Because ChatView may mount after this component, the scroll area might
+    // not exist immediately. Keep trying until it becomes available.
+    let scrollArea: HTMLElement | null = null;
+    let interval: number | undefined;
 
-    const handleScroll = () => {
-      const { scrollTop, clientHeight, scrollHeight } = scrollArea;
-      setIsVisible(scrollTop + clientHeight < scrollHeight - threshold);
+    const attach = () => {
+      scrollArea = document.getElementById('messages-scroll-area');
+      if (!scrollArea) return false;
+
+      const handleScroll = () => {
+        const { scrollTop, clientHeight, scrollHeight } = scrollArea as HTMLElement;
+        setIsVisible(scrollTop + clientHeight < scrollHeight - threshold);
+      };
+
+      scrollArea.addEventListener('scroll', handleScroll, { passive: true });
+      handleScroll();
+      return () => scrollArea?.removeEventListener('scroll', handleScroll);
     };
 
-    scrollArea.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll();
+    let detach: (() => void) | false | void = attach();
+    if (!detach) {
+      interval = window.setInterval(() => {
+        detach = attach();
+        if (detach) clearInterval(interval);
+      }, 300);
+    }
 
     return () => {
-      scrollArea.removeEventListener('scroll', handleScroll);
+      if (interval) clearInterval(interval);
+      if (typeof detach === 'function') detach();
     };
   }, [threshold]);
 
