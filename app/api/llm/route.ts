@@ -117,20 +117,24 @@ export async function POST(req: NextRequest) {
 
     const processedMessages: ChatMessage[] = await Promise.all(
       messages.map(async (message: { id: string; role: string; content: string }) => {
-        // Attachments may arrive slightly later than the message –
-        // treat attachments that haven't been linked (messageId == null)
-        // as belonging to the latest user message to avoid race conditions.
+        // Получаем вложения для сообщения
         const messageAttachments = attachments.filter((a) => {
           if (!a.url) return false;
+          
+          // Если вложение привязано к конкретному сообщению
           if (a.messageId === message.id) return true;
-          // If attachment.messageId is null OR not part of this request (means server DB id),
-          // attach it to the nearest preceding user message without other attachments.
-          if (a.messageId == null || !messageIds.has(a.messageId as unknown as string)) {
-            return message.role === 'user';
+          
+          // Для новых вложений (messageId может быть null или undefined)
+          // привязываем к последнему сообщению пользователя
+          if (!a.messageId && message.role === 'user') {
+            // Проверяем, что это последнее сообщение пользователя
+            const userMessages = messages.filter((m: any) => m.role === 'user');
+            const lastUserMessage = userMessages[userMessages.length - 1];
+            return message.id === lastUserMessage.id;
           }
+          
           return false;
         });
-
 
         if (messageAttachments.length === 0) {
           return { role: message.role, content: message.content };

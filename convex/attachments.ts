@@ -15,7 +15,7 @@ export const save = mutation({
         previewId: v.optional(v.string()),
         name: v.string(),
         type: v.string(),
-        messageId: v.union(v.string(), v.null()),
+        messageId: v.union(v.string(), v.null(), v.id('messages')),
         width: v.optional(v.number()),
         height: v.optional(v.number()),
         size: v.optional(v.number()),
@@ -25,6 +25,13 @@ export const save = mutation({
   async handler(ctx, args) {
     const saved = await Promise.all(
       args.attachments.map(async (a) => {
+        // Определяем messageId для сохранения
+        let messageIdToSave: Id<'messages'> | undefined = undefined;
+        if (a.messageId && typeof a.messageId === 'string' && a.messageId.startsWith('j')) {
+          // Это валидный Convex ID
+          messageIdToSave = a.messageId as Id<'messages'>;
+        }
+        
         const attachmentId = await ctx.db.insert('attachments', {
           threadId: args.threadId,
           fileId: a.storageId,
@@ -34,8 +41,7 @@ export const save = mutation({
           width: a.width,
           height: a.height,
           size: a.size,
-          // Временные ID от клиента игнорируем, messageId будет обновлен позже
-          messageId: undefined,
+          messageId: messageIdToSave,
         });
         
         // Получаем URL для превью (если есть) иначе оригинал

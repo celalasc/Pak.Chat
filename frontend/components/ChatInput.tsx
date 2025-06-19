@@ -760,6 +760,17 @@ function PureChatInput({
         size: a.size,
       }));
 
+      // Обновляем messageId для вложений ПЕРЕД отправкой запроса к LLM
+      if (savedAttachments.length > 0) {
+        await updateAttachmentMessageId({
+          attachmentIds: savedAttachments.map((a) => a.id),
+          messageId: dbMsgId,
+        });
+        
+        // Небольшая задержка чтобы убедиться, что БД обновилась
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+
       append(
         createUserMessage(dbMsgId, finalMessage, attachmentsForUI),
         {
@@ -827,14 +838,6 @@ function PureChatInput({
       if (!isConvexId(threadId)) {
         complete(finalMessage, {
           body: { threadId: ensuredThreadId, messageId: dbMsgId, isTitle: true },
-        });
-      }
-
-      // Первоначальный save не проставляет messageId, поэтому патчим отдельно
-      if (savedAttachments.length > 0) {
-        await updateAttachmentMessageId({
-          attachmentIds: savedAttachments.map((a) => a.id),
-          messageId: dbMsgId,
         });
       }
 
