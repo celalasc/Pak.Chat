@@ -113,8 +113,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const messageIds = new Set(messages.map((m: { id: string }) => m.id));
-
     const processedMessages: ChatMessage[] = await Promise.all(
       messages.map(async (message: { id: string; role: string; content: string }) => {
         // Получаем вложения для сообщения
@@ -128,7 +126,7 @@ export async function POST(req: NextRequest) {
           // привязываем к последнему сообщению пользователя
           if (!a.messageId && message.role === 'user') {
             // Проверяем, что это последнее сообщение пользователя
-            const userMessages = messages.filter((m: any) => m.role === 'user');
+            const userMessages = messages.filter((m: { id: string; role: string; content: string }) => m.role === 'user');
             const lastUserMessage = userMessages[userMessages.length - 1];
             return message.id === lastUserMessage.id;
           }

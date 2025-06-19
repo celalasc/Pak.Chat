@@ -47,7 +47,6 @@ export const useAuthStore = create<AuthState>((set) => {
         useModelVisibilityStore.setState({
           favoriteModels: [],
           enabledProviders: ['google', 'openrouter', 'openai', 'groq'],
-          selectedModel: 'Gemini 2.5 Flash',
           loading: false,
         });
       } catch {
