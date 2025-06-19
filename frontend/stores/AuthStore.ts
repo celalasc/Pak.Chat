@@ -1,4 +1,4 @@
-import { User, GoogleAuthProvider, signInWithRedirect, signOut, onAuthStateChanged } from 'firebase/auth';
+import { User, GoogleAuthProvider, signInWithRedirect, signInWithPopup, signOut, onAuthStateChanged, getRedirectResult } from 'firebase/auth';
 import { create } from 'zustand';
 import { auth } from '@/firebase';
 import { useSettingsStore } from './SettingsStore';
@@ -7,8 +7,10 @@ import { clearLastChatId } from '@/frontend/lib/lastChat';
 interface AuthState {
   user: User | null;
   loading: boolean;
+  redirecting: boolean;
   blurPersonalData: boolean;
   login: () => Promise<void>;
+  loginWithPopup: () => Promise<void>;
   logout: () => Promise<void>;
   toggleBlur: () => void;
   init: () => () => void;
@@ -18,9 +20,20 @@ export const useAuthStore = create<AuthState>((set) => {
   // 1. Действия
   const actions = {
     async login() {
-      set({ loading: true });
+      set({ loading: true, redirecting: true });
       try {
         await signInWithRedirect(auth, new GoogleAuthProvider());
+      } catch (error) {
+        console.error('Login error:', error);
+        set({ loading: false, redirecting: false });
+      }
+    },
+    async loginWithPopup() {
+      set({ loading: true });
+      try {
+        const result = await signInWithPopup(auth, new GoogleAuthProvider());
+      } catch (error) {
+        console.error('Popup login error:', error);
       } finally {
         set({ loading: false });
       }
@@ -47,6 +60,7 @@ export const useAuthStore = create<AuthState>((set) => {
     if (typeof window === 'undefined') {
       return () => {};
     }
+    
     const unsub = onAuthStateChanged(auth, async (user) => {
       set({ user, loading: false });
     });
@@ -57,6 +71,7 @@ export const useAuthStore = create<AuthState>((set) => {
   return {
     user: null,
     loading: true,
+    redirecting: false,
     blurPersonalData: useSettingsStore.getState().settings.hidePersonal,
     ...actions,
     init,
