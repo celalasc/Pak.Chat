@@ -18,6 +18,7 @@ import QuoteDisplay from './QuoteDisplay';
 import { cn } from '@/lib/utils';
 import { PlusIcon, X } from 'lucide-react';
 import { createImagePreview } from '@/frontend/lib/image';
+import { convertToSupportedImage } from '../lib/fileHelpers';
 import FilePreview from './FilePreview';
 import type { Attachment, LocalAttachment, RemoteAttachment } from '@/frontend/stores/AttachmentsStore';
 
@@ -67,9 +68,12 @@ function EditAttachmentsBar({
         hidden
         multiple
         accept="image/*,application/pdf,text/*"
-        onChange={(e) => {
+        onChange={async (e) => {
           const files = Array.from(e.target.files ?? []);
-          files.forEach(onAdd);
+          for (const file of files) {
+            const processed = await convertToSupportedImage(file);
+            onAdd(processed);
+          }
           e.target.value = '';
         }}
       />
