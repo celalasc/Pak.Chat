@@ -783,16 +783,9 @@ function PureChatInput({
         }
       );
 
-      // 8. Добавляем файлы в recent ТОЛЬКО после успешной отправки (F1.2 + F1.4)
-      // НО: для рисунков пропускаем этот шаг, потому что они будут добавлены в шаге 9 с правильными storageId
+      // 8. Добавляем файлы в recent ТОЛЬКО после успешной отправки
       if (localAttachments.length > 0) {
         localAttachments.forEach(attachment => {
-          // Пропускаем рисунки - они будут добавлены в шаге 9 с storageId
-          if (attachment.file.name.startsWith('drawing-') && attachment.file.name.endsWith('.png')) {
-            
-            return;
-          }
-          
           const success = addFileToRecent(attachment.file);
           if (!success) {
             console.warn(`Failed to add file "${attachment.file.name}" to recent files`);
