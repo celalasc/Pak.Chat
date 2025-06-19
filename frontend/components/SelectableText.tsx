@@ -70,26 +70,25 @@ function PureSelectableText({
             posX = Math.max(margin, Math.min(posX, window.innerWidth - buttonWidth - margin));
 
             // Вертикальное позиционирование
-            let posY = top - buttonHeight - 8;
+            // На мобильных устройствах стараемся разместить кнопку под выделением
+            let posY = isMobile ? bottom + 8 : top - buttonHeight - 8;
 
             // Минимальный отступ от верхнего края на мобильных устройствах
             const safeTop = isMobile ? 24 : 0;
 
-            // Если не помещается сверху, показываем снизу
+            // Если выходит за нижний край, размещаем сверху
+            if (posY > window.innerHeight - buttonHeight - margin) {
+              posY = top - buttonHeight - 8;
+            }
+
+            // Если сверху не помещается или пользователь на мобильном устройстве,
+            // фиксируем позицию в доступной области
             if (posY < margin + safeTop) {
-              posY = bottom + 8;
+              posY = Math.min(bottom + 8, window.innerHeight - buttonHeight - margin);
             }
 
-            // Последняя проверка для нижнего края
-            posY = Math.min(posY, window.innerHeight - buttonHeight - margin);
-
-            // Гарантируем отступ от верхней системной панели
-            posY = Math.max(posY, safeTop);
-
-            // На мобильных устройствах добавляем дополнительный отступ снизу
-            if (isMobile && posY > window.innerHeight - buttonHeight - 60) {
-              posY = Math.max(top - buttonHeight - 8, safeTop);
-            }
+            // Гарантируем отступы и не выходим за экран
+            posY = Math.max(Math.min(posY, window.innerHeight - buttonHeight - margin), safeTop);
 
             return { x: posX, y: posY };
           })()}
