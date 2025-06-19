@@ -654,6 +654,8 @@ function PureChatInput({
           window.history.replaceState(null, '', `/chat/${ensuredThreadId}`);
           // Сохраняем новый путь
           saveLastPath(`/chat/${ensuredThreadId}`);
+          // Также обновляем последний выбранный чат
+          saveLastChatId(ensuredThreadId);
         }
       }
 
