@@ -7,10 +7,16 @@ import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { Button } from '@/frontend/components/ui/button';
 import { getLastChatId } from '@/frontend/lib/lastChat';
 
-// Determines if the current navigation was triggered by a page reload
+// Determines if the current navigation was triggered by a page reload.
+// `performance.getEntriesByType('navigation')` returns `PerformanceEntry[]`, but
+// we need the more specific `PerformanceNavigationTiming` to access `.type`.
 const isReload =
   typeof window !== 'undefined' &&
-  performance.getEntriesByType('navigation')[0]?.type === 'reload';
+  (
+    performance.getEntriesByType('navigation')[0] as
+      | PerformanceNavigationTiming
+      | undefined
+  )?.type === 'reload';
 
 export default function IndexPage() {
   const { user, loading, login } = useAuthStore();
