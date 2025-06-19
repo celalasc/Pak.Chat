@@ -94,8 +94,6 @@ export async function POST(req: NextRequest) {
 
       // Получаем вложения для сообщения
       const messageAttachments = attachments.filter((a) => {
-        if (!a.url) return false;
-        
         if (a.messageId === message.id) return true;
         
         if (!a.messageId && message.role === 'user') {
