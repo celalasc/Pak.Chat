@@ -25,30 +25,21 @@ export const getModelVisibility = query({
       return null;
     }
 
-    const docs = await ctx.db
+    const existing = await ctx.db
       .query("modelVisibility")
       .withIndex("by_user", (q) => q.eq("userId", userId))
-      .collect();
+      .first();
 
-    // Выбираем наиболее релевантный документ: тот, где есть избранные модели.
-    // Если таких нет – самый новый.
-    let settings = docs.find((d) => d.favoriteModels && d.favoriteModels.length > 0) || null;
-    if (!settings && docs.length > 0) {
-      settings = docs.reduce((latest, doc) => (doc._creationTime > latest._creationTime ? doc : latest), docs[0]);
-    }
-
-    if (!settings) {
+    if (!existing) {
       return {
         favoriteModels: [],
         enabledProviders: ["google", "openrouter", "openai", "groq"],
-        selectedModel: "Gemini 2.5 Flash",
       };
     }
 
     return {
-      favoriteModels: settings.favoriteModels || [],
-      enabledProviders: settings.enabledProviders || ["google", "openrouter", "openai", "groq"],
-      selectedModel: settings.selectedModel || "Gemini 2.5 Flash",
+      favoriteModels: existing.favoriteModels || [],
+      enabledProviders: existing.enabledProviders || ["google", "openrouter", "openai", "groq"],
     };
   },
 });
@@ -58,7 +49,6 @@ export const setModelVisibility = mutation({
   args: {
     favoriteModels: v.array(v.string()),
     enabledProviders: v.array(v.string()),
-    selectedModel: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getCurrentUserId(ctx);
@@ -85,14 +75,10 @@ export const setModelVisibility = mutation({
       }
     }
 
-    const updateData: any = {
+    const updateData = {
       favoriteModels: args.favoriteModels,
       enabledProviders: args.enabledProviders,
     };
-
-    if (args.selectedModel !== undefined) {
-      updateData.selectedModel = args.selectedModel;
-    }
 
     if (existing) {
       await ctx.db.patch(existing._id, updateData);
@@ -101,7 +87,6 @@ export const setModelVisibility = mutation({
         userId,
         favoriteModels: args.favoriteModels,
         enabledProviders: args.enabledProviders,
-        selectedModel: args.selectedModel || "Gemini 2.5 Flash",
       });
     }
   },

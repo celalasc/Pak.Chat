@@ -43,14 +43,13 @@ export function useModelVisibilitySync() {
   const saveToConvex = useCallback(async () => {
     if (!isAuthenticated || isSavingRef.current || !hasInitializedRef.current) return;
 
-    const { favoriteModels, enabledProviders, selectedModel } = store.getState();
+    const { favoriteModels, enabledProviders } = store.getState();
 
     isSavingRef.current = true;
     try {
       await saveVisibility({
         favoriteModels: [...favoriteModels], // клонируем массив для новой ссылки
         enabledProviders: [...enabledProviders], // клонируем массив для новой ссылки
-        selectedModel,
       });
     } catch (error) {
       console.error('Failed to save model visibility settings:', error);
@@ -74,8 +73,7 @@ export function useModelVisibilitySync() {
         // Проверяем что действительно изменились нужные нам поля
         const hasChanges = 
           state.favoriteModels !== prevState.favoriteModels ||
-          state.enabledProviders !== prevState.enabledProviders ||
-          state.selectedModel !== prevState.selectedModel;
+          state.enabledProviders !== prevState.enabledProviders;
         
         if (hasChanges && !state.loading) {
           saveToConvex();

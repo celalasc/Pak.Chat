@@ -38,12 +38,12 @@ export const MODEL_CONFIGS: Record<AIModel, ModelConfig> = {
     company: 'DeepSeek',
   },
   'Gemini 2.5 Pro': {
-    modelId: 'gemini-2.0-flash-exp',
+    modelId: 'gemini-2.5-pro',
     provider: 'google',
     company: 'Google',
   },
   'Gemini 2.5 Flash': {
-    modelId: 'gemini-2.0-flash-exp',
+    modelId: 'gemini-2.5-flash',
     provider: 'google',
     company: 'Google',
   },

@@ -20,6 +20,7 @@ import { useDebounceCallback } from 'usehooks-ts';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { loadDraft, saveDraft, clearDraft } from '@/frontend/lib/drafts';
 import { saveLastChatId } from '@/frontend/lib/lastChat';
+import { getModelConfig } from '@/lib/models';
 
 interface ChatViewProps {
   threadId: string;
@@ -38,6 +39,17 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [currentThreadId, setCurrentThreadId] = useState(threadId);
   const [currentMessageId, setCurrentMessageId] = useState<string | undefined>();
+
+  // Определяем какой API endpoint использовать в зависимости от провайдера
+  const modelConfig = React.useMemo(() => {
+    const config = getModelConfig(selectedModel);
+    return config;
+  }, [selectedModel]);
+
+  const apiEndpoint = React.useMemo(() => {
+    // Используем новый endpoint для Google моделей
+    return modelConfig.provider === 'google' ? '/api/llm-google' : '/api/llm';
+  }, [modelConfig.provider]);
 
   // Keep latest thread ID in a ref to avoid stale closures in callbacks
   const threadIdRef = useRef<string>(threadId);
@@ -84,7 +96,7 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
     status,
     error,
   } = useChat({
-    api: '/api/llm',
+    api: apiEndpoint,
     id: currentThreadId,
     initialMessages,
     body: requestBody,
