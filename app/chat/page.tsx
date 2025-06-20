@@ -3,12 +3,10 @@ import Chat from '@/frontend/components/Chat';
 import { useConvexAuth } from 'convex/react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { saveLastPath } from '@/frontend/lib/lastChat';
 
 export default function NewChatPage() {
   const { isAuthenticated, isLoading } = useConvexAuth();
-  const { isMobile, mounted } = useIsMobile();
   const router = useRouter();
 
   useEffect(() => {
