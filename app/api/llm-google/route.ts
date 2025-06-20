@@ -173,8 +173,10 @@ export async function POST(req: NextRequest) {
 
       // Добавляем сообщение в историю
       if (parts.length > 0 || message.content) {
+        // Преобразуем роли для Google AI API: assistant -> model
+        const googleRole = message.role === 'assistant' ? 'model' : message.role;
         contents.push({
-          role: message.role,
+          role: googleRole,
           parts: parts.length > 0 ? parts : [{ text: message.content }]
         });
       }
@@ -305,6 +307,7 @@ Explain what you see in detail and answer any questions about the content.`
     });
   } catch (error) {
     console.error('Google LLM API Error:', error);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     return new NextResponse(
       JSON.stringify({ error: 'Internal Server Error' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }

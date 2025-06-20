@@ -67,6 +67,12 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
     }
   };
 
+  // Обработчик создания нового треда
+  const handleThreadCreated = useCallback((newThreadId: string) => {
+    setCurrentThreadId(newThreadId);
+    threadIdRef.current = newThreadId;
+  }, [currentThreadId]);
+
   // Memoize body and request preparation to avoid creating new references
   const requestBody = React.useMemo(
     () => ({
@@ -79,11 +85,20 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
   );
 
   const prepareRequestBody = React.useCallback(
-    ({ messages }: { messages: UIMessage[] }) => ({
-      messages: messages.map((m) => ({ ...m, id: m.id })),
-      ...requestBody,
-    }),
-    [requestBody]
+    ({ messages }: { messages: UIMessage[] }) => {
+      // Используем актуальный threadId из ref вместо мемоизированного requestBody
+      const currentThreadId = threadIdRef.current;
+      const body = {
+        messages: messages.map((m) => ({ ...m, id: m.id })),
+        model: selectedModel,
+        apiKeys: keys,
+        threadId: currentThreadId,
+        search: webSearchEnabled,
+      };
+
+      return body;
+    },
+    [selectedModel, keys, webSearchEnabled]
   );
 
   const {
@@ -104,6 +119,7 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
     experimental_prepareRequestBody: prepareRequestBody,
     onFinish: async (finalMsg) => {
       const latestThreadId = threadIdRef.current;
+      
       if (
         finalMsg.role === 'assistant' &&
         finalMsg.content.trim() !== '' &&
@@ -265,6 +281,8 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
   // Sync when navigating between chats or dialog versions
   useEffect(() => {
     setCurrentThreadId(threadId);
+    threadIdRef.current = threadId;
+    
     if (!threadId) {
       setInput('');
       clearQuote();
@@ -350,7 +368,7 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
             stop={stop}
             error={error}
             messageCount={mergedMessages.length}
-            onThreadCreated={setCurrentThreadId}
+            onThreadCreated={handleThreadCreated}
           />
         </div>
 

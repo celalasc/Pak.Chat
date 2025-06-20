@@ -27,8 +27,15 @@ export default function HomePage() {
     }
   }, [isLoading, isAuthenticated, router]);
 
-  // Убираем автоматическое перенаправление при изменении размера экрана
-  // Пользователь сам решит когда переходить
+  // Автоматическое перенаправление при изменении типа устройства
+  useEffect(() => {
+    if (!mounted || !isAuthenticated) return;
+    
+    // Если устройство перестало быть мобильным, перенаправляем на десктопную версию
+    if (!isMobile) {
+      router.replace('/chat');
+    }
+  }, [isMobile, mounted, isAuthenticated, router]);
 
   const handleSelectThread = (threadId: Id<'threads'>) => {
     router.push(`/chat/${threadId}`);
@@ -54,7 +61,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="w-full min-h-screen flex flex-col overflow-y-auto bg-background">
+    <div className="w-full min-h-screen flex flex-col overflow-y-auto bg-background main-content">
       {/* Header with logo and settings */}
       <div className="flex items-center justify-between p-4 border-b border-border/50">
         {/* Left: Settings button */}

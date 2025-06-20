@@ -12,19 +12,12 @@ export type GeneralFont = (typeof GENERAL_FONTS)[number];
 export type CodeFont = (typeof CODE_FONTS)[number];
 export type Theme = (typeof THEMES)[number];
 
-/**
- * Describes custom instructions that personalize AI behaviour.
- */
-export interface CustomInstructions {
-  /** Preferred name used when addressing the user */
-  name: string;
-  /** Occupation or role of the user */
-  occupation: string;
-  /** Traits that should influence AI responses */
-  traits: string[];
-  /** Additional information to remember about the user */
-  additionalInfo: string;
-}
+export type CustomInstructions = {
+  name: string; // What should AI call you? (max 50)
+  occupation: string; // What do you do? (max 100)
+  traits: string[]; // What traits should AI have? (max 50 chars each)
+  additionalInfo: string; // Anything else AI should know? (max 3000)
+};
 
 type Settings = {
   generalFont: GeneralFont;
@@ -33,7 +26,7 @@ type Settings = {
   hidePersonal: boolean;
   showNavBars: boolean;
   showChatPreview: boolean;
-  customInstructions: CustomInstructions;
+  customInstructions?: CustomInstructions;
 };
 
 type SettingsStore = {
@@ -61,6 +54,13 @@ export const withStorageDOMEvents = (store: StoreWithPersist) => {
   };
 };
 
+const defaultCustomInstructions: CustomInstructions = {
+  name: '',
+  occupation: '',
+  traits: [],
+  additionalInfo: '',
+};
+
 const defaultSettings: Settings = {
   // Default interface font uses Proxima Vara when available
   generalFont: 'Proxima Vara',
@@ -70,12 +70,7 @@ const defaultSettings: Settings = {
   hidePersonal: true,
   showNavBars: true,
   showChatPreview: true,
-  customInstructions: {
-    name: '',
-    occupation: '',
-    traits: [],
-    additionalInfo: '',
-  },
+  customInstructions: defaultCustomInstructions,
 };
 
 export const useSettingsStore = create<SettingsStore>()(
