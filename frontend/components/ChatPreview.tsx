@@ -21,7 +21,7 @@ import { useRouter } from "next/navigation";
 /* ------------------------------------------------------------------ */
 /* Константы — подстрой под свой реальный сайдбар                     */
 /* ------------------------------------------------------------------ */
-const SIDEBAR_WIDTH = 300;  // ширина ChatHistory
+const SIDEBAR_WIDTH = 900;  // ширина ChatPreview (увеличена с 750px на 20%)
 const SIDE_GAP      = 20;   // зазор между панелями
 
 /* ------------------------------------------------------------------ */
@@ -264,21 +264,18 @@ export default function ChatPreview({ threadId, onClose }: ChatPreviewProps) {
 
   /* ---------- Превью ---------- */
   return (
-    <div className="absolute top-0 right-0 bottom-0 w-[600px] bg-background border-l border-border">
-      {/* заголовок */}
-      <div className="px-4 py-3 shrink-0 border-b border-border">
-        <h3 className="text-sm font-medium text-muted-foreground">Preview</h3>
-      </div>
+    <div className="h-full w-full bg-background/95 backdrop-blur-xl shadow-2xl flex flex-col">
+
 
       {/* список сообщений */}
       <div
-        className="flex-1 min-h-0 overflow-y-auto h-[calc(100%-60px)]"
+        className="flex-1 min-h-0 overflow-y-auto"
         style={{
           overscrollBehavior: "contain",
           WebkitOverflowScrolling: "touch",
         }}
       >
-        <div className="flex flex-col space-y-6 p-4">
+        <div className="flex flex-col space-y-6 p-4 pb-16">
           {messages
             .toReversed() /* newest at top */
             .map((message) => (

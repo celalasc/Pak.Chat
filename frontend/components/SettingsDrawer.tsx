@@ -324,7 +324,7 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
       <DialogTrigger asChild>
         {children}
       </DialogTrigger>
-      <DialogContent className="w-[55vw] sm:max-w-none max-w-[585px] h-[85vh] flex flex-col">
+      <DialogContent className="w-[50vw] sm:max-w-none max-w-[520px] h-[65vh] flex flex-col rounded-3xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5" />
@@ -592,7 +592,7 @@ const ProfileTab = memo(() => {
           ) : user ? (
             <>
               <div className="flex items-center gap-4">
-                {user.photoURL && (
+                {user.photoURL && user.photoURL.trim() !== '' && (
                    <Image
                       src={user.photoURL}
                       alt="User Avatar"
