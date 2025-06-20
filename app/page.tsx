@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/frontend/stores/AuthStore';
 import { Button } from '@/frontend/components/ui/button';
@@ -12,14 +12,14 @@ export default function Page() {
   const { user, loading, loginWithPopup } = useAuthStore();
   const router = useRouter();
   const { isMobile, mounted } = useIsMobile();
-  const [hasRedirected, setHasRedirected] = useState(false);
+  const hasRedirectedRef = useRef(false);
 
   useEffect(() => {
     if (loading || !mounted) return;
 
-    if (user && !hasRedirected) {
+    if (user && !hasRedirectedRef.current) {
       console.log('User authenticated, redirecting...');
-      setHasRedirected(true);
+      hasRedirectedRef.current = true;
       
       const lastChatId = getLastChatId();
       const lastPath = getLastPath();
@@ -29,15 +29,10 @@ export default function Page() {
         console.log('Redirecting to last path:', lastPath);
         router.replace(lastPath);
       }
-      // Если есть последний чат, переходим к нему
-      else if (lastChatId) {
-        console.log('Redirecting to last chat:', lastChatId);
-        router.replace(`/chat/${lastChatId}`);
-      }
-      // Иначе переходим на соответствующую главную страницу
+      // Иначе всегда переходим на соответствующую главную страницу устройства
       else {
         const targetPath = isMobile ? '/home' : '/chat';
-        console.log('Redirecting to:', targetPath);
+        console.log('Redirecting to main page for device type:', targetPath);
         router.replace(targetPath);
       }
     }
@@ -47,7 +42,16 @@ export default function Page() {
       const globalWindow = window as typeof window & { __hideGlobalLoader?: () => void };
       globalWindow.__hideGlobalLoader?.();
     }
-  }, [user, loading, mounted, hasRedirected, router, isMobile]);
+  }, [user, loading, mounted, router, isMobile]);
+
+
+
+  // Сбрасываем флаг перенаправления если пользователь разлогинился
+  useEffect(() => {
+    if (!user && !loading) {
+      hasRedirectedRef.current = false;
+    }
+  }, [user, loading]);
 
   // Показываем скелет во время загрузки
   if (loading || !mounted) {

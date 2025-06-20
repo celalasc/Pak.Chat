@@ -64,13 +64,9 @@ function Chat({ threadId, thread, initialMessages }: ChatProps) {
 
   return (
     <div className={cn(
-      "relative min-h-screen bg-background overflow-y-auto",
+      "relative min-h-screen bg-background overflow-y-auto main-content",
       isMobile && "mobile-fullscreen touch-target"
     )}>
-      {/* Static overlay displayed when settings drawer is open on mobile */}
-      {isMobile && isSettingsOpen && (
-        <div className="fixed inset-0 bg-black z-40 opacity-50" />
-      )}
       
       <div className="w-full min-h-screen flex flex-col overflow-y-auto">
         {/* Header for new chat vs existing chat */}

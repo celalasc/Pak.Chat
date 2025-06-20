@@ -36,7 +36,17 @@ export async function POST(req: NextRequest) {
       attachments: requestAttachments,
     } = await req.json();
 
+    console.log('Google LLM API called with:', {
+      messagesCount: messages?.length,
+      model,
+      threadId,
+      search,
+      hasApiKeys: !!apiKeys,
+      requestAttachmentsCount: requestAttachments?.length || 0
+    });
+
     if (!threadId && messages.length > 1) {
+      console.error('threadId required but not provided, messages:', messages.length);
       return NextResponse.json(
         { error: 'threadId required for existing conversations' },
         { status: 400 }
@@ -289,6 +299,8 @@ Explain what you see in detail and answer any questions about the content.`
       },
     });
 
+    console.log('Returning streaming response successfully');
+    
     return new Response(stream, {
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',
@@ -298,6 +310,7 @@ Explain what you see in detail and answer any questions about the content.`
     });
   } catch (error) {
     console.error('Google LLM API Error:', error);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     return new NextResponse(
       JSON.stringify({ error: 'Internal Server Error' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }

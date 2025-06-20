@@ -8,8 +8,7 @@ import { saveLastPath } from '@/frontend/lib/lastChat';
 
 export default function NewChatPage() {
   const { isAuthenticated, isLoading } = useConvexAuth();
-  // Call the hook to init media query listeners; return values unused for now
-  useIsMobile();
+  const { isMobile, mounted } = useIsMobile();
   const router = useRouter();
 
   useEffect(() => {
@@ -29,7 +28,15 @@ export default function NewChatPage() {
     }
   }, [isAuthenticated, isLoading]);
 
-  // Убираем автоматическое перенаправление - пользователи должны иметь возможность заходить в чат с мобильных
+  // Автоматическое перенаправление при изменении типа устройства
+  useEffect(() => {
+    if (!mounted || !isAuthenticated) return;
+    
+    // Если устройство стало мобильным, перенаправляем на мобильную версию
+    if (isMobile) {
+      router.replace('/home');
+    }
+  }, [isMobile, mounted, isAuthenticated, router]);
 
   if (isLoading || !isAuthenticated) {
     return <div className="w-full h-screen bg-background" />;

@@ -8,9 +8,12 @@ export function useIsMobile(breakpoint: number = 768) {
       return { isMobile: false, mounted: false };
     }
     
-    // На клиенте сразу определяем правильное значение
+    // Простое определение мобильного устройства по ширине экрана
+    // Это позволяет корректно работать при изменении размера окна браузера
+    const isMobileDevice = window.innerWidth < breakpoint;
+    
     return {
-      isMobile: window.innerWidth < breakpoint,
+      isMobile: isMobileDevice,
       mounted: true
     };
   });
@@ -20,11 +23,12 @@ export function useIsMobile(breakpoint: number = 768) {
     if (state.mounted) return;
     
     // Устанавливаем mounted только один раз
+    const isMobileDevice = window.innerWidth < breakpoint;
     setState({
-      isMobile: window.innerWidth < breakpoint,
+      isMobile: isMobileDevice,
       mounted: true
     });
-  }, []);
+  }, [breakpoint]);
 
   useLayoutEffect(() => {
     const checkMobile = () => {

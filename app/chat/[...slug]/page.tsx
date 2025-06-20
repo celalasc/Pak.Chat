@@ -17,8 +17,7 @@ function CatchAllChatPageInner({ params }: { params: Promise<{ slug: string[] }>
   
   const router = useRouter();
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
-  // Track viewport size; currently not used but kept for future enhancements
-  useIsMobile();
+  const { isMobile, mounted } = useIsMobile();
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const isValidId = useMemo(() => isConvexId(chatId), [chatId]);
@@ -101,9 +100,17 @@ function CatchAllChatPageInner({ params }: { params: Promise<{ slug: string[] }>
     }
   }, [authLoading, isAuthenticated, isValidId, router, chatId, thread]);
 
-  // Убираем автоматический переход на /home при мобильном разрешении,
-  // чтобы пользователь оставался в текущем чате даже после перезагрузки.
-  // При необходимости навигацией займётся пользователь вручную.
+  // Автоматическое перенаправление при изменении типа устройства
+  useEffect(() => {
+    if (!mounted || !isAuthenticated || !isValidId || !thread) return;
+    
+    // Если устройство стало мобильным, сохраняем контекст и перенаправляем на мобильную версию
+    if (isMobile) {
+      saveLastChatId(chatId);
+      saveLastPath(`/chat/${chatId}`);
+      router.replace('/home');
+    }
+  }, [isMobile, mounted, isAuthenticated, isValidId, thread, chatId, router]);
 
   const isLoading =
     authLoading ||
