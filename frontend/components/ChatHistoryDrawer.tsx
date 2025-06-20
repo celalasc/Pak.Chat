@@ -334,19 +334,21 @@ function ChatHistoryDrawerComponent({
           e.preventDefault();
           setHoveredThreadId(null);
           lastKeyPressRef.current = now;
-          
+
           // Отменяем любой текущий скролл при быстром нажатии
           if (isRapidPress && pendingScrollRef.current) {
             pendingScrollRef.current = false;
           }
-          
-          // Всегда включаем автопрокрутку при навигации клавишами
-          autoScrollRef.current = true;
+
           setSelectedThreadIndex((prev) => {
             // Если индекс не установлен или равен -1, начинаем с первого элемента
-            if (prev === -1 || prev >= allThreadsFlat.length) return 0;
-            // Двигаемся вниз, но не дальше последнего элемента
-            return Math.min(prev + 1, allThreadsFlat.length - 1);
+            const next =
+              prev === -1 || prev >= allThreadsFlat.length
+                ? 0
+                : Math.min(prev + 1, allThreadsFlat.length - 1);
+            // Включаем автопрокрутку только если индекс изменился
+            autoScrollRef.current = next !== prev;
+            return next;
           });
           break;
         case "ArrowUp":
@@ -359,13 +361,14 @@ function ChatHistoryDrawerComponent({
             pendingScrollRef.current = false;
           }
           
-          // Всегда включаем автопрокрутку при навигации клавишами
-          autoScrollRef.current = true;
           setSelectedThreadIndex((prev) => {
-            // Если индекс не установлен или равен -1, начинаем с последнего элемента
-            if (prev === -1 || prev >= allThreadsFlat.length) return allThreadsFlat.length - 1;
-            // Двигаемся вверх, но не дальше первого элемента
-            return Math.max(prev - 1, 0);
+            const next =
+              prev === -1 || prev >= allThreadsFlat.length
+                ? allThreadsFlat.length - 1
+                : Math.max(prev - 1, 0);
+            // Включаем автопрокрутку только если индекс изменился
+            autoScrollRef.current = next !== prev;
+            return next;
           });
           break;
       }
@@ -394,27 +397,35 @@ function ChatHistoryDrawerComponent({
       const container = scrollContainerRef.current;
       
       if (node && container) {
-        // Определяем тип анимации на основе времени последнего нажатия
-        const now = Date.now();
-        const timeSinceLastPress = now - lastKeyPressRef.current;
-        const isRapidNavigation = timeSinceLastPress < 150;
-        
-        // При быстрой навигации используем мгновенную прокрутку
-        const behavior = isRapidNavigation ? 'auto' : 'smooth';
-        
-        // Устанавливаем флаг ожидания только для smooth анимации
-        if (behavior === 'smooth') {
-          pendingScrollRef.current = true;
-        }
-        
-        node.scrollIntoView({ 
-          behavior: behavior as ScrollBehavior, 
-          block: 'center' 
-        });
-        
-        // Для auto прокрутки сбрасываем флаг сразу
-        if (behavior === 'auto') {
-          pendingScrollRef.current = false;
+        const containerRect = container.getBoundingClientRect();
+        const nodeRect = node.getBoundingClientRect();
+        const fullyVisible =
+          nodeRect.top >= containerRect.top &&
+          nodeRect.bottom <= containerRect.bottom;
+
+        if (!fullyVisible) {
+          // Определяем тип анимации на основе времени последнего нажатия
+          const now = Date.now();
+          const timeSinceLastPress = now - lastKeyPressRef.current;
+          const isRapidNavigation = timeSinceLastPress < 150;
+
+          // При быстрой навигации используем мгновенную прокрутку
+          const behavior = isRapidNavigation ? 'auto' : 'smooth';
+
+          // Устанавливаем флаг ожидания только для smooth анимации
+          if (behavior === 'smooth') {
+            pendingScrollRef.current = true;
+          }
+
+          node.scrollIntoView({
+            behavior: behavior as ScrollBehavior,
+            block: 'nearest',
+          });
+
+          // Для auto прокрутки сбрасываем флаг сразу
+          if (behavior === 'auto') {
+            pendingScrollRef.current = false;
+          }
         }
       }
     }
