@@ -142,8 +142,6 @@ function ChatHistoryDrawerComponent({
     useState<Id<"threads"> | null>(null);
   const [hoveredThreadId, setHoveredThreadId] =
     useState<Id<"threads"> | null>(null);
-  const [longPressThreadId, setLongPressThreadId] =
-    useState<Id<"threads"> | null>(null);
   const [selectedThreadIndex, setSelectedThreadIndex] = useState<number>(-1);
   // Разрешать ли автопрокрутку к выбранному элементу
   const allowAutoScrollRef = useRef(false);
@@ -191,7 +189,6 @@ function ChatHistoryDrawerComponent({
             setEditingTitle("");
             setDeletingThreadId(null);
             setHoveredThreadId(null);
-            setLongPressThreadId(null);
             setSelectedThreadIndex(-1); // Сброс только при закрытии диалога
             setMobileMenuThreadId(null);
             allowAutoScrollRef.current = false;
@@ -228,7 +225,6 @@ function ChatHistoryDrawerComponent({
         return;
       }
       router.push(`/chat/${threadId}`);
-      setLongPressThreadId(null);
       handleOpenChange(false);
     },
     [id, router, handleOpenChange],
@@ -237,7 +233,6 @@ function ChatHistoryDrawerComponent({
   const handleEdit = useCallback((thread: Thread) => {
     setEditingThreadId(thread._id);
     setEditingTitle(thread.title);
-    setLongPressThreadId(null);
   }, []);
 
   const handleSaveEdit = useCallback(
@@ -245,7 +240,6 @@ function ChatHistoryDrawerComponent({
       await renameThread({ threadId, title: editingTitle });
       setEditingThreadId(null);
       setEditingTitle("");
-      setLongPressThreadId(null);
     },
     [editingTitle, renameThread],
   );
@@ -253,12 +247,10 @@ function ChatHistoryDrawerComponent({
   const handleCancelEdit = useCallback(() => {
     setEditingThreadId(null);
     setEditingTitle("");
-    setLongPressThreadId(null);
   }, []);
 
   const handleDelete = useCallback((threadId: Id<"threads">) => {
     setDeletingThreadId(threadId);
-    setLongPressThreadId(null);
   }, []);
 
   const handleConfirmDelete = useCallback(
@@ -268,14 +260,12 @@ function ChatHistoryDrawerComponent({
         router.push("/chat");
       }
       setDeletingThreadId(null);
-      setLongPressThreadId(null);
     },
     [id, router, removeThread],
   );
 
   const handleCancelDelete = useCallback(() => {
     setDeletingThreadId(null);
-    setLongPressThreadId(null);
   }, []);
 
   const handlePinToggle = useCallback(
@@ -296,7 +286,6 @@ function ChatHistoryDrawerComponent({
       setSharingThread(thread);
       setShareLink(null); // Reset link
       setShareDialogOpen(true);
-      setLongPressThreadId(null);
       setMobileMenuThreadId(null);
     },
     [],
@@ -333,7 +322,6 @@ function ChatHistoryDrawerComponent({
       switch (e.key) {
         case "ArrowDown":
           e.preventDefault();
-          setHoveredThreadId(null);
           lastKeyPressRef.current = now;
 
           // Отменяем любой текущий скролл при быстром нажатии
@@ -354,7 +342,6 @@ function ChatHistoryDrawerComponent({
           break;
         case "ArrowUp":
           e.preventDefault();
-          setHoveredThreadId(null);
           lastKeyPressRef.current = now;
           
           // Отменяем любой текущий скролл при быстром нажатии
@@ -454,13 +441,15 @@ function ChatHistoryDrawerComponent({
     return () => document.removeEventListener('click', handleGlobalClick);
   }, [mobileMenuThreadId]);
 
-  const previewThreadId = useMemo(() => {
-    if (debouncedHoverId) return debouncedHoverId;
+  const threadIdForPreview = useMemo(() => {
+    if (debouncedHoverId) {
+      return debouncedHoverId;
+    }
     if (selectedThreadIndex >= 0 && allThreadsFlat[selectedThreadIndex]) {
       return allThreadsFlat[selectedThreadIndex]._id;
     }
     return null;
-    }, [debouncedHoverId, selectedThreadIndex, allThreadsFlat]);
+  }, [debouncedHoverId, selectedThreadIndex, allThreadsFlat]);
 
   // Keyboard shortcuts 
   useEffect(() => {
@@ -472,8 +461,8 @@ function ChatHistoryDrawerComponent({
         if (deletingThreadId) {
           // Подтверждаем удаление
           handleConfirmDelete(deletingThreadId);
-        } else if (previewThreadId) {
-          handleThreadClick(previewThreadId);
+        } else if (threadIdForPreview) {
+          handleThreadClick(threadIdForPreview);
         } else if (selectedThreadIndex >= 0 && allThreadsFlat[selectedThreadIndex]) {
           handleThreadClick(allThreadsFlat[selectedThreadIndex]._id);
         }
@@ -488,8 +477,8 @@ function ChatHistoryDrawerComponent({
       } else if (e.key === 'd' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         if (!deletingThreadId) { // Только если не в режиме удаления
-          if (previewThreadId) {
-            setDeletingThreadId(previewThreadId);
+          if (threadIdForPreview) {
+            setDeletingThreadId(threadIdForPreview);
           } else if (selectedThreadIndex >= 0 && allThreadsFlat[selectedThreadIndex]) {
             setDeletingThreadId(allThreadsFlat[selectedThreadIndex]._id);
           }
@@ -499,7 +488,7 @@ function ChatHistoryDrawerComponent({
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, isMobile, previewThreadId, selectedThreadIndex, allThreadsFlat, deletingThreadId, handleThreadClick, handleOpenChange, handleConfirmDelete]);
+  }, [isOpen, isMobile, threadIdForPreview, selectedThreadIndex, allThreadsFlat, deletingThreadId, handleThreadClick, handleOpenChange, handleConfirmDelete]);
   
   // ------------------------ Render thread item -----------------------
   const renderThreadItem = useCallback(
@@ -513,52 +502,13 @@ function ChatHistoryDrawerComponent({
         }}
         onMouseEnter={() => {
           setHoveredThreadId(thread._id);
+          setSelectedThreadIndex(-1);
           // Немедленно отключаем автопрокрутку и отменяем ожидающие скроллы
           allowAutoScrollRef.current = false;
           pendingScrollRef.current = false;
-          // Сбрасываем состояние удаления при наведении на другой элемент
-          if (deletingThreadId && deletingThreadId !== thread._id) {
-            setDeletingThreadId(null);
-          }
         }}
         onMouseLeave={() => {
           setHoveredThreadId(null);
-          setLongPressThreadId(null);
-          if (isMobile) {
-            setMobileMenuThreadId(null);
-          }
-        }}
-        onContextMenu={(e) => {
-          if (isMobile) {
-            e.preventDefault();
-            // Отключаем автопрокрутку при touch взаимодействиях
-            allowAutoScrollRef.current = false;
-            pendingScrollRef.current = false;
-            setLongPressThreadId(thread._id);
-            setMobileMenuThreadId(thread._id);
-          }
-        }}
-        onTouchStart={(e) => {
-          if (isMobile) {
-            // Отключаем автопрокрутку при touch взаимодействиях
-            allowAutoScrollRef.current = false;
-            pendingScrollRef.current = false;
-            
-            const touchStartTime = Date.now();
-            const touchTimer = setTimeout(() => {
-              setLongPressThreadId(thread._id);
-              setMobileMenuThreadId(thread._id);
-            }, 500);
-            
-            const handleTouchEnd = () => {
-              clearTimeout(touchTimer);
-              if (Date.now() - touchStartTime < 500) {
-                setMobileMenuThreadId(null);
-              }
-            };
-            
-            e.currentTarget.addEventListener('touchend', handleTouchEnd, { once: true });
-          }
         }}
         onClick={() => {
           // Отключаем автопрокрутку и отменяем ожидающие скроллы при клике мышью
@@ -576,15 +526,17 @@ function ChatHistoryDrawerComponent({
             handleEdit(thread);
           }
         }}
-        className={cn(
-          "group flex items-center justify-between rounded-lg px-2 py-1.5 cursor-pointer",
-          id === thread._id
-            ? "bg-primary/10 border border-primary/20" 
-            : (!isMobile && threadIndex === selectedThreadIndex && selectedThreadIndex >= 0)
-            ? "bg-accent"
-            : "hover:bg-accent",
-        )}
       >
+        <div
+          className={cn(
+            "group flex items-center justify-between rounded-lg px-2 py-1.5 cursor-pointer w-full",
+            id === thread._id
+              ? "bg-primary/10 border border-primary/20"
+              : (!isMobile && (threadIndex === selectedThreadIndex || thread._id === hoveredThreadId))
+              ? "bg-accent"
+              : "hover:bg-accent",
+          )}
+        >
         {/* Left side */}
         <div className="flex-1 min-w-0 pr-2">
           <div className="flex items-center gap-2">
@@ -637,12 +589,7 @@ function ChatHistoryDrawerComponent({
         </div>
         {/* Right side buttons */}
         <div
-          className={cn(
-            "flex gap-0.5 sm:gap-1 shrink-0",
-            isMobile
-              ? (longPressThreadId === thread._id || deletingThreadId === thread._id) ? "opacity-100" : "opacity-0"
-              : (longPressThreadId === thread._id || deletingThreadId === thread._id) ? "opacity-100" : "opacity-0 group-hover:opacity-100",
-          )}
+          className="flex gap-0.5 sm:gap-1 shrink-0 opacity-0 group-hover:opacity-100"
         >
           {!editingThreadId && (
             <>
@@ -825,7 +772,6 @@ function ChatHistoryDrawerComponent({
       id,
       isMobile,
       selectedThreadIndex,
-      longPressThreadId,
       mobileMenuThreadId,
       deletingThreadId,
       editingThreadId,
@@ -1020,7 +966,7 @@ function ChatHistoryDrawerComponent({
           "grid h-full grid-rows-1",
           settings.showChatPreview ? "grid-cols-[1fr_1px_900px]" : "grid-cols-1"
         )}>
-          <div className="relative h-full flex-shrink-0">
+          <div className="relative h-full flex-shrink-0 w-[320px]">
             <DialogHeader className="px-4 pt-4 pb-2 flex flex-col gap-2">
               <DialogTitle className="flex items-center gap-2">
                 <MessageSquare className="h-5 w-5" /> Chat History
@@ -1052,8 +998,8 @@ function ChatHistoryDrawerComponent({
           </div>
           {settings.showChatPreview && (
             <>
-              <div className="bg-border/50"></div>
-              <ChatPreview threadId={previewThreadId} onClose={() => handleOpenChange(false)} />
+              <div className="bg-border/50 w-px h-full"></div>
+              <ChatPreview threadId={threadIdForPreview} onClose={() => handleOpenChange(false)} />
             </>
           )}
         </div>
@@ -1079,7 +1025,7 @@ function ChatHistoryDrawerComponent({
               </div>
               
               {/* Правая часть - действия */}
-              {settings.showChatPreview && (previewThreadId || selectedThreadIndex >= 0) && (
+              {settings.showChatPreview && (threadIdForPreview || selectedThreadIndex >= 0) && (
                 <div className="flex items-center gap-4">
                   {deletingThreadId ? (
                     /* Подсказки при удалении */
