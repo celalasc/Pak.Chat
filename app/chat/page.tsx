@@ -28,15 +28,8 @@ export default function NewChatPage() {
     }
   }, [isAuthenticated, isLoading]);
 
-  // Автоматическое перенаправление при изменении типа устройства
-  useEffect(() => {
-    if (!mounted || !isAuthenticated) return;
-    
-    // Если устройство стало мобильным, перенаправляем на мобильную версию
-    if (isMobile) {
-      router.replace('/home');
-    }
-  }, [isMobile, mounted, isAuthenticated, router]);
+  // Убираем автоматическое перенаправление для новых чатов
+  // Мобильные пользователи тоже могут создавать новые чаты через /chat
 
   if (isLoading || !isAuthenticated) {
     return <div className="w-full h-screen bg-background" />;
