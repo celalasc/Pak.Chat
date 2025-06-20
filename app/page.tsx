@@ -44,7 +44,24 @@ export default function Page() {
     }
   }, [user, loading, mounted, router, isMobile]);
 
-
+  // Отслеживаем изменения размера экрана для перенаправления на соответствующую страницу
+  useEffect(() => {
+    if (!user || loading || !mounted) return;
+    
+    const targetPath = isMobile ? '/home' : '/chat';
+    const currentPath = window.location.pathname;
+    
+    // Только перенаправляем если мы действительно на другой странице и устройство изменилось
+    if ((currentPath === '/home' && !isMobile) || (currentPath === '/chat' && isMobile)) {
+      // Добавляем небольшую задержку чтобы избежать конфликтов с первоначальным перенаправлением
+      const timeoutId = setTimeout(() => {
+        console.log('Device type changed, redirecting to:', targetPath);
+        router.replace(targetPath);
+      }, 100);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isMobile, user, loading, mounted, router]);
 
   // Сбрасываем флаг перенаправления если пользователь разлогинился
   useEffect(() => {

@@ -36,17 +36,7 @@ export async function POST(req: NextRequest) {
       attachments: requestAttachments,
     } = await req.json();
 
-    console.log('Google LLM API called with:', {
-      messagesCount: messages?.length,
-      model,
-      threadId,
-      search,
-      hasApiKeys: !!apiKeys,
-      requestAttachmentsCount: requestAttachments?.length || 0
-    });
-
     if (!threadId && messages.length > 1) {
-      console.error('threadId required but not provided, messages:', messages.length);
       return NextResponse.json(
         { error: 'threadId required for existing conversations' },
         { status: 400 }
@@ -183,8 +173,10 @@ export async function POST(req: NextRequest) {
 
       // Добавляем сообщение в историю
       if (parts.length > 0 || message.content) {
+        // Преобразуем роли для Google AI API: assistant -> model
+        const googleRole = message.role === 'assistant' ? 'model' : message.role;
         contents.push({
-          role: message.role,
+          role: googleRole,
           parts: parts.length > 0 ? parts : [{ text: message.content }]
         });
       }
@@ -299,8 +291,6 @@ Explain what you see in detail and answer any questions about the content.`
       },
     });
 
-    console.log('Returning streaming response successfully');
-    
     return new Response(stream, {
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',

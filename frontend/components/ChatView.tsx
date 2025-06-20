@@ -68,36 +68,36 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
 
   // Обработчик создания нового треда
   const handleThreadCreated = useCallback((newThreadId: string) => {
-    console.log('Thread created, updating currentThreadId from', currentThreadId, 'to', newThreadId);
     setCurrentThreadId(newThreadId);
     threadIdRef.current = newThreadId;
   }, [currentThreadId]);
 
   // Memoize body and request preparation to avoid creating new references
   const requestBody = React.useMemo(
-    () => {
-      const body = {
-        model: selectedModel,
-        apiKeys: keys,
-        threadId: currentThreadId,
-        search: webSearchEnabled,
-      };
-      console.log('requestBody updated:', body);
-      return body;
-    },
+    () => ({
+      model: selectedModel,
+      apiKeys: keys,
+      threadId: currentThreadId,
+      search: webSearchEnabled,
+    }),
     [selectedModel, keys, currentThreadId, webSearchEnabled]
   );
 
   const prepareRequestBody = React.useCallback(
     ({ messages }: { messages: UIMessage[] }) => {
+      // Используем актуальный threadId из ref вместо мемоизированного requestBody
+      const currentThreadId = threadIdRef.current;
       const body = {
         messages: messages.map((m) => ({ ...m, id: m.id })),
-        ...requestBody,
+        model: selectedModel,
+        apiKeys: keys,
+        threadId: currentThreadId,
+        search: webSearchEnabled,
       };
-      console.log('prepareRequestBody called with', messages.length, 'messages, threadId:', body.threadId);
+
       return body;
     },
-    [requestBody]
+    [selectedModel, keys, webSearchEnabled]
   );
 
   const {
@@ -118,7 +118,6 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
     experimental_prepareRequestBody: prepareRequestBody,
     onFinish: async (finalMsg) => {
       const latestThreadId = threadIdRef.current;
-      console.log('onFinish called with threadId:', latestThreadId, 'messageRole:', finalMsg.role);
       
       if (
         finalMsg.role === 'assistant' &&
@@ -267,7 +266,6 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
 
   // Sync when navigating between chats or dialog versions
   useEffect(() => {
-    console.log('ChatView: Syncing with new threadId:', threadId, 'current:', currentThreadId);
     setCurrentThreadId(threadId);
     threadIdRef.current = threadId;
     
