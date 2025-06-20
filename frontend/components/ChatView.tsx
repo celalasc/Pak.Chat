@@ -191,8 +191,16 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
     const allMessages = [...updatedMessages, ...missingConvexMessages]
       .sort((a, b) => getTime(a.createdAt) - getTime(b.createdAt));
 
-    
-    return allMessages;
+    const deduped: typeof allMessages = [];
+    const seen = new Set<string>();
+    for (const msg of allMessages) {
+      if (!seen.has(msg.id)) {
+        seen.add(msg.id);
+        deduped.push(msg);
+      }
+    }
+
+    return deduped;
   }, [messages, convexMessages]);
 
   // Функция для отслеживания видимых сообщений
