@@ -12,6 +12,7 @@ import { Input } from './ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Label } from '@/components/ui/label';
+import { Textarea } from './ui/textarea';
 import {
   Settings,
   Palette,
@@ -29,10 +30,16 @@ import {
   Copy,
   Check,
   ExternalLink,
-  Bot
+  Bot,
+  MessageSquare,
+  Brain,
+  Languages,
+  Code,
+  FileText,
+  Sparkles
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useSettingsStore, GENERAL_FONTS, CODE_FONTS, THEMES, GeneralFont, CodeFont, Theme } from '@/frontend/stores/SettingsStore';
+import { useSettingsStore, GENERAL_FONTS, CODE_FONTS, THEMES, GeneralFont, CodeFont, Theme, CustomInstructions } from '@/frontend/stores/SettingsStore';
 import { useAPIKeyStore, Provider } from '@/frontend/stores/APIKeyStore';
 import { useAuthStore } from '@/frontend/stores/AuthStore';
 import { useModelVisibilityStore } from '@/frontend/stores/ModelVisibilityStore';
@@ -146,7 +153,7 @@ const ContentComponent = memo(function ContentComponent({
 ContentComponent.displayName = 'ContentComponent';
 
 const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawerProps) => {
-  const { isMobile, mounted } = useIsMobile(600);
+  const { isMobile, mounted } = useIsMobile(900);
   const [activeTab, setActiveTab] = useState("customization");
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -157,18 +164,41 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
     }
   }, [setIsOpen, setActiveTab]);
 
-  // Prevent body scroll when drawer is open
+  // Отдельный обработчик для управления мобильным эффектом
+  const handleMobileEffect = useCallback((shouldApply: boolean) => {
+    if (!isMobile) return;
+    
+    const mainContent = document.querySelector('.main-content') as HTMLElement;
+    if (!mainContent) return;
+
+    if (shouldApply) {
+      mainContent.classList.add('mobile-settings-active');
+    } else {
+      mainContent.classList.remove('mobile-settings-active');
+      // Сбрасываем inline стили
+      if (mainContent.style) {
+        (mainContent as any).style.transform = '';
+        (mainContent as any).style.borderRadius = '';
+      }
+    }
+  }, [isMobile]);
+
+  // Prevent body scroll when drawer is open and apply mobile effect
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
+      handleMobileEffect(true);
     } else {
       // Re-enable scrolling when drawer closes
       document.body.style.overflow = 'auto';
+      handleMobileEffect(false);
     }
+    
     return () => {
       document.body.style.overflow = 'auto';
+      handleMobileEffect(false);
     };
-  }, [isOpen]);
+  }, [isOpen, handleMobileEffect]);
 
   // Мемоизируем tabs чтобы они не пересоздавались при каждом рендере
   const tabs = useMemo(() => [
@@ -217,11 +247,43 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
 
   if (isMobile) {
     return (
-      <Drawer open={isOpen} onOpenChange={handleOpenChange}>
-        <DrawerTrigger asChild>
-          {children}
-        </DrawerTrigger>
-        <DrawerContent className="max-h-[calc(100dvh-10px)] flex flex-col w-full p-0">
+      <>
+        {/* Mobile overlay */}
+        <div className={cn(
+          "mobile-settings-overlay",
+          isOpen && "active"
+        )} onClick={() => handleOpenChange(false)} />
+        
+              <Drawer 
+          open={isOpen} 
+          onOpenChange={handleOpenChange}
+          shouldScaleBackground={false}
+          dismissible={true}
+          modal={true}
+          onDrag={(event, percentageDragged) => {
+            // Синхронизируем анимацию заднего фона с процентом перетаскивания
+            if (isMobile && percentageDragged > 0) {
+              const mainContent = document.querySelector('.main-content') as HTMLElement;
+              if (mainContent && mainContent.style) {
+                const progress = Math.max(0, 1 - percentageDragged);
+                const translateY = 30 * progress;
+                const scale = 0.95 + (0.05 * (1 - progress));
+                const borderRadius = 15 * progress;
+                
+                (mainContent as any).style.transform = `translateY(${translateY}px) scale(${scale})`;
+                (mainContent as any).style.borderRadius = `${borderRadius}px`;
+              }
+            }
+          }}
+          onClose={() => {
+            // Убираем эффект при закрытии
+            handleMobileEffect(false);
+          }}
+        >
+          <DrawerTrigger asChild>
+            {children}
+          </DrawerTrigger>
+          <DrawerContent className="max-h-[calc(50dvh-15px)] flex flex-col w-full p-0">
           {/* Pull handle */}
           <div className="flex justify-center pt-2 pb-1 flex-shrink-0">
             <div className="w-12 h-1 bg-muted-foreground/30 rounded-full" />
@@ -250,6 +312,7 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
           </div>
         </DrawerContent>
       </Drawer>
+      </>
     );
   }
 
@@ -576,6 +639,7 @@ ProfileTab.displayName = 'ProfileTab';
 
 const APIKeysTab = memo(() => {
   const { keys, setKeys, keysLoading } = useAPIKeyStore();
+  const [apiKeysExpanded, setApiKeysExpanded] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -601,18 +665,33 @@ const APIKeysTab = memo(() => {
     [setKeys]
   );
 
+  const toggleApiKeysExpanded = useCallback(() => {
+    setApiKeysExpanded(prev => !prev);
+  }, []);
+
   return (
     <div className="space-y-6 pb-4">
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
+        <CardHeader 
+          className="cursor-pointer" 
+          onClick={toggleApiKeysExpanded}
+        >
+          <CardTitle className="flex items-center justify-between text-base">
+            <div className="flex items-center gap-2">
             <Key className="h-4 w-4" />
             API Keys
+            </div>
+            {apiKeysExpanded ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronUp className="h-4 w-4" />
+            )}
           </CardTitle>
           <CardDescription className="text-sm">
             API keys are securely stored and encrypted in the cloud
           </CardDescription>
         </CardHeader>
+        {apiKeysExpanded && (
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <ApiKeyField
@@ -661,6 +740,7 @@ const APIKeysTab = memo(() => {
             </Button>
           </form>
         </CardContent>
+        )}
       </Card>
     </div>
   );
@@ -803,6 +883,19 @@ const ApiKeyField = ({
 }; 
 
 const ModelsTab = memo(() => {
+  const { settings, setSettings } = useSettingsStore();
+  const [customInstructionsExpanded, setCustomInstructionsExpanded] = useState(false);
+  const [modelVisibilityExpanded, setModelVisibilityExpanded] = useState(false);
+  const [currentTraitInput, setCurrentTraitInput] = useState('');
+  
+  // Ensure customInstructions exists with default values
+  const customInstructions = {
+    name: settings.customInstructions?.name || '',
+    occupation: settings.customInstructions?.occupation || '',
+    traits: settings.customInstructions?.traits || [],
+    additionalInfo: settings.customInstructions?.additionalInfo || '',
+  };
+  
   const modelsByProvider = getModelsByProvider();
   const {
     toggleProvider,
@@ -812,6 +905,39 @@ const ModelsTab = memo(() => {
   } = useModelVisibilityStore();
   
   const { saveToConvex } = useModelVisibilitySync();
+
+  // Обработчики для кастомных инструкций
+  const handleCustomInstructionsChange = useCallback((field: keyof CustomInstructions, value: string | string[]) => {
+    setSettings({
+      customInstructions: {
+        ...customInstructions,
+        [field]: value
+      }
+    });
+  }, [customInstructions, setSettings]);
+
+  const handleTraitToggle = useCallback((trait: string) => {
+    const currentTraits = customInstructions.traits || [];
+    const newTraits = currentTraits.includes(trait)
+      ? currentTraits.filter(t => t !== trait)
+      : [...currentTraits, trait];
+    
+    handleCustomInstructionsChange('traits', newTraits);
+  }, [customInstructions.traits, handleCustomInstructionsChange]);
+
+  const handleCustomTraitAdd = useCallback((traitsInput: string) => {
+    const currentTraits = customInstructions.traits || [];
+    // Split by comma and process each trait
+    const newTraits = traitsInput
+      .split(',')
+      .map(t => t.trim())
+      .filter(t => t && t.length <= 50 && !currentTraits.includes(t))
+      .slice(0, 50 - currentTraits.length); // Ensure we don't exceed 50 traits total
+    
+    if (newTraits.length > 0) {
+      handleCustomInstructionsChange('traits', [...currentTraits, ...newTraits]);
+    }
+  }, [customInstructions.traits, handleCustomInstructionsChange]);
 
   // Обработчики с автосохранением и предотвращением дублирования вызовов
   const handleToggleProvider = useCallback((provider: Provider) => {
@@ -830,18 +956,228 @@ const ModelsTab = memo(() => {
     }
   }, [toggleFavoriteModel]);
 
+  const toggleCustomInstructionsExpanded = useCallback(() => {
+    setCustomInstructionsExpanded(prev => !prev);
+  }, []);
+
+  const toggleModelVisibilityExpanded = useCallback(() => {
+    setModelVisibilityExpanded(prev => !prev);
+  }, []);
+
   return (
     <div className="space-y-6 pb-4">
+      {/* Custom Instructions Section */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
+        <CardHeader 
+          className="cursor-pointer" 
+          onClick={toggleCustomInstructionsExpanded}
+        >
+          <CardTitle className="flex items-center justify-between text-base">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="h-4 w-4" />
+              Custom Instructions
+            </div>
+            {customInstructionsExpanded ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronUp className="h-4 w-4" />
+            )}
+          </CardTitle>
+          <CardDescription className="text-sm">
+            Customize how AI interacts with you and what it remembers about your preferences
+          </CardDescription>
+        </CardHeader>
+        {customInstructionsExpanded && (
+          <CardContent className="space-y-6">
+          {/* What should Pak.Chat call you? */}
+          <div className="space-y-3">
+            <Label htmlFor="name" className="text-sm font-medium">
+              What should Pak.Chat call you?
+            </Label>
+            <div className="relative">
+              <Input
+                id="name"
+                placeholder="Enter your name"
+                value={customInstructions.name}
+                onChange={(e) => {
+                  if (e.target.value.length <= 50) {
+                    handleCustomInstructionsChange('name', e.target.value);
+                  }
+                }}
+                className="pr-16 border-none bg-muted/30 focus-visible:ring-0 focus-visible:ring-offset-0"
+                maxLength={50}
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                {customInstructions.name.length}/50
+              </span>
+            </div>
+          </div>
+
+          {/* What do you do? */}
+          <div className="space-y-3">
+            <Label htmlFor="occupation" className="text-sm font-medium">
+              What do you do?
+            </Label>
+            <div className="relative">
+              <Input
+                id="occupation"
+                placeholder="Engineer, student, etc."
+                value={customInstructions.occupation}
+                onChange={(e) => {
+                  if (e.target.value.length <= 100) {
+                    handleCustomInstructionsChange('occupation', e.target.value);
+                  }
+                }}
+                className="pr-20 border-none bg-muted/30 focus-visible:ring-0 focus-visible:ring-offset-0"
+                maxLength={100}
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                {customInstructions.occupation.length}/100
+              </span>
+            </div>
+          </div>
+
+          {/* What traits should Pak.Chat have? */}
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">
+              What traits should Pak.Chat have? <span className="text-xs text-muted-foreground">(up to 50, max 100 chars each)</span>
+            </Label>
+            
+            <div className="space-y-3">
+              {/* Custom trait input with embedded badges */}
+              <div className="relative">
+                <div className="w-full bg-muted/30 rounded-md">
+                  {/* Display existing traits as badges */}
+                  {(customInstructions.traits || []).length > 0 && (
+                    <div className="px-3 pt-2 pb-1">
+                      <div className="flex flex-wrap gap-1">
+                        {(customInstructions.traits || []).map((trait, index) => (
+                          <Badge
+                            key={index}
+                            variant="secondary"
+                            className="cursor-pointer hover:bg-muted hover:text-muted-foreground h-6 text-xs"
+                            onClick={() => handleTraitToggle(trait)}
+                          >
+                            <span>{trait}</span>
+                            <span className="ml-1 text-xs">×</span>
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Input field - always at the bottom */}
+                  <div className={cn(
+                    "px-3 pb-3",
+                    (customInstructions.traits || []).length > 0 ? "pt-1" : "pt-3"
+                  )}>
+                    <input
+                      type="text"
+                      placeholder={
+                        (customInstructions.traits || []).length === 0 
+                          ? "Type a trait and press Enter or Tab..." 
+                          : "Add another trait..."
+                      }
+                      value={currentTraitInput}
+                      onChange={(e) => {
+                        setCurrentTraitInput(e.target.value);
+                      }}
+                      onKeyDown={(e) => {
+                        if ((e.key === 'Enter' || e.key === 'Tab') && currentTraitInput.trim()) {
+                          e.preventDefault();
+                          handleCustomTraitAdd(currentTraitInput);
+                          setCurrentTraitInput('');
+                        } else if (e.key === 'Backspace' && !currentTraitInput && (customInstructions.traits || []).length > 0) {
+                          // Remove last trait when backspace is pressed and input is empty
+                          const currentTraits = customInstructions.traits || [];
+                          const newTraits = currentTraits.slice(0, -1);
+                          handleCustomInstructionsChange('traits', newTraits);
+                        }
+                      }}
+                      className="w-full h-8 bg-transparent border-none outline-none text-sm placeholder:text-muted-foreground pr-12"
+                      style={{ boxShadow: 'none' }}
+                    />
+                  </div>
+                </div>
+                <span className="absolute right-3 bottom-3 text-xs text-muted-foreground pointer-events-none">
+                  {currentTraitInput.length}/100
+                </span>
+              </div>
+
+              {/* Predefined traits */}
+              <div className="flex gap-2 flex-wrap">
+                {['friendly', 'witty', 'concise', 'curious', 'empathetic', 'creative', 'patient'].map((trait) => (
+                  <Button
+                    key={trait}
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      const currentTraits = customInstructions.traits || [];
+                      if (!currentTraits.includes(trait)) {
+                        handleCustomInstructionsChange('traits', [...currentTraits, trait]);
+                      }
+                    }}
+                    className="text-xs h-7 px-3 hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
+                    disabled={(customInstructions.traits || []).includes(trait)}
+                  >
+                    <span>{trait}</span>
+                    <span className="ml-1">+</span>
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Anything else Pak.Chat should know about you? */}
+          <div className="space-y-3">
+            <Label htmlFor="additional-info" className="text-sm font-medium">
+              Anything else Pak.Chat should know about you?
+            </Label>
+            <div className="relative">
+              <Textarea
+                id="additional-info"
+                placeholder="Interests, values, or preferences to keep in mind"
+                value={customInstructions.additionalInfo}
+                onChange={(e) => {
+                  if (e.target.value.length <= 3000) {
+                    handleCustomInstructionsChange('additionalInfo', e.target.value);
+                  }
+                }}
+                className="h-[120px] resize-none pr-20 break-words whitespace-pre-wrap overflow-y-auto border-none bg-muted/30 focus-visible:ring-0 focus-visible:ring-offset-0"
+                style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
+                maxLength={3000}
+              />
+              <span className="absolute right-3 bottom-3 text-xs text-muted-foreground">
+                {customInstructions.additionalInfo.length}/3000
+              </span>
+            </div>
+          </div>
+        </CardContent>
+        )}
+      </Card>
+
+      {/* Model Visibility Section - Collapsible */}
+      <Card>
+        <CardHeader 
+          className="cursor-pointer" 
+          onClick={toggleModelVisibilityExpanded}
+        >
+          <CardTitle className="flex items-center justify-between text-base">
+            <div className="flex items-center gap-2">
             <Bot className="h-4 w-4" />
             Model Visibility
+            </div>
+            {modelVisibilityExpanded ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronUp className="h-4 w-4" />
+            )}
           </CardTitle>
           <CardDescription className="text-sm">
             Select which models appear in your favorites and which providers are enabled
           </CardDescription>
         </CardHeader>
+        {modelVisibilityExpanded && (
         <CardContent className="space-y-6">
           {Object.entries(modelsByProvider).map(([provider, models]) => (
             <ProviderSection
@@ -855,6 +1191,7 @@ const ModelsTab = memo(() => {
             />
           ))}
         </CardContent>
+        )}
       </Card>
     </div>
   );
