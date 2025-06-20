@@ -29,8 +29,8 @@ export default function Page() {
         console.log('Redirecting to last path:', lastPath);
         router.replace(lastPath);
       }
-      // Если есть последний чат, переходим к нему
-      else if (lastChatId) {
+      // Если это именно перезагрузка и есть последний чат, переходим к нему
+      else if (isReload() && lastChatId) {
         console.log('Redirecting to last chat:', lastChatId);
         router.replace(`/chat/${lastChatId}`);
       }
