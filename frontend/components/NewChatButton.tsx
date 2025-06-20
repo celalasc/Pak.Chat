@@ -5,6 +5,7 @@ import { Plus } from 'lucide-react';
 import { WithTooltip } from './WithTooltip';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
+import { clearDraft } from '@/frontend/lib/drafts';
 
 interface NewChatButtonProps {
   className?: string;
@@ -20,6 +21,8 @@ export default function NewChatButton({
   const router = useRouter();
 
   const handleClick = () => {
+    // Remove any leftover draft for new chats to start with a clean state
+    clearDraft('');
     router.push('/chat');
   };
 
