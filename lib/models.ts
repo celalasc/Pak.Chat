@@ -10,6 +10,7 @@ export const AI_MODELS = [
   'GPT-4.1',
   'GPT-4.1-nano',
   'o4-mini',
+  'o3',
   'Meta Llama 4 Scout 17B',
   'Meta Llama 4 Maverick 17B',
   'DeepSeek R1 Distill Llama 70B',
@@ -69,6 +70,12 @@ export const MODEL_CONFIGS: Record<AIModel, ModelConfig> = {
   },
   'o4-mini': {
     modelId: 'o4-mini',
+    provider: 'openai',
+    company: 'OpenAI',
+    reasoningEffort: 'medium',
+  },
+  'o3': {
+    modelId: 'o3',
     provider: 'openai',
     company: 'OpenAI',
     reasoningEffort: 'medium',
