@@ -30,6 +30,7 @@ function PureMessage({
   append,
   isStreaming,
   stop,
+  forceRegeneration,
 }: {
   threadId: string;
   message: UIMessage;
@@ -39,6 +40,7 @@ function PureMessage({
   append: UseChatHelpers['append'];
   isStreaming: boolean;
   stop: UseChatHelpers['stop'];
+  forceRegeneration: () => void;
 }) {
   const [mode, setMode] = useState<'view' | 'edit'>('view');
   const [mobileControlsVisible, setMobileControlsVisible] = useState(false);
@@ -255,6 +257,7 @@ function PureMessage({
                   stop={stop}
                   isVisible={mobileControlsVisible}
                   onToggleVisibility={() => setMobileControlsVisible(!mobileControlsVisible)}
+                  forceRegeneration={forceRegeneration}
                 />
               )}
             </div>
@@ -316,6 +319,7 @@ function PureMessage({
                   stop={stop}
                   isVisible={mobileControlsVisible}
                   onToggleVisibility={() => setMobileControlsVisible(!mobileControlsVisible)}
+                  forceRegeneration={forceRegeneration}
                 />
               )}
             </div>
@@ -346,8 +350,14 @@ function PureMessage({
   );
 }
 
-const PreviewMessage = memo(PureMessage);
+const PreviewMessage = memo(PureMessage, (prevProps, nextProps) => {
+  return (
+    prevProps.message === nextProps.message &&
+    prevProps.isStreaming === nextProps.isStreaming &&
+    prevProps.messages.length === nextProps.messages.length
+  );
+});
 
-PreviewMessage.displayName = 'PreviewMessage';
+PreviewMessage.displayName = 'Message';
 
 export default PreviewMessage;

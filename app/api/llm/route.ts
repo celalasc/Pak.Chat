@@ -8,6 +8,8 @@ import { fetchQuery } from 'convex/nextjs';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
 import { isConvexId } from '@/lib/ids';
+import { buildSystemPrompt } from '@/lib/systemPrompt';
+import { CustomInstructions } from '@/frontend/stores/SettingsStore';
 
 
 interface Attachment {
@@ -40,7 +42,7 @@ const EXTRA_TEXT_MIME_TYPES = new Set([
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, model, apiKeys, threadId, search } = await req.json();
+    const { messages, model, apiKeys, threadId, userId, search } = await req.json();
 
     // Для нового чата threadId может быть пустым - это нормально
     // Проверяем только если есть сообщения, которые нужно сохранить в БД
@@ -102,6 +104,35 @@ export async function POST(req: NextRequest) {
           status: 400,
           headers: { 'Content-Type': 'application/json' },
         });
+    }
+
+    // Получаем настройки пользователя для кастомных инструкций
+    let userCustomInstructions: CustomInstructions | undefined;
+    
+    try {
+      let userSettings = null;
+      
+      // Попробуем получить настройки через threadId
+      if (threadId && isConvexId(threadId)) {
+        userSettings = await fetchQuery(api.userSettings.getByThreadId, { threadId });
+      }
+      
+      // Если не удалось через threadId, попробуем через userId
+      if (!userSettings && userId) {
+        userSettings = await fetchQuery(api.userSettings.getByFirebaseUid, { firebaseUid: userId });
+      }
+      
+      if (userSettings) {
+        userCustomInstructions = {
+          name: userSettings.customInstructionsName || '',
+          occupation: userSettings.customInstructionsOccupation || '',
+          traits: userSettings.customInstructionsTraits || [],
+          traitsText: userSettings.customInstructionsTraitsText || '',
+          additionalInfo: userSettings.customInstructionsAdditionalInfo || '',
+        };
+      }
+    } catch (e) {
+      console.error('User settings fetch failed:', e);
     }
 
     let attachments: Attachment[] = [];
@@ -243,29 +274,7 @@ export async function POST(req: NextRequest) {
       onError: (e: unknown) => {
         console.error('AI SDK streamText Error:', e);
       },
-      system: `
-      You are Pak.Chat, an ai assistant that can answer questions and help with tasks.
-      Be helpful and provide relevant information
-      Be respectful and polite in all interactions.
-      Be engaging and maintain a conversational tone.
-      Always use LaTeX for mathematical expressions -
-      Inline math must be wrapped in single dollar signs: $content$
-      Display math must be wrapped in double dollar signs: $$content$$
-      Display math should be placed on its own line, with nothing else on that line.
-      Do not nest math delimiters or mix styles.
-      Examples:
-      - Inline: The equation $E = mc^2$ shows mass-energy equivalence.
-      - Display: 
-      $$\\frac{d}{dx}\\sin(x) = \\cos(x)$$
-
-      When analyzing images, PDF documents, or other files, be descriptive and helpful. For PDF documents:
-      - Analyze all text content, tables, charts, and images within the document
-      - Extract and understand structured information like tables and forms
-      - Maintain the logical flow and context of the document
-      - Answer questions about specific sections, data, or content within the PDF
-      - Summarize or explain the document content when requested
-      Explain what you see in detail and answer any questions about the content.
-      `,
+      system: buildSystemPrompt(userCustomInstructions),
       abortSignal: req.signal,
         });
 

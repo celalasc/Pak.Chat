@@ -15,7 +15,8 @@ export type Theme = (typeof THEMES)[number];
 export type CustomInstructions = {
   name: string; // What should AI call you? (max 50)
   occupation: string; // What do you do? (max 100)
-  traits: string[]; // What traits should AI have? (max 50 chars each)
+  traits: string[]; // What traits should AI have? - готовые плитки (max 50 chars each)
+  traitsText: string; // What traits should AI have? - свободный текст (max 500)
   additionalInfo: string; // Anything else AI should know? (max 3000)
 };
 
@@ -58,6 +59,7 @@ const defaultCustomInstructions: CustomInstructions = {
   name: '',
   occupation: '',
   traits: [],
+  traitsText: '',
   additionalInfo: '',
 };
 
@@ -110,6 +112,7 @@ export function useSettingsSync() {
     convexUser ? {} : 'skip'
   );
   const save = useMutation(api.userSettings.saveSettings);
+  const saveCustomInstructions = useMutation(api.userSettings.saveCustomInstructions);
 
   const { settings, setSettings } = useSettingsStore();
   const lastSaved = useRef<typeof settings | null>(null);
@@ -118,11 +121,30 @@ export function useSettingsSync() {
   // hydrate from server - только один раз при инициализации
   useEffect(() => {
     if (settingsDoc && !isInitialized.current) {
-      const { uiFont, codeFont, hidePersonal } = settingsDoc;
+      const { 
+        uiFont, 
+        codeFont, 
+        hidePersonal,
+        customInstructionsName,
+        customInstructionsOccupation,
+        customInstructionsTraits,
+        customInstructionsTraitsText,
+        customInstructionsAdditionalInfo
+      } = settingsDoc;
+      
+      const customInstructions = {
+        name: customInstructionsName ?? '',
+        occupation: customInstructionsOccupation ?? '',
+        traits: customInstructionsTraits ?? [],
+        traitsText: customInstructionsTraitsText ?? '',
+        additionalInfo: customInstructionsAdditionalInfo ?? '',
+      };
+      
       const serverSettings = {
         generalFont: (uiFont as GeneralFont) ?? 'Proxima Vara',
         codeFont: (codeFont as CodeFont) ?? 'Berkeley Mono',
         hidePersonal: hidePersonal ?? false,
+        customInstructions,
       };
       
       setSettings(serverSettings);
@@ -131,7 +153,6 @@ export function useSettingsSync() {
         theme: settings.theme,
         showNavBars: settings.showNavBars,
         showChatPreview: settings.showChatPreview,
-        customInstructions: settings.customInstructions,
       };
       isInitialized.current = true;
     }
@@ -155,4 +176,35 @@ export function useSettingsSync() {
       } as any);
     }
   }, [settings.generalFont, settings.codeFont, settings.hidePersonal, save, convexUser]); // Только конкретные поля
+
+  // Функция для ручного сохранения кастомных инструкций
+  const saveCustomInstructionsManually = async () => {
+    if (!isAuthenticated) {
+      return false;
+    }
+    
+    const currentInstructions = settings.customInstructions || defaultCustomInstructions;
+    
+    try {
+      await saveCustomInstructions({
+        customInstructionsName: currentInstructions.name || undefined,
+        customInstructionsOccupation: currentInstructions.occupation || undefined,
+        customInstructionsTraits: currentInstructions.traits.length > 0 ? currentInstructions.traits : undefined,
+        customInstructionsTraitsText: currentInstructions.traitsText || undefined,
+        customInstructionsAdditionalInfo: currentInstructions.additionalInfo || undefined,
+      });
+      
+      // Обновляем lastSaved после успешного сохранения
+      if (lastSaved.current) {
+        lastSaved.current = { ...lastSaved.current, customInstructions: currentInstructions };
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Failed to save custom instructions:', error);
+      throw error; // Пробрасываем ошибку наверх для более детальной обработки
+    }
+  };
+
+  return { saveCustomInstructionsManually };
 }

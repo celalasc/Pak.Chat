@@ -39,7 +39,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useSettingsStore, GENERAL_FONTS, CODE_FONTS, THEMES, GeneralFont, CodeFont, Theme, CustomInstructions } from '@/frontend/stores/SettingsStore';
+import { useSettingsStore, useSettingsSync, GENERAL_FONTS, CODE_FONTS, THEMES, GeneralFont, CodeFont, Theme, CustomInstructions } from '@/frontend/stores/SettingsStore';
 import { useAPIKeyStore, Provider } from '@/frontend/stores/APIKeyStore';
 import { useAuthStore } from '@/frontend/stores/AuthStore';
 import { useModelVisibilityStore } from '@/frontend/stores/ModelVisibilityStore';
@@ -884,17 +884,55 @@ const ApiKeyField = ({
 
 const ModelsTab = memo(() => {
   const { settings, setSettings } = useSettingsStore();
+  const { saveCustomInstructionsManually } = useSettingsSync();
   const [customInstructionsExpanded, setCustomInstructionsExpanded] = useState(false);
   const [modelVisibilityExpanded, setModelVisibilityExpanded] = useState(false);
   const [currentTraitInput, setCurrentTraitInput] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [originalCustomInstructions, setOriginalCustomInstructions] = useState<CustomInstructions | null>(null);
   
   // Ensure customInstructions exists with default values
   const customInstructions = {
     name: settings.customInstructions?.name || '',
     occupation: settings.customInstructions?.occupation || '',
     traits: settings.customInstructions?.traits || [],
+    traitsText: settings.customInstructions?.traitsText || '',
     additionalInfo: settings.customInstructions?.additionalInfo || '',
   };
+
+  // Инициализируем originalCustomInstructions только при первом открытии секции
+  useEffect(() => {
+    if (customInstructionsExpanded && !originalCustomInstructions) {
+      setOriginalCustomInstructions({ ...customInstructions });
+      setCurrentTraitInput(customInstructions.traitsText); // Инициализируем поле ввода из traitsText
+    }
+  }, [customInstructionsExpanded, originalCustomInstructions, customInstructions]);
+
+  // Сброс originalCustomInstructions при закрытии секции
+  useEffect(() => {
+    if (!customInstructionsExpanded) {
+      setOriginalCustomInstructions(null);
+    }
+  }, [customInstructionsExpanded]);
+
+  // Проверяем, есть ли несохраненные изменения
+  const hasUnsavedChanges = useMemo(() => {
+    if (!originalCustomInstructions) {
+      return false;
+    }
+    
+    const current = customInstructions;
+    const original = originalCustomInstructions;
+    
+    const nameChanged = current.name !== original.name;
+    const occupationChanged = current.occupation !== original.occupation;
+    const additionalInfoChanged = current.additionalInfo !== original.additionalInfo;
+    const traitsChanged = JSON.stringify(current.traits.sort()) !== JSON.stringify(original.traits.sort());
+    const traitsTextChanged = current.traitsText !== original.traitsText;
+    const hasTraitInput = currentTraitInput.trim().length > 0; // Учитываем текст в поле ввода
+    
+    return nameChanged || occupationChanged || additionalInfoChanged || traitsChanged || traitsTextChanged || hasTraitInput;
+  }, [customInstructions, originalCustomInstructions, currentTraitInput]);
   
   const modelsByProvider = getModelsByProvider();
   const {
@@ -964,6 +1002,30 @@ const ModelsTab = memo(() => {
     setModelVisibilityExpanded(prev => !prev);
   }, []);
 
+  // Функция для сохранения кастомных инструкций
+  const handleSaveCustomInstructions = useCallback(async () => {
+    if (!hasUnsavedChanges || isSaving) return;
+    
+    setIsSaving(true);
+    try {
+      const success = await saveCustomInstructionsManually();
+      if (success) {
+        // Обновляем originalCustomInstructions после успешного сохранения
+        setOriginalCustomInstructions({ ...customInstructions });
+        toast.success('Custom instructions saved successfully!');
+      } else {
+        toast.error('Failed to save custom instructions. User not authenticated.');
+      }
+    } catch (error) {
+      console.error('Error saving custom instructions:', error);
+      // Более детальное сообщение об ошибке
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast.error(`Failed to save: ${errorMessage}`);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [saveCustomInstructionsManually, customInstructions, hasUnsavedChanges, isSaving, currentTraitInput, setSettings]);
+
   return (
     <div className="space-y-6 pb-4">
       {/* Custom Instructions Section */}
@@ -976,6 +1038,11 @@ const ModelsTab = memo(() => {
             <div className="flex items-center gap-2">
               <MessageSquare className="h-4 w-4" />
               Custom Instructions
+              {hasUnsavedChanges && (
+                <Badge variant="secondary" className="text-xs">
+                  Unsaved
+                </Badge>
+              )}
             </div>
             {customInstructionsExpanded ? (
               <ChevronDown className="h-4 w-4" />
@@ -1080,14 +1147,13 @@ const ModelsTab = memo(() => {
                       }
                       value={currentTraitInput}
                       onChange={(e) => {
-                        setCurrentTraitInput(e.target.value);
+                        const newValue = e.target.value;
+                        setCurrentTraitInput(newValue);
+                        // Сразу обновляем traitsText в настройках
+                        handleCustomInstructionsChange('traitsText', newValue);
                       }}
                       onKeyDown={(e) => {
-                        if ((e.key === 'Enter' || e.key === 'Tab') && currentTraitInput.trim()) {
-                          e.preventDefault();
-                          handleCustomTraitAdd(currentTraitInput);
-                          setCurrentTraitInput('');
-                        } else if (e.key === 'Backspace' && !currentTraitInput && (customInstructions.traits || []).length > 0) {
+                        if (e.key === 'Backspace' && !currentTraitInput && (customInstructions.traits || []).length > 0) {
                           // Remove last trait when backspace is pressed and input is empty
                           const currentTraits = customInstructions.traits || [];
                           const newTraits = currentTraits.slice(0, -1);
@@ -1151,6 +1217,21 @@ const ModelsTab = memo(() => {
                 {customInstructions.additionalInfo.length}/3000
               </span>
             </div>
+          </div>
+
+          {/* Save Button */}
+          <div className="flex items-center justify-between pt-4 border-t border-border/50">
+            <div className="text-xs text-muted-foreground">
+              {hasUnsavedChanges ? 'You have unsaved changes' : 'All changes saved'}
+            </div>
+            <Button
+              onClick={handleSaveCustomInstructions}
+              disabled={!hasUnsavedChanges || isSaving}
+              size="sm"
+              className="min-w-[80px]"
+            >
+              {isSaving ? 'Saving...' : 'Save'}
+            </Button>
           </div>
         </CardContent>
         )}
