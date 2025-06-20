@@ -27,6 +27,7 @@ interface MessageControlsProps {
   append: UseChatHelpers['append'];
   isVisible?: boolean; // Для мобильных устройств
   onToggleVisibility?: () => void; // Для мобильных устройств
+  forceRegeneration: () => void; // Для сброса кэша AI SDK
 }
 
 export default function MessageControls({
@@ -41,6 +42,7 @@ export default function MessageControls({
   append,
   isVisible = false,
   onToggleVisibility,
+  forceRegeneration,
 }: MessageControlsProps) {
   const [copied, setCopied] = useState(false);
   const { hasRequiredKeys, keys } = useAPIKeyStore();
@@ -106,10 +108,6 @@ export default function MessageControls({
 
     const parentMessageToResend = messages[parentMessageIndex];
 
-    // Trim in-memory messages up to the parent user prompt (inclusive)
-    const messagesUpToParent = messages.slice(0, parentMessageIndex + 1);
-    setMessages(messagesUpToParent);
-
     if (isConvexId(parentMessageToResend.id)) {
       try {
         await prepareForRegenerate({
@@ -120,6 +118,14 @@ export default function MessageControls({
         console.error('Error during regeneration cleanup:', error);
       }
     }
+
+    // ИСПРАВЛЕНИЕ: Принудительно очищаем состояние сообщений и устанавливаем флаг регенерации
+    const messagesUpToParent = messages.slice(0, parentMessageIndex + 1);
+    setMessages(messagesUpToParent);
+    forceRegeneration();
+
+    // Небольшая задержка чтобы UI обновился
+    await new Promise(resolve => setTimeout(resolve, 50));
 
     // Finally, request a fresh completion from the model using the **latest**
     // store values so that a just-changed model is respected even if the UI
@@ -137,7 +143,7 @@ export default function MessageControls({
         search: currentSearch,
       },
     });
-  }, [stop, threadId, message.id, messages, setMessages, reload, prepareForRegenerate, keys]);
+  }, [stop, threadId, message.id, messages, setMessages, reload, prepareForRegenerate, keys, forceRegeneration]);
 
   // Show controls on mobile only when explicitly visible.
   const shouldShowControls = useMemo(() => (isMobile ? isVisible : true), [isMobile, isVisible]);

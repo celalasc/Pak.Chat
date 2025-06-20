@@ -39,6 +39,7 @@ import { getCompanyIcon } from '@/frontend/components/ui/provider-icons';
 import { useDebouncedCallback } from 'use-debounce';
 import { createImagePreview } from '@/frontend/lib/image';
 import { saveLastChatId, saveLastPath } from '@/frontend/lib/lastChat';
+import { useAuthStore } from '@/frontend/stores/AuthStore';
 
 // Helper to convert File objects to Base64 data URLs
 const fileToDataUrl = (file: File): Promise<string> => {
@@ -537,6 +538,7 @@ function PureChatInput({
 }: ChatInputProps) {
   // Все хуки должны быть вызваны до любых условных возвратов
   const { hasRequiredKeys, keys, setKeys } = useAPIKeyStore();
+  const { user } = useAuthStore();
   const canChat = hasRequiredKeys();
   const { currentQuote, clearQuote } = useQuoteStore();
   const [localKeys, setLocalKeys] = useState(keys);
@@ -826,6 +828,7 @@ function PureChatInput({
             model: selectedModel,
             apiKeys: keys,
             threadId: ensuredThreadId,
+            userId: user?.uid, // Добавляем userId для получения кастомных инструкций
             search: webSearchEnabled,
             // Передаем вложения напрямую чтобы избежать race condition
             attachments: attachmentsForLLM,

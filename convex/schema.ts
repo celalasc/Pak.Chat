@@ -20,6 +20,12 @@ export default defineSchema({
     hidePersonal: v.optional(v.boolean()),
     // DEPRECATED: saveRegenerationHistory - no longer used
     saveRegenerationHistory: v.optional(v.boolean()),
+    // Custom instructions for AI behavior
+    customInstructionsName: v.optional(v.string()),
+    customInstructionsOccupation: v.optional(v.string()),
+    customInstructionsTraits: v.optional(v.array(v.string())), // Готовые плитки
+    customInstructionsTraitsText: v.optional(v.string()), // Свободный текст для traits
+    customInstructionsAdditionalInfo: v.optional(v.string()),
   }).index("by_user", ["userId"]),
 
   // API Keys stored securely in Convex

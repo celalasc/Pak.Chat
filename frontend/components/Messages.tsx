@@ -16,6 +16,8 @@ function PureMessages({
   append,
   error,
   stop,
+  forceRegeneration,
+  isRegenerating,
 }: {
   threadId: string;
   messages: UIMessage[];
@@ -25,10 +27,13 @@ function PureMessages({
   status: UseChatHelpers['status'];
   error: UseChatHelpers['error'];
   stop: UseChatHelpers['stop'];
+  forceRegeneration: () => void;
+  isRegenerating: boolean;
 }) {
-  // Показываем прыгающие точки только когда сообщение отправлено но ответ не начался
+  // Показываем прыгающие точки когда сообщение отправлено или идет регенерация
   const lastMessage = messages[messages.length - 1];
-  const shouldShowLoading = status === 'submitted' && lastMessage?.role === 'user';
+  const shouldShowLoading = (status === 'submitted' && lastMessage?.role === 'user') || 
+                           (isRegenerating && lastMessage?.role === 'user');
 
   return (
     <section className="flex flex-col space-y-12">
@@ -45,6 +50,7 @@ function PureMessages({
           setMessages={setMessages}
           reload={reload}
           stop={stop}
+          forceRegeneration={forceRegeneration}
         />
       ))}
       {shouldShowLoading && <MessageLoading />}
@@ -53,25 +59,26 @@ function PureMessages({
   );
 }
 
-const PureMessagesMemo = memo(PureMessages, (prevProps, nextProps) => {
-  if (prevProps.status !== nextProps.status) return false;
-  if (prevProps.error !== nextProps.error) return false;
-  if (prevProps.messages.length !== nextProps.messages.length) return false;
-  if (!equal(prevProps.messages, nextProps.messages)) return false;
-  return true;
+const Messages = memo(PureMessages, (prevProps, nextProps) => {
+  return (
+    equal(prevProps.messages, nextProps.messages) &&
+    prevProps.status === nextProps.status &&
+    prevProps.error === nextProps.error &&
+    prevProps.isRegenerating === nextProps.isRegenerating
+  );
 });
 
-PureMessagesMemo.displayName = 'Messages';
+Messages.displayName = 'Messages';
 
 // Enable virtualization once the chat grows to 20 messages.
-const LargeListBoundary = 20;
-
-export default function Messages(props: React.ComponentProps<typeof PureMessages>) {
-  return props.messages.length > LargeListBoundary ? (
-    <div className="h-full flex-1">
+function MessagesRoot(props: any) {
+  return props.messages.length > 20 ? (
+    <div style={{ height: '100%', width: '100%' }}>
       <VirtualMessages {...props} />
     </div>
   ) : (
-    <PureMessagesMemo {...props} />
+    <Messages {...props} />
   );
 }
+
+export default MessagesRoot;

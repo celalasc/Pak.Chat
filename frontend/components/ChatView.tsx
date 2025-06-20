@@ -39,6 +39,9 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [currentThreadId, setCurrentThreadId] = useState(threadId);
   const [currentMessageId, setCurrentMessageId] = useState<string | undefined>();
+  
+  // Состояние для отслеживания регенераций
+  const [isRegenerating, setIsRegenerating] = useState(false);
 
   // Определяем какой API endpoint использовать в зависимости от провайдера
   const modelConfig = React.useMemo(() => {
@@ -71,6 +74,11 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
     setCurrentThreadId(newThreadId);
     threadIdRef.current = newThreadId;
   }, [currentThreadId]);
+
+  // Функция для принудительного сброса кэша при перегенерации
+  const forceRegeneration = useCallback(() => {
+    setIsRegenerating(true);
+  }, []);
 
   // Memoize body and request preparation to avoid creating new references
   const requestBody = React.useMemo(
@@ -112,7 +120,7 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
     error,
   } = useChat({
     api: apiEndpoint,
-    id: currentThreadId,
+    id: currentThreadId, // Используем обычный threadId
     initialMessages,
     body: requestBody,
     experimental_prepareRequestBody: prepareRequestBody,
@@ -150,6 +158,13 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
       }
     },
   });
+
+  // Сбрасываем флаг регенерации когда начинается стриминг
+  useEffect(() => {
+    if (status === 'streaming' || status === 'submitted') {
+      setIsRegenerating(false);
+    }
+  }, [status]);
 
   // Загружаем сообщения с файлами из Convex (если это Convex тред)
   const convexMessages = useQuery(
@@ -325,6 +340,8 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
                 append={append}
                 error={error}
                 stop={stop}
+                forceRegeneration={forceRegeneration}
+                isRegenerating={isRegenerating}
               />
             )}
             <div ref={messagesEndRef} />
