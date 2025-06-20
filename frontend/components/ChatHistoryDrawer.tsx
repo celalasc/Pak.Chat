@@ -855,6 +855,8 @@ function ChatHistoryDrawerComponent({
           // Полностью запрещаем автопрокрутку при колёсике
           allowAutoScrollRef.current = false;
           pendingScrollRef.current = false;
+          // Сбрасываем выбор, чтобы клавиатурная навигация не "возвращала" элемент
+          setSelectedThreadIndex(-1);
           // Отменяем плавную прокрутку, если она все еще выполняется
           if (scrollContainerRef.current) {
             const c = scrollContainerRef.current;
@@ -1018,7 +1020,7 @@ function ChatHistoryDrawerComponent({
           "grid h-full grid-rows-1",
           settings.showChatPreview ? "grid-cols-[1fr_1px_900px]" : "grid-cols-1"
         )}>
-          <div className="relative h-full">
+          <div className="relative h-full flex-shrink-0">
             <DialogHeader className="px-4 pt-4 pb-2 flex flex-col gap-2">
               <DialogTitle className="flex items-center gap-2">
                 <MessageSquare className="h-5 w-5" /> Chat History
