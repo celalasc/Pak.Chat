@@ -10,12 +10,14 @@ interface Props {
   setMessages: UseChatHelpers['setMessages'];
   reload: UseChatHelpers['reload'];
   append: UseChatHelpers['append'];
-  status: UseChatHelpers['status'];
+  status: UseChatHelpers['status'];  
   error: UseChatHelpers['error'];
   stop: UseChatHelpers['stop'];
+  forceRegeneration: () => void;
+  outerRef?: React.Ref<HTMLDivElement>;
 }
 
-export default function VirtualMessages({ messages, ...rest }: Props) {
+export default function VirtualMessages({ messages, outerRef, ...rest }: Props) {
   const getItemSize = (index: number) => {
     const msg = messages[index];
     const textLength = msg.parts
@@ -33,6 +35,7 @@ export default function VirtualMessages({ messages, ...rest }: Props) {
           itemSize={getItemSize}
           width={width}
           overscanCount={4}
+          outerRef={outerRef}
         >
           {({ index, style }) => (
             <div style={style}>
