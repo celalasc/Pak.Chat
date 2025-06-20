@@ -28,8 +28,7 @@ export default function Page() {
       if (isReload() && lastPath && lastPath !== '/') {
         console.log('Redirecting to last path:', lastPath);
         router.replace(lastPath);
-      }
-      // Иначе всегда переходим на соответствующую главную страницу устройства
+      }      // Иначе всегда переходим на соответствующую главную страницу устройства
       else {
         const targetPath = isMobile ? '/home' : '/chat';
         console.log('Redirecting to main page for device type:', targetPath);

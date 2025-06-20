@@ -182,6 +182,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    if (contents.length === 0) {
+      return new NextResponse(
+        JSON.stringify({ error: 'No message content provided' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Конфигурация для генерации с поддержкой thinking и search
     const config = {
       model: modelConfig.modelId,
