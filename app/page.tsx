@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/frontend/stores/AuthStore';
 import { Button } from '@/frontend/components/ui/button';
-import { getLastChatId, getLastPath, isReload } from '@/frontend/lib/lastChat';
+import { getLastPath, isReload } from '@/frontend/lib/lastChat';
 import AppShellSkeleton from '@/frontend/components/AppShellSkeleton';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 
@@ -21,15 +21,13 @@ export default function Page() {
       console.log('User authenticated, redirecting...');
       hasRedirectedRef.current = true;
       
-      const lastChatId = getLastChatId();
       const lastPath = getLastPath();
       
       // Если это перезагрузка и есть последний путь, переходим туда
       if (isReload() && lastPath && lastPath !== '/') {
         console.log('Redirecting to last path:', lastPath);
         router.replace(lastPath);
-      }
-      // Иначе всегда переходим на соответствующую главную страницу устройства
+      }      // Иначе всегда переходим на соответствующую главную страницу устройства
       else {
         const targetPath = isMobile ? '/home' : '/chat';
         console.log('Redirecting to main page for device type:', targetPath);
