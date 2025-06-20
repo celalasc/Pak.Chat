@@ -673,13 +673,61 @@ code[class*="language-"] {
   pointer-events: auto;
 }
 
-/* Принудительно поднимаем drawer настроек */
+/* Унифицированные стили для мобильного drawer настроек */
 [data-vaul-drawer] {
-  margin-bottom: 20px !important;
+  margin: 0 !important;
+  margin-bottom: 16px !important;
+  margin-left: 16px !important;
+  margin-right: 16px !important;
+  /* Принудительно убираем все отступы которые могут добавляться */
+  padding: 0 !important;
 }
 
 [data-vaul-drawer][data-vaul-drawer-direction="bottom"] {
-  bottom: 20px !important;
+  bottom: 16px !important;
+  left: 16px !important;
+  right: 16px !important;
+  /* Принудительно задаем ширину */
+  width: calc(100vw - 32px) !important;
+  max-width: calc(100vw - 32px) !important;
+  min-width: calc(100vw - 32px) !important;
+  /* Убираем любые margin которые могут влиять */
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* Унифицированная высота и поведение drawer */
+@media (max-width: 768px) {
+  [data-vaul-drawer-content] {
+    height: 80vh !important;
+    max-height: 600px !important;
+    border-radius: 16px 16px 0 0 !important;
+    /* Фиксированные отступы для всех устройств */
+    padding-bottom: 24px !important;
+    /* Убираем различия в safe-area */
+    padding-bottom: max(24px, env(safe-area-inset-bottom, 0px)) !important;
+    /* Принудительно убираем все отступы */
+    margin: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    /* Точно позиционируем drawer */
+    position: fixed !important;
+    left: 16px !important;
+    right: 16px !important;
+    width: calc(100vw - 32px) !important;
+  }
+  
+  /* Стабильное перекрытие контента */
+  .mobile-settings-active {
+    transform: translateY(20px) scale(0.95) !important;
+    border-radius: 12px !important;
+  }
+  
+  /* Дополнительное правило для элементов внутри drawer */
+  [data-vaul-drawer-content] > * {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
 }
 
 

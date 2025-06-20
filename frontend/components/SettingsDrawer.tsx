@@ -153,7 +153,8 @@ const ContentComponent = memo(function ContentComponent({
 ContentComponent.displayName = 'ContentComponent';
 
 const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawerProps) => {
-  const { isMobile, mounted } = useIsMobile(900);
+  // Унифицированный breakpoint для всех мобильных устройств
+  const { isMobile, mounted } = useIsMobile(768);
   const [activeTab, setActiveTab] = useState("customization");
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -164,7 +165,7 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
     }
   }, [setIsOpen, setActiveTab]);
 
-  // Отдельный обработчик для управления мобильным эффектом
+  // Унифицированный обработчик мобильного эффекта для всех устройств
   const handleMobileEffect = useCallback((shouldApply: boolean) => {
     if (!isMobile) return;
     
@@ -173,13 +174,14 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
 
     if (shouldApply) {
       mainContent.classList.add('mobile-settings-active');
+      // Применяем унифицированные значения
+      (mainContent as any).style.transform = 'translateY(20px) scale(0.95)';
+      (mainContent as any).style.borderRadius = '12px';
     } else {
       mainContent.classList.remove('mobile-settings-active');
-      // Сбрасываем inline стили
-      if (mainContent.style) {
-        (mainContent as any).style.transform = '';
-        (mainContent as any).style.borderRadius = '';
-      }
+      // Полностью сбрасываем inline стили
+      (mainContent as any).style.transform = '';
+      (mainContent as any).style.borderRadius = '';
     }
   }, [isMobile]);
 
@@ -261,14 +263,15 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
           dismissible={true}
           modal={true}
           onDrag={(event, percentageDragged) => {
-            // Синхронизируем анимацию заднего фона с процентом перетаскивания
+            // Унифицированная анимация для всех мобильных устройств
             if (isMobile && percentageDragged > 0) {
               const mainContent = document.querySelector('.main-content') as HTMLElement;
               if (mainContent && mainContent.style) {
                 const progress = Math.max(0, 1 - percentageDragged);
-                const translateY = 30 * progress;
+                // Фиксированные значения для одинакового поведения на всех устройствах
+                const translateY = 20 * progress;
                 const scale = 0.95 + (0.05 * (1 - progress));
-                const borderRadius = 15 * progress;
+                const borderRadius = 12 * progress;
                 
                 (mainContent as any).style.transform = `translateY(${translateY}px) scale(${scale})`;
                 (mainContent as any).style.borderRadius = `${borderRadius}px`;
@@ -283,7 +286,7 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
           <DrawerTrigger asChild>
             {children}
           </DrawerTrigger>
-          <DrawerContent className="max-h-[calc(50dvh-15px)] flex flex-col w-full p-0">
+          <DrawerContent className="h-[80vh] max-h-[600px] flex flex-col w-full p-0 rounded-t-2xl">
           {/* Pull handle */}
           <div className="flex justify-center pt-2 pb-1 flex-shrink-0">
             <div className="w-12 h-1 bg-muted-foreground/30 rounded-full" />
@@ -300,7 +303,7 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
           </div>
           
           {/* Content area with proper scrolling */}
-          <div className="flex-1 min-h-0 px-4 pb-safe overflow-y-auto scrollbar-none enhanced-scroll">
+          <div className="flex-1 min-h-0 px-4 pb-6 overflow-y-auto scrollbar-none enhanced-scroll">
             <ContentComponent
               activeTab={activeTab}
               setActiveTab={setActiveTab}
