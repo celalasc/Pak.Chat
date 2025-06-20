@@ -621,5 +621,48 @@ code[class*="language-"] {
   animation: shine 2s ease-in-out infinite;
 }
 
+/* Mobile Settings Animation */
+.main-content {
+  transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), 
+              border-radius 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), 
+              filter 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.mobile-settings-active {
+  transform: translateY(30px) scale(0.95);
+  border-radius: 15px;
+}
+
+.mobile-settings-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 39;
+  opacity: 0;
+  transition: opacity 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  pointer-events: none;
+}
+
+.mobile-settings-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Принудительно поднимаем drawer настроек */
+[data-vaul-drawer] {
+  margin-bottom: 20px !important;
+}
+
+[data-vaul-drawer][data-vaul-drawer-direction="bottom"] {
+  bottom: 20px !important;
+}
+
+
+
 
 
