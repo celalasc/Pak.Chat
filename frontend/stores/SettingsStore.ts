@@ -12,6 +12,20 @@ export type GeneralFont = (typeof GENERAL_FONTS)[number];
 export type CodeFont = (typeof CODE_FONTS)[number];
 export type Theme = (typeof THEMES)[number];
 
+/**
+ * Describes custom instructions that personalize AI behaviour.
+ */
+export interface CustomInstructions {
+  /** Preferred name used when addressing the user */
+  name: string;
+  /** Occupation or role of the user */
+  occupation: string;
+  /** Traits that should influence AI responses */
+  traits: string[];
+  /** Additional information to remember about the user */
+  additionalInfo: string;
+}
+
 type Settings = {
   generalFont: GeneralFont;
   codeFont: CodeFont;
@@ -19,6 +33,7 @@ type Settings = {
   hidePersonal: boolean;
   showNavBars: boolean;
   showChatPreview: boolean;
+  customInstructions: CustomInstructions;
 };
 
 type SettingsStore = {
@@ -55,6 +70,12 @@ const defaultSettings: Settings = {
   hidePersonal: true,
   showNavBars: true,
   showChatPreview: true,
+  customInstructions: {
+    name: '',
+    occupation: '',
+    traits: [],
+    additionalInfo: '',
+  },
 };
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -115,6 +136,7 @@ export function useSettingsSync() {
         theme: settings.theme,
         showNavBars: settings.showNavBars,
         showChatPreview: settings.showChatPreview,
+        customInstructions: settings.customInstructions,
       };
       isInitialized.current = true;
     }
