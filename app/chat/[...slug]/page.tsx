@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { use, useEffect, useMemo, useState } from 'react';
+import { use, useEffect, useMemo, useState, useRef } from 'react';
 import { useQuery, useConvexAuth } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id, Doc } from '@/convex/_generated/dataModel';
@@ -18,6 +18,7 @@ function CatchAllChatPageInner({ params }: { params: Promise<{ slug: string[] }>
   const router = useRouter();
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const { isMobile, mounted } = useIsMobile();
+  const wasMobileRef = useRef(isMobile);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const isValidId = useMemo(() => isConvexId(chatId), [chatId]);
@@ -103,13 +104,15 @@ function CatchAllChatPageInner({ params }: { params: Promise<{ slug: string[] }>
   // Автоматическое перенаправление при изменении типа устройства
   useEffect(() => {
     if (!mounted || !isAuthenticated || !isValidId || !thread) return;
-    
-    // Если устройство стало мобильным, сохраняем контекст и перенаправляем на мобильную версию
-    if (isMobile) {
+
+    // Перенаправляем на мобильную версию только, если ранее сайт был открыт на десктопе
+    if (isMobile && !wasMobileRef.current) {
       saveLastChatId(chatId);
       saveLastPath(`/chat/${chatId}`);
       router.replace('/home');
     }
+
+    wasMobileRef.current = isMobile;
   }, [isMobile, mounted, isAuthenticated, isValidId, thread, chatId, router]);
 
   const isLoading =

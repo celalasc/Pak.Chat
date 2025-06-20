@@ -13,6 +13,7 @@ import AppShellSkeleton from '@/frontend/components/AppShellSkeleton';
 import { WithTooltip } from '@/frontend/components/WithTooltip';
 import type { Id } from '@/convex/_generated/dataModel';
 import { saveLastPath } from '@/frontend/lib/lastChat';
+import { clearDraft } from '@/frontend/lib/drafts';
 
 export default function HomePage() {
   const { isAuthenticated, isLoading } = useConvexAuth();
@@ -42,6 +43,8 @@ export default function HomePage() {
   };
 
   const handleNewChat = () => {
+    // Clear draft for a fresh chat state
+    clearDraft('');
     router.push('/chat');
   };
 
