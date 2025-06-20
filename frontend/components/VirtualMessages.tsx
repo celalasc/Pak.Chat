@@ -10,9 +10,10 @@ interface Props {
   setMessages: UseChatHelpers['setMessages'];
   reload: UseChatHelpers['reload'];
   append: UseChatHelpers['append'];
-  status: UseChatHelpers['status'];
+  status: UseChatHelpers['status'];  
   error: UseChatHelpers['error'];
   stop: UseChatHelpers['stop'];
+  forceRegeneration: () => void;
   /**
    * Ref for the scroll container so the parent can attach scroll listeners
    * when virtualization is enabled.
