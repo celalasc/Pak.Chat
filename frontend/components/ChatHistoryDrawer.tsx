@@ -145,12 +145,14 @@ function ChatHistoryDrawerComponent({
   const [longPressThreadId, setLongPressThreadId] =
     useState<Id<"threads"> | null>(null);
   const [selectedThreadIndex, setSelectedThreadIndex] = useState<number>(-1);
-  const [isMouseHovering, setIsMouseHovering] = useState(false);
-  // Tracks whether navigation was triggered via keyboard arrows
-  const autoScrollRef = useRef(false);
+  // Разрешать ли автопрокрутку к выбранному элементу
+  const allowAutoScrollRef = useRef(false);
   const lastKeyPressRef = useRef(0);
   const pendingScrollRef = useRef(false);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const topBarRef = useRef<HTMLDivElement | null>(null);
+  const bottomBarRef = useRef<HTMLDivElement | null>(null);
+  const contentWrapperRef = useRef<HTMLDivElement | null>(null);
   const [mobileMenuThreadId, setMobileMenuThreadId] =
     useState<Id<"threads"> | null>(null);
   const itemRefs = useRef<Map<number, HTMLDivElement | null>>(new Map());
@@ -191,9 +193,8 @@ function ChatHistoryDrawerComponent({
             setHoveredThreadId(null);
             setLongPressThreadId(null);
             setSelectedThreadIndex(-1); // Сброс только при закрытии диалога
-            setIsMouseHovering(false);
             setMobileMenuThreadId(null);
-            autoScrollRef.current = false;
+            allowAutoScrollRef.current = false;
             lastKeyPressRef.current = 0;
             pendingScrollRef.current = false;
             // Не сбрасываем скролл позицию, чтобы пользователь мог вернуться к тому же месту
@@ -346,8 +347,8 @@ function ChatHistoryDrawerComponent({
               prev === -1 || prev >= allThreadsFlat.length
                 ? 0
                 : Math.min(prev + 1, allThreadsFlat.length - 1);
-            // Включаем автопрокрутку только если индекс изменился
-            autoScrollRef.current = next !== prev;
+            // Следующее обновление может автопрокрутить
+            allowAutoScrollRef.current = true;
             return next;
           });
           break;
@@ -366,8 +367,7 @@ function ChatHistoryDrawerComponent({
               prev === -1 || prev >= allThreadsFlat.length
                 ? allThreadsFlat.length - 1
                 : Math.max(prev - 1, 0);
-            // Включаем автопрокрутку только если индекс изменился
-            autoScrollRef.current = next !== prev;
+            allowAutoScrollRef.current = true;
             return next;
           });
           break;
@@ -386,22 +386,30 @@ function ChatHistoryDrawerComponent({
   useEffect(() => {
     // Выполняем автопрокрутку только при соблюдении всех условий
     if (
-      selectedThreadIndex >= 0 && 
+      selectedThreadIndex >= 0 &&
       selectedThreadIndex < allThreadsFlat.length &&
-      !isMobile && 
-      autoScrollRef.current && 
+      !isMobile &&
+      allowAutoScrollRef.current &&
       scrollContainerRef.current &&
       !pendingScrollRef.current
     ) {
       const node = itemRefs.current.get(selectedThreadIndex);
       const container = scrollContainerRef.current;
-      
+
       if (node && container) {
         const containerRect = container.getBoundingClientRect();
         const nodeRect = node.getBoundingClientRect();
+
+        const headerHeight = topBarRef.current?.getBoundingClientRect().height ?? 0;
+        const footerHeight = bottomBarRef.current?.getBoundingClientRect().height ?? 0;
+        const paddingBottom = contentWrapperRef.current
+          ? parseFloat(getComputedStyle(contentWrapperRef.current).paddingBottom)
+          : 0;
+
+        const viewportTop = containerRect.top + headerHeight;
+        const viewportBottom = containerRect.bottom - footerHeight - paddingBottom;
         const fullyVisible =
-          nodeRect.top >= containerRect.top &&
-          nodeRect.bottom <= containerRect.bottom;
+          nodeRect.top >= viewportTop && nodeRect.bottom <= viewportBottom;
 
         if (!fullyVisible) {
           // Определяем тип анимации на основе времени последнего нажатия
@@ -426,6 +434,8 @@ function ChatHistoryDrawerComponent({
           if (behavior === 'auto') {
             pendingScrollRef.current = false;
           }
+          // Автоскролл выполнен, выключаем разрешение
+          allowAutoScrollRef.current = false;
         }
       }
     }
@@ -503,9 +513,8 @@ function ChatHistoryDrawerComponent({
         }}
         onMouseEnter={() => {
           setHoveredThreadId(thread._id);
-          setIsMouseHovering(true);
           // Немедленно отключаем автопрокрутку и отменяем ожидающие скроллы
-          autoScrollRef.current = false;
+          allowAutoScrollRef.current = false;
           pendingScrollRef.current = false;
           // Сбрасываем состояние удаления при наведении на другой элемент
           if (deletingThreadId && deletingThreadId !== thread._id) {
@@ -515,7 +524,6 @@ function ChatHistoryDrawerComponent({
         onMouseLeave={() => {
           setHoveredThreadId(null);
           setLongPressThreadId(null);
-          setIsMouseHovering(false);
           if (isMobile) {
             setMobileMenuThreadId(null);
           }
@@ -524,7 +532,7 @@ function ChatHistoryDrawerComponent({
           if (isMobile) {
             e.preventDefault();
             // Отключаем автопрокрутку при touch взаимодействиях
-            autoScrollRef.current = false;
+            allowAutoScrollRef.current = false;
             pendingScrollRef.current = false;
             setLongPressThreadId(thread._id);
             setMobileMenuThreadId(thread._id);
@@ -533,7 +541,7 @@ function ChatHistoryDrawerComponent({
         onTouchStart={(e) => {
           if (isMobile) {
             // Отключаем автопрокрутку при touch взаимодействиях
-            autoScrollRef.current = false;
+            allowAutoScrollRef.current = false;
             pendingScrollRef.current = false;
             
             const touchStartTime = Date.now();
@@ -554,7 +562,7 @@ function ChatHistoryDrawerComponent({
         }}
         onClick={() => {
           // Отключаем автопрокрутку и отменяем ожидающие скроллы при клике мышью
-          autoScrollRef.current = false;
+          allowAutoScrollRef.current = false;
           pendingScrollRef.current = false;
           // Не переходим в чат если редактируем заголовок
           if (!editingThreadId) {
@@ -602,7 +610,7 @@ function ChatHistoryDrawerComponent({
                   variant="ghost"
                   className="h-6 w-6"
                   onClick={() => {
-                    autoScrollRef.current = false;
+                    allowAutoScrollRef.current = false;
                     pendingScrollRef.current = false;
                     handleSaveEdit(thread._id);
                   }}
@@ -614,7 +622,7 @@ function ChatHistoryDrawerComponent({
                   variant="ghost"
                   className="h-6 w-6"
                   onClick={() => {
-                    autoScrollRef.current = false;
+                    allowAutoScrollRef.current = false;
                     pendingScrollRef.current = false;
                     handleCancelEdit();
                   }}
@@ -651,7 +659,7 @@ function ChatHistoryDrawerComponent({
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      autoScrollRef.current = false;
+                      allowAutoScrollRef.current = false;
                       pendingScrollRef.current = false;
                       handlePinToggle(thread._id, e);
                       setMobileMenuThreadId(null);
@@ -670,7 +678,7 @@ function ChatHistoryDrawerComponent({
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      autoScrollRef.current = false;
+                      allowAutoScrollRef.current = false;
                       pendingScrollRef.current = false;
                       handleShare(thread);
                       setMobileMenuThreadId(null);
@@ -685,7 +693,7 @@ function ChatHistoryDrawerComponent({
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      autoScrollRef.current = false;
+                      allowAutoScrollRef.current = false;
                       pendingScrollRef.current = false;
                       handleDelete(thread._id);
                       setMobileMenuThreadId(null);
@@ -704,7 +712,7 @@ function ChatHistoryDrawerComponent({
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      autoScrollRef.current = false;
+                      allowAutoScrollRef.current = false;
                       pendingScrollRef.current = false;
                       handleConfirmDelete(thread._id);
                     }}
@@ -718,7 +726,7 @@ function ChatHistoryDrawerComponent({
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      autoScrollRef.current = false;
+                      allowAutoScrollRef.current = false;
                       pendingScrollRef.current = false;
                       handleCancelDelete();
                     }}
@@ -737,7 +745,7 @@ function ChatHistoryDrawerComponent({
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          autoScrollRef.current = false;
+                          allowAutoScrollRef.current = false;
                           pendingScrollRef.current = false;
                           handleEdit(thread);
                         }}
@@ -754,7 +762,7 @@ function ChatHistoryDrawerComponent({
                       variant="ghost"
                       className={cn("h-6 w-6 sm:h-7 sm:w-7", isMobile && "h-8 w-8")}
                       onClick={(e) => {
-                        autoScrollRef.current = false;
+                        allowAutoScrollRef.current = false;
                         pendingScrollRef.current = false;
                         handlePinToggle(thread._id, e);
                       }}
@@ -777,7 +785,7 @@ function ChatHistoryDrawerComponent({
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        autoScrollRef.current = false;
+                        allowAutoScrollRef.current = false;
                         pendingScrollRef.current = false;
                         handleShare(thread);
                       }}
@@ -796,7 +804,7 @@ function ChatHistoryDrawerComponent({
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          autoScrollRef.current = false;
+                          allowAutoScrollRef.current = false;
                           pendingScrollRef.current = false;
                           handleDelete(thread._id);
                         }}
@@ -844,9 +852,15 @@ function ChatHistoryDrawerComponent({
         className="flex-1 overflow-y-auto scrollbar-none enhanced-scroll px-3 sm:px-4"
         tabIndex={-1}
         onWheel={() => {
-          // Отключаем автопрокрутку при прокрутке колесиком мыши, но сохраняем индекс
-          autoScrollRef.current = false;
+          // Полностью запрещаем автопрокрутку при колёсике
+          allowAutoScrollRef.current = false;
           pendingScrollRef.current = false;
+          // Отменяем плавную прокрутку, если она все еще выполняется
+          if (scrollContainerRef.current) {
+            const c = scrollContainerRef.current;
+            const current = c.scrollTop;
+            c.scrollTo({ top: current, behavior: 'auto' });
+          }
         }}
         onScroll={() => {
           // Сбрасываем флаг ожидания когда скролл завершен
@@ -857,7 +871,7 @@ function ChatHistoryDrawerComponent({
           }
         }}
       >
-        <div className="space-y-4 sm:space-y-6 pt-2 pb-16">
+        <div ref={contentWrapperRef} className="space-y-4 sm:space-y-6 pt-2 pb-16">
           {threadGroups.length === 0 ? (
             <div className="text-center text-sm text-muted-foreground py-4">
               {searchQuery ? "No chats found." : "No chat history found."}
@@ -905,7 +919,10 @@ function ChatHistoryDrawerComponent({
             </div>
 
             {/* Header */}
-            <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-border/50">
+            <div
+              ref={topBarRef}
+              className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-border/50"
+            >
               <DrawerHeader className="pb-2 flex flex-col gap-2">
                 <DrawerTitle className="flex items-center gap-2 text-lg">
                   <MessageSquare className="h-5 w-5" /> Chat History
@@ -1041,7 +1058,10 @@ function ChatHistoryDrawerComponent({
         
         {/* Универсальная нижняя плашка на весь диалог */}
         {!isMobile && (
-          <div className="absolute bottom-0 left-0 right-0 h-12 bg-background/20 backdrop-blur-2xl border-t border-border/50 shadow-2xl pointer-events-none rounded-b-3xl">
+          <div
+            ref={bottomBarRef}
+            className="absolute bottom-0 left-0 right-0 h-12 bg-background/20 backdrop-blur-2xl border-t border-border/50 shadow-2xl pointer-events-none rounded-b-3xl"
+          >
             <div className="flex items-center justify-between px-6 h-full text-xs text-muted-foreground">
               {/* Левая часть - навигация */}
               <div className="flex items-center gap-4">
