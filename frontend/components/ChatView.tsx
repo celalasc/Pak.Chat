@@ -1,7 +1,7 @@
 "use client";
 
 import { useChat } from '@ai-sdk/react';
-import Messages from './Messages';
+import Messages, { LargeListBoundary } from './Messages';
 import ChatInput from './ChatInput';
 import ChatNavigationBars from './ChatNavigationBars';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
@@ -39,6 +39,7 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [currentThreadId, setCurrentThreadId] = useState(threadId);
   const [currentMessageId, setCurrentMessageId] = useState<string | undefined>();
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
   // Определяем какой API endpoint использовать в зависимости от провайдера
   const modelConfig = React.useMemo(() => {
@@ -195,6 +196,9 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
     return allMessages;
   }, [messages, convexMessages]);
 
+  // Determine if virtualization will be used
+  const isVirtualized = mergedMessages.length > LargeListBoundary;
+
   // Функция для отслеживания видимых сообщений
   const updateCurrentMessage = useCallback(() => {
     const userMessages = mergedMessages.filter((message: UIMessage) => message.role === 'user');
@@ -224,23 +228,25 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
   
   const debouncedUpdateCurrentMessage = useDebounceCallback(updateCurrentMessage, 50, { leading: true });
 
-  // Добавляем обработчик скролла
+  // Добавляем обработчик скролла на фактический контейнер
   useEffect(() => {
-    const scrollArea = document.getElementById('messages-scroll-area');
-    if (!scrollArea) return;
+    const container =
+      scrollContainerRef.current ||
+      (document.getElementById('messages-scroll-area') as HTMLDivElement | null);
+    if (!container) return;
 
     const handleScroll = () => {
       debouncedUpdateCurrentMessage();
     };
 
-    scrollArea.addEventListener('scroll', handleScroll, { passive: true });
+    container.addEventListener('scroll', handleScroll, { passive: true });
     // Также обновляем при изменении сообщений
     debouncedUpdateCurrentMessage();
 
     return () => {
-      scrollArea.removeEventListener('scroll', handleScroll);
+      container.removeEventListener('scroll', handleScroll);
     };
-  }, [debouncedUpdateCurrentMessage]);
+  }, [debouncedUpdateCurrentMessage, mergedMessages.length]);
 
   // Register setter so that other components can alter the input value
   const registerInputSetter = useChatStore((s) => s.registerInputSetter);
@@ -295,7 +301,11 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
       )}
 
       <div className="flex-1 flex flex-col relative">
-        <div className="flex-1 overflow-y-auto" id="messages-scroll-area">
+        <div
+          className="flex-1 overflow-y-auto"
+          id="messages-scroll-area"
+          ref={!isVirtualized ? scrollContainerRef : undefined}
+        >
           <main className="w-full max-w-3xl mx-auto pt-24 pb-44 px-4 min-h-full flex-1">
             {mergedMessages.length > 0 && (
               <Messages
@@ -307,6 +317,7 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
                 append={append}
                 error={error}
                 stop={stop}
+                scrollRef={isVirtualized ? scrollContainerRef : undefined}
               />
             )}
             <div ref={messagesEndRef} />

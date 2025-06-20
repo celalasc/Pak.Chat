@@ -64,12 +64,21 @@ const PureMessagesMemo = memo(PureMessages, (prevProps, nextProps) => {
 PureMessagesMemo.displayName = 'Messages';
 
 // Enable virtualization once the chat grows to 20 messages.
-const LargeListBoundary = 20;
+export const LargeListBoundary = 20;
 
-export default function Messages(props: React.ComponentProps<typeof PureMessages>) {
+export interface MessagesProps
+  extends React.ComponentProps<typeof PureMessages> {
+  /**
+   * Ref of the element that actually scrolls. Needed so the parent can
+   * track scroll position when virtualization is enabled.
+   */
+  scrollRef?: React.Ref<HTMLDivElement>;
+}
+
+export default function Messages({ scrollRef, ...props }: MessagesProps) {
   return props.messages.length > LargeListBoundary ? (
     <div className="h-full flex-1">
-      <VirtualMessages {...props} />
+      <VirtualMessages {...props} outerRef={scrollRef} />
     </div>
   ) : (
     <PureMessagesMemo {...props} />
