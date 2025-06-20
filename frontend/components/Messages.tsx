@@ -7,6 +7,7 @@ import equal from 'fast-deep-equal';
 import MessageLoading from './ui/MessageLoading';
 import Error from './Error';
 
+// Шаг 1: Оставляем PureMessages из `fix/responsive-navigation-bug` с параметрами регенерации.
 function PureMessages({
   threadId,
   messages,
@@ -30,10 +31,11 @@ function PureMessages({
   forceRegeneration: () => void;
   isRegenerating: boolean;
 }) {
-  // Показываем прыгающие точки когда сообщение отправлено или идет регенерация
+  // Логика индикатора загрузки теперь учитывает isRegenerating.
   const lastMessage = messages[messages.length - 1];
-  const shouldShowLoading = (status === 'submitted' && lastMessage?.role === 'user') || 
-                           (isRegenerating && lastMessage?.role === 'user');
+  const shouldShowLoading =
+    (status === 'submitted' && lastMessage?.role === 'user') ||
+    (isRegenerating && lastMessage?.role === 'user');
 
   return (
     <section className="flex flex-col space-y-12">
@@ -59,7 +61,9 @@ function PureMessages({
   );
 }
 
-const Messages = memo(PureMessages, (prevProps, nextProps) => {
+// Переименовываем мемоизированный компонент, чтобы избежать конфликта имен с компонентом-оберткой.
+// Логика сравнения взята из `fix/responsive-navigation-bug` для учета `isRegenerating`.
+const MemoizedMessages = memo(PureMessages, (prevProps, nextProps) => {
   return (
     equal(prevProps.messages, nextProps.messages) &&
     prevProps.status === nextProps.status &&
@@ -68,17 +72,30 @@ const Messages = memo(PureMessages, (prevProps, nextProps) => {
   );
 });
 
-Messages.displayName = 'Messages';
+MemoizedMessages.displayName = 'Messages';
 
-// Enable virtualization once the chat grows to 20 messages.
-function MessagesRoot(props: any) {
-  return props.messages.length > 20 ? (
-    <div style={{ height: '100%', width: '100%' }}>
-      <VirtualMessages {...props} />
-    </div>
-  ) : (
-    <Messages {...props} />
-  );
+// Шаг 2: Оставляем новую структуру экспорта из `main`.
+export const LargeListBoundary = 20;
+
+export interface MessagesProps
+  extends React.ComponentProps<typeof PureMessages> {
+  /**
+   * Ref элемента, который скроллится. Нужен для отслеживания
+   * позиции скролла при включенной виртуализации.
+   */
+  scrollRef?: React.Ref<HTMLDivElement>;
 }
 
-export default MessagesRoot;
+// Шаг 3: Объединяем в финальной функции.
+// Используем обертку и логику виртуализации из `main`.
+// Она будет вызывать либо `VirtualMessages`, либо `MemoizedMessages`,
+// передавая все параметры, включая `forceRegeneration` и `isRegenerating`.
+export default function Messages({ scrollRef, ...props }: MessagesProps) {
+  return props.messages.length > LargeListBoundary ? (
+    <div className="h-full flex-1">
+      <VirtualMessages {...props} outerRef={scrollRef} />
+    </div>
+  ) : (
+    <MemoizedMessages {...props} />
+  );
+}

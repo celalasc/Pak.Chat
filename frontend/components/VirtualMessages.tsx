@@ -14,6 +14,10 @@ interface Props {
   error: UseChatHelpers['error'];
   stop: UseChatHelpers['stop'];
   forceRegeneration: () => void;
+  /**
+   * Ref for the scroll container so the parent can attach scroll listeners
+   * when virtualization is enabled.
+   */
   outerRef?: React.Ref<HTMLDivElement>;
 }
 

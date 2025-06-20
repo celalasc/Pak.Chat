@@ -140,7 +140,7 @@ const PureChatModelDropdown = ({ messageCount = 0 }: ChatModelDropdownProps) => 
   const [isReasoningEffortOpen, setIsReasoningEffortOpen] = useState(false);
 
   const currentModelConfig = getModelConfigFromStore();
-  const showReasoningEffortButton = selectedModel === 'o4-mini';
+  const showReasoningEffortButton = ['o4-mini', 'o3'].includes(selectedModel);
   const showWebSearchButton = supportsWebSearch();
 
   const reasoningEfforts: ReasoningEffort[] = ['high', 'medium', 'low'];
