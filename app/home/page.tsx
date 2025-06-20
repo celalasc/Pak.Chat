@@ -119,8 +119,25 @@ export default function HomePage() {
           <WithTooltip label="New Chat" side="left">
             <Button
               size="lg"
-              className="h-14 w-14 rounded-full shadow-lg"
+              className="h-14 w-14 rounded-full shadow-lg floating-action-button"
               onClick={handleNewChat}
+              onTouchStart={(e) => {
+                // Предотвращаем конфликты с системными жестами
+                e.currentTarget.style.transform = 'scale(0.95)';
+              }}
+              onTouchEnd={(e) => {
+                // Возвращаем исходный размер
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+              onTouchCancel={(e) => {
+                // Возвращаем исходный размер при отмене
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+              style={{
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent',
+                transition: 'transform 0.1s ease',
+              }}
               aria-label="Start new chat"
             >
               <Plus className="h-6 w-6" />
