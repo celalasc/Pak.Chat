@@ -8,6 +8,7 @@ import React, {
   useDeferredValue,
   useEffect,
   useRef,
+  useLayoutEffect,
 } from "react";
 import {
   Drawer,
@@ -148,6 +149,8 @@ function ChatHistoryDrawerComponent({
   const lastKeyPressRef = useRef(0);
   const pendingScrollRef = useRef(false);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  // Remember scroll position to prevent jumps on re-renders
+  const scrollPositionRef = useRef(0);
   const topBarRef = useRef<HTMLDivElement | null>(null);
   const bottomBarRef = useRef<HTMLDivElement | null>(null);
   const contentWrapperRef = useRef<HTMLDivElement | null>(null);
@@ -168,6 +171,13 @@ function ChatHistoryDrawerComponent({
 
   // Debounce hovered id to avoid spamming preview requests
   const [debouncedHoverId] = useDebounce(hoveredThreadId, 300);
+
+  // Restore scroll position after updates triggered by hovering
+  useLayoutEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollPositionRef.current;
+    }
+  }, [hoveredThreadId]);
 
   const trimmedQuery = searchQuery.trim();
   const threads = useQuery(
@@ -510,6 +520,10 @@ function ChatHistoryDrawerComponent({
           else itemRefs.current.delete(threadIndex);
         }}
         onMouseEnter={() => {
+          // Save current scroll position to avoid jumps after re-render
+          if (scrollContainerRef.current) {
+            scrollPositionRef.current = scrollContainerRef.current.scrollTop;
+          }
           setHoveredThreadId(thread._id);
           setSelectedThreadIndex(-1);
           // Немедленно отключаем автопрокрутку и отменяем ожидающие скроллы
