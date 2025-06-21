@@ -1,10 +1,10 @@
 "use client"
 
 import { useState } from 'react';
-import { Button } from './ui/button';
+import { Button } from '../../ui/button';
 import { History } from 'lucide-react';
-import { WithTooltip } from './WithTooltip';
-import ChatHistoryDrawer from './ChatHistoryDrawer';
+import { WithTooltip } from '../../WithTooltip';
+import ChatHistoryDrawer from '../ChatHistoryDrawer';
 import { cn } from '@/lib/utils';
 
 interface ChatHistoryButtonProps {

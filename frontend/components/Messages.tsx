@@ -1,13 +1,12 @@
 import { memo } from 'react';
 import PreviewMessage from './Message';
-import VirtualMessages from './VirtualMessages';
 import { UIMessage } from 'ai';
 import { UseChatHelpers } from '@ai-sdk/react';
 import equal from 'fast-deep-equal';
 import MessageLoading from './ui/MessageLoading';
 import Error from './Error';
 
-// Шаг 1: Оставляем PureMessages из `fix/responsive-navigation-bug` с параметрами регенерации.
+// Убираем виртуализацию - всегда используем обычные сообщения
 function PureMessages({
   threadId,
   messages,
@@ -61,8 +60,7 @@ function PureMessages({
   );
 }
 
-// Переименовываем мемоизированный компонент, чтобы избежать конфликта имен с компонентом-оберткой.
-// Логика сравнения взята из `fix/responsive-navigation-bug` для учета `isRegenerating`.
+// Мемоизированный компонент Messages
 const MemoizedMessages = memo(PureMessages, (prevProps, nextProps) => {
   return (
     equal(prevProps.messages, nextProps.messages) &&
@@ -74,28 +72,15 @@ const MemoizedMessages = memo(PureMessages, (prevProps, nextProps) => {
 
 MemoizedMessages.displayName = 'Messages';
 
-// Шаг 2: Оставляем новую структуру экспорта из `main`.
-export const LargeListBoundary = 20;
-
 export interface MessagesProps
   extends React.ComponentProps<typeof PureMessages> {
   /**
-   * Ref элемента, который скроллится. Нужен для отслеживания
-   * позиции скролла при включенной виртуализации.
+   * Ref элемента, который скроллится. Не используется без виртуализации.
    */
   scrollRef?: React.Ref<HTMLDivElement>;
 }
 
-// Шаг 3: Объединяем в финальной функции.
-// Используем обертку и логику виртуализации из `main`.
-// Она будет вызывать либо `VirtualMessages`, либо `MemoizedMessages`,
-// передавая все параметры, включая `forceRegeneration` и `isRegenerating`.
+// Простой компонент без виртуализации
 export default function Messages({ scrollRef, ...props }: MessagesProps) {
-  return props.messages.length > LargeListBoundary ? (
-    <div className="h-full flex-1">
-      <VirtualMessages {...props} outerRef={scrollRef} />
-    </div>
-  ) : (
-    <MemoizedMessages {...props} />
-  );
+  return <MemoizedMessages {...props} />;
 }

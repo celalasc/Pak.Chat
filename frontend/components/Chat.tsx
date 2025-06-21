@@ -1,6 +1,6 @@
 "use client";
 
-import ChatHistoryButton from './ChatHistoryButton';
+import { ChatHistoryButton } from './chat-history';
 import NewChatButton from './NewChatButton';
 import SettingsDrawer from './SettingsDrawer';
 import MobileChatMenu from './MobileChatMenu';
