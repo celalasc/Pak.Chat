@@ -32,6 +32,7 @@ export default function NewChatButton({
     
     // Чистый переход на новый чат
     router.push('/chat');
+    router.refresh();
   };
 
   return (
