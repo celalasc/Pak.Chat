@@ -11,6 +11,8 @@ import { api } from '@/convex/_generated/api';
 import { useDebounce } from 'use-debounce';
 import type { Id } from '@/convex/_generated/dataModel';
 import { saveLastChatId } from '@/frontend/lib/lastChat';
+import { filterByTitle } from "@/lib/searchUtils";
+import EmptyState from "@/frontend/components/ui/EmptyState";
 
 interface MobileSearchProps {
   isOpen: boolean;
@@ -80,7 +82,7 @@ export default function MobileSearch({ isOpen, onClose }: MobileSearchProps) {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Search chats..."
+            placeholder="Search chats in any language..."
             className="pl-10"
           />
         </div>
@@ -89,23 +91,18 @@ export default function MobileSearch({ isOpen, onClose }: MobileSearchProps) {
       {/* Results */}
       <div className="flex-1 overflow-y-auto">
         {searchQuery.trim() === '' ? (
-          <div className="flex items-center justify-center h-64 text-muted-foreground">
-            <div className="text-center">
-              <Search className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Start typing to search your chats</p>
-            </div>
-          </div>
+          <EmptyState 
+            type="no-history" 
+            className="h-full flex flex-col justify-center"
+          />
         ) : threads === undefined ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
+          <EmptyState type="loading" className="h-full flex flex-col justify-center" />
         ) : threads.length === 0 ? (
-          <div className="flex items-center justify-center h-64 text-muted-foreground">
-            <div className="text-center">
-              <p>No chats found</p>
-              <p className="text-sm mt-1">Try different keywords</p>
-            </div>
-          </div>
+          <EmptyState 
+            type="no-search-results" 
+            searchQuery={searchQuery.trim()}
+            className="h-full flex flex-col justify-center"
+          />
         ) : (
           <div className="p-4 space-y-2">
             {threads.map((thread) => (
@@ -116,7 +113,7 @@ export default function MobileSearch({ isOpen, onClose }: MobileSearchProps) {
               >
                 <div className="font-medium truncate">{thread.title}</div>
                 <div className="text-sm text-muted-foreground mt-1">
-                  {new Date(thread.createdAt).toLocaleDateString()}
+                  {new Date(thread._creationTime).toLocaleDateString()}
                 </div>
               </div>
             ))}

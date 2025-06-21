@@ -53,6 +53,8 @@ import type { Doc, Id } from "@/convex/_generated/dataModel";
 import ChatPreview from "./components/ChatPreview";
 import { useSettingsStore } from '@/frontend/stores/SettingsStore';
 import { useDebounce } from "use-debounce";
+import { filterByTitle } from "@/lib/searchUtils";
+import EmptyState from "@/frontend/components/ui/EmptyState";
 
 interface Thread extends Doc<"threads"> {
   pinned?: boolean;
@@ -91,7 +93,8 @@ const ChatHistoryDesktopComponent: React.FC<ChatHistoryDesktopProps> = ({
   const router = useRouter();
   const params = useParams();
   const id = params?.slug?.[0] as Id<"threads"> | undefined;
-
+  
+  // Используем тот же подход что и в мобильной версии
   const { threads } = useConvexThreads();
   const renameThread = useMutation(api.threads.rename);
   const deleteThread = useMutation(api.threads.remove);
@@ -206,13 +209,8 @@ const ChatHistoryDesktopComponent: React.FC<ChatHistoryDesktopProps> = ({
   const threadGroups = useMemo(() => {
     if (!threads) return [] as ThreadGroup[];
     
-    let filteredThreads = threads;
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filteredThreads = threads.filter(thread => 
-        thread.title.toLowerCase().includes(query)
-      );
-    }
+    // Используем улучшенную фильтрацию с поддержкой Unicode
+    const filteredThreads = filterByTitle(threads, searchQuery);
     
     return groupThreadsByTime(filteredThreads);
   }, [threads, searchQuery]);
@@ -523,7 +521,7 @@ const ChatHistoryDesktopComponent: React.FC<ChatHistoryDesktopProps> = ({
                 {/* Search Header - только для левой панели */}
                 <div className="p-4 border-b border-border bg-background">
                   <CommandInput
-                    placeholder="Search..."
+                    placeholder="Search in any language..."
                     value={rawQuery}
                     onValueChange={setRawQuery}
                     className="w-full bg-background border-border text-foreground placeholder:text-muted-foreground"
@@ -533,7 +531,16 @@ const ChatHistoryDesktopComponent: React.FC<ChatHistoryDesktopProps> = ({
                 {/* Content */}
                 <div className="flex-1 min-h-0 bg-background">
                   <CommandList className="max-h-none h-full bg-background">
-                    <CommandEmpty className="text-muted-foreground">No chats found.</CommandEmpty>
+                    <CommandEmpty className="py-0">
+                      {threads === undefined ? (
+                        <EmptyState type="loading" />
+                      ) : memoizedThreadGroups.length === 0 ? (
+                        <EmptyState 
+                          type={searchQuery.trim() ? "no-search-results" : "no-history"} 
+                          searchQuery={searchQuery.trim()}
+                        />
+                      ) : null}
+                    </CommandEmpty>
                     {memoizedThreadGroups.map((group) => (
                       <CommandGroup key={group.title} heading={group.title} className="text-muted-foreground">
                         {group.threads.map(renderThreadItem)}

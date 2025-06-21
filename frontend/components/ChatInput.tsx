@@ -3,7 +3,7 @@
 import { ChevronDown, Check, ArrowUpIcon, Star, ChevronUp, ChevronLeft, Globe } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Textarea } from '@/frontend/components/ui/textarea';
-import ScrollToBottomButton from './ScrollToBottomButton';
+
 import { cn } from '@/lib/utils';
 import { Button } from '@/frontend/components/ui/button';
 import {
@@ -969,12 +969,7 @@ function PureChatInput({
     <>
       <div className="w-full flex justify-center pb-safe mobile-keyboard-fix">
         <div ref={containerRef} className={cn('backdrop-blur-md bg-secondary p-2 pb-0 border-t border-border/50 max-w-3xl w-full', messageCount === 0 ? 'rounded-[20px] sm:rounded-[28px]' : 'rounded-t-[20px] sm:rounded-t-[28px]')}>
-          {/* Scroll to bottom button */}
-          {messageCount > 0 && (
-            <div className="absolute right-4 -top-12 z-50">
-              <ScrollToBottomButton />
-            </div>
-          )}
+
           <div className="relative rounded-[16px] sm:rounded-[24px] overflow-hidden">
             {/* (Provider links removed to avoid unnecessary flicker) */}
 

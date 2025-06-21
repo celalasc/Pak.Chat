@@ -50,6 +50,8 @@ import type { Doc, Id } from "@/convex/_generated/dataModel";
 import ChatPreview from "./components/ChatPreview";
 import { useSettingsStore } from '@/frontend/stores/SettingsStore';
 import { useDebounce } from "use-debounce";
+import { filterByTitle } from "@/lib/searchUtils";
+import EmptyState from "@/frontend/components/ui/EmptyState";
 
 interface Thread extends Doc<"threads"> {
   pinned?: boolean;
@@ -168,13 +170,8 @@ const ChatHistoryMobileComponent: React.FC<ChatHistoryMobileProps> = ({
   const threadGroups = useMemo(() => {
     if (!threads) return [] as ThreadGroup[];
     
-    let filteredThreads = threads;
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filteredThreads = threads.filter(thread => 
-        thread.title.toLowerCase().includes(query)
-      );
-    }
+    // Используем улучшенную фильтрацию с поддержкой Unicode
+    const filteredThreads = filterByTitle(threads, searchQuery);
     
     return groupThreadsByTime(filteredThreads);
   }, [threads, searchQuery]);
@@ -579,7 +576,7 @@ const ChatHistoryMobileComponent: React.FC<ChatHistoryMobileProps> = ({
               </DrawerTitle>
               <div className="relative">
                 <Input
-                  placeholder="Search…"
+                  placeholder="Search in any language…"
                   className="rounded-lg py-2 pl-8 text-sm bg-background border-border text-foreground placeholder:text-muted-foreground"
                   value={rawQuery}
                   onChange={(e) => setRawQuery(e.target.value)}
@@ -590,13 +587,16 @@ const ChatHistoryMobileComponent: React.FC<ChatHistoryMobileProps> = ({
 
             {/* List */}
             <div className="flex-1 min-h-0 overflow-y-auto scrollbar-none enhanced-scroll bg-background">
-              <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 pb-16">
-                {threadGroups.length === 0 ? (
-                  <div className="text-center text-sm text-muted-foreground py-4">
-                    {searchQuery ? "No chats found." : "No chat history found."}
-                  </div>
-                ) : (
-                  threadGroups.map((group) => (
+              {threads === undefined ? (
+                <EmptyState type="loading" />
+              ) : threadGroups.length === 0 ? (
+                <EmptyState 
+                  type={searchQuery.trim() ? "no-search-results" : "no-history"} 
+                  searchQuery={searchQuery.trim()}
+                />
+              ) : (
+                <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 pb-16">
+                  {threadGroups.map((group) => (
                     <div key={group.title} className="space-y-2">
                       <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-2 py-1">
                         {group.title}
@@ -605,9 +605,9 @@ const ChatHistoryMobileComponent: React.FC<ChatHistoryMobileProps> = ({
                         {group.threads.map(renderThreadItem)}
                       </div>
                     </div>
-                  ))
-                )}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </DrawerContent>
