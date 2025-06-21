@@ -15,7 +15,6 @@ export default function ChatNavigationBars({ messages, scrollToMessage }: ChatNa
   const [isHovered, setIsHovered] = useState(false)
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(false)
-  const [showMobileNav, setShowMobileNav] = useState(false) // Состояние для показа мобильной навигации
   const sidebarRef = useRef<HTMLDivElement>(null)
   const tileContentRef = useRef<HTMLDivElement>(null)
 
@@ -29,26 +28,54 @@ export default function ChatNavigationBars({ messages, scrollToMessage }: ChatNa
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
+  // Закрытие окошка при клике вне области на мобильных
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      if (isMobile && isHovered && sidebarRef.current) {
+        // Проверяем, был ли клик вне области навигации
+        if (!sidebarRef.current.contains(event.target as Node)) {
+          setIsHovered(false)
+          setHoveredMessageId(null)
+        }
+      }
+    }
+
+    if (isMobile && isHovered) {
+      document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener('touchstart', handleClickOutside)
+      
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside)
+        document.removeEventListener('touchstart', handleClickOutside)
+      }
+    }
+  }, [isMobile, isHovered])
+
   // Фильтруем только пользовательские сообщения для навигации
   const userMessages = messages.filter(message => message.role === 'user')
   
   // Последнее сообщение пользователя
   const lastUserMessage = userMessages[userMessages.length - 1]
 
-  // Для мобильных ограничиваем количество точек до 8
-  const visibleUserMessages = isMobile ? userMessages.slice(-8) : userMessages
+  // Для мобильных ограничиваем количество точек до 10
+  const visibleUserMessages = isMobile ? userMessages.slice(-10) : userMessages
 
   // Автоскролл в плитке к последнему сообщению при открытии
   useEffect(() => {
-    if (isHovered && tileContentRef.current && userMessages.length > 15) {
-      // Небольшая задержка для правильного рендеринга
-      setTimeout(() => {
-        if (tileContentRef.current) {
-          tileContentRef.current.scrollTop = tileContentRef.current.scrollHeight
-        }
-      }, 50)
+    if (isHovered && tileContentRef.current) {
+      // Для мобильных всегда скроллим вниз, для ПК - только если много сообщений
+      const shouldScroll = isMobile || userMessages.length > 15
+      
+      if (shouldScroll) {
+        // Небольшая задержка для правильного рендеринга
+        setTimeout(() => {
+          if (tileContentRef.current) {
+            tileContentRef.current.scrollTop = tileContentRef.current.scrollHeight
+          }
+        }, 50)
+      }
     }
-  }, [isHovered, userMessages.length])
+  }, [isHovered, userMessages.length, isMobile])
 
   // Функция для вычисления длины полоски на основе длины сообщения
   const getBarLength = (messageLength: number) => {
@@ -80,6 +107,12 @@ export default function ChatNavigationBars({ messages, scrollToMessage }: ChatNa
     }
   }
 
+  const handleDotClick = (messageId: string) => {
+    // Для мобильных - показываем окошко при клике на точку
+    setIsHovered(true)
+    setHoveredMessageId(messageId)
+  }
+
   const handleMouseLeave = () => {
     if (!isMobile) {
       setIsHovered(false)
@@ -98,9 +131,10 @@ export default function ChatNavigationBars({ messages, scrollToMessage }: ChatNa
       })
     }
     
-    // На мобильном скрываем навигацию после клика
+    // На мобильном скрываем плашку после клика
     if (isMobile) {
-      setShowMobileNav(false)
+      setIsHovered(false)
+      setHoveredMessageId(null)
     }
   }
 
@@ -109,67 +143,80 @@ export default function ChatNavigationBars({ messages, scrollToMessage }: ChatNa
     return null
   }
 
-  // На мобильных устройствах показываем toggle кнопку и навигацию по требованию
+  // На мобильных устройствах показываем точки как на ПК, но в виде точек
   if (isMobile) {
     return (
-      <>
-        {/* Toggle кнопка для показа навигации */}
-        <div className="fixed left-2 top-1/2 -translate-y-1/2 z-30">
-          <button
-            onClick={() => setShowMobileNav(!showMobileNav)}
-            className={cn(
-              "w-8 h-8 rounded-full bg-background/80 backdrop-blur-md border border-border/50 shadow-lg",
-              "flex items-center justify-center transition-all duration-200",
-              "hover:bg-background/90 hover:scale-105",
-              showMobileNav && "bg-primary/20 border-primary/30"
-            )}
-            aria-label={showMobileNav ? "Hide navigation" : "Show navigation"}
-          >
-            <div className="flex flex-col space-y-0.5">
-              {[0, 1, 2].map((i) => (
-                <div
-                  key={i}
-                  className={cn(
-                    "w-1 h-1 rounded-full transition-all duration-200",
-                    showMobileNav 
-                      ? "bg-primary" 
-                      : "bg-muted-foreground/60"
-                  )}
-                />
-              ))}
-            </div>
-          </button>
-        </div>
-
-        {/* Навигационная панель (показывается по требованию) */}
-        {showMobileNav && (
-          <div className="fixed left-12 top-1/2 -translate-y-1/2 w-3 max-h-[60vh] flex flex-col items-start justify-center z-30 pointer-events-auto">
-            <div className="flex flex-col items-start space-y-1 max-h-full overflow-y-auto scrollbar-none">
-              {visibleUserMessages.map((message, index) => {
+      <div
+        ref={sidebarRef}
+        className="fixed left-0 top-0 w-12 h-full flex flex-col items-start justify-center py-4 pl-2 z-30 pointer-events-none"
+        onMouseLeave={handleMouseLeave}
+      >
+        {isHovered ? (
+          // Плитка при нажатии на точку (как на ПК)
+          <div className={cn(
+            "bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg pointer-events-auto",
+            userMessages.length > 15 ? "w-80 h-96" : "min-w-[200px] max-w-[280px]"
+          )}>
+            <div 
+              ref={tileContentRef}
+              className={cn(
+                "p-2",
+                userMessages.length > 15 ? "h-full overflow-y-auto" : ""
+              )}
+            >
+              {/* Показываем ВСЕ сообщения в плашке, не только видимые 10 */}
+              {userMessages.map((message) => {
+                const messageTitle = getMessageTitle(message.content)
+                const isCurrentHovered = hoveredMessageId === message.id
                 const isLastMessage = lastUserMessage && message.id === lastUserMessage.id
+                
                 return (
                   <div
                     key={message.id}
                     className={cn(
-                      "w-2 h-2 rounded-full cursor-pointer transition-all duration-200 flex-shrink-0",
-                      isLastMessage 
-                        ? "bg-primary scale-125" 
-                        : "bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500"
+                      "py-1.5 px-2 rounded-md cursor-pointer transition-colors duration-150 text-sm mb-1",
+                      isCurrentHovered 
+                        ? "bg-gray-100 dark:bg-gray-700" 
+                        : "hover:bg-gray-50 dark:hover:bg-gray-750",
+                      isLastMessage && "bg-gray-200 dark:bg-gray-600"
                     )}
                     onClick={() => handleBarClick(message.id)}
-                    title={`Message ${userMessages.length - visibleUserMessages.length + index + 1}`}
-                  />
+                    onMouseEnter={() => setHoveredMessageId(message.id)}
+                  >
+                    <div className={cn(
+                      "leading-tight transition-colors duration-150",
+                      isLastMessage 
+                        ? "text-gray-900 dark:text-white font-medium" 
+                        : "text-gray-700 dark:text-gray-200"
+                    )}>
+                      {messageTitle}
+                    </div>
+                  </div>
                 )
               })}
-              {userMessages.length > 8 && (
-                <div className="text-xs text-muted-foreground/70 text-center w-full mt-1">
-                  +{userMessages.length - 8}
-                </div>
-              )}
             </div>
           </div>
+        ) : (
+          // Точки вместо полосок
+          <div className="flex flex-col items-start space-y-2 max-h-[70vh] overflow-y-auto scrollbar-none pointer-events-auto pr-2">
+            {visibleUserMessages.map((message, index) => {
+              const isLastMessage = lastUserMessage && message.id === lastUserMessage.id
+              return (
+                <div
+                  key={message.id}
+                  className={cn(
+                    "w-3 h-3 rounded-full cursor-pointer transition-all duration-200 flex-shrink-0",
+                    "bg-gray-300/70 dark:bg-gray-600/60 hover:bg-gray-400/80 dark:hover:bg-gray-500/70",
+                    isLastMessage && "bg-primary dark:bg-primary scale-105"
+                  )}
+                  onClick={() => handleDotClick(message.id)}
+                  title={message.content.slice(0, 50) + '...'}
+                />
+              )
+            })}
+          </div>
         )}
-      </>
+      </div>
     )
   }
 

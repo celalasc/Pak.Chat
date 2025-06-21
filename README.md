@@ -13,7 +13,6 @@
 </div>
 
 ## 📖 Overview
-
 Pak.Chat is a high-performance Next.js application providing a unified interface for working with multiple language model providers. Supports OpenAI, Google Gemini, Groq, and OpenRouter with real-time capabilities and cross-device synchronization.
 
 ## ✨ Key Features
@@ -233,11 +232,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 Special thanks to the [chat0](https://github.com/senbo1/chat0) project for providing an excellent foundation for development.
-
----
-
-<div align="center">
-
-**[🌐 Website](https://pak.chat)** • **[📚 Documentation](https://docs.pak.chat)** • **[🐛 Report Bug](https://github.com/yourusername/pak-chat/issues)**
-
-</div>

@@ -26,17 +26,14 @@ export default function NewChatPage() {
     }
   }, [user, loading]);
 
-  // Убираем автоматическое перенаправление для новых чатов
-  // Мобильные пользователи тоже могут создавать новые чаты через /chat
-
   if (loading || !user) {
     return <div className="w-full h-screen bg-background" />;
   }
 
-  // Ключ "new-draft" гарантирует, что для нового чата всегда будет чистое состояние
+  // Используем простой ключ для нового чата
   return (
     <Chat
-      key="new-draft"
+      key="new-chat"
       threadId=""
       thread={null}
       initialMessages={[]}
