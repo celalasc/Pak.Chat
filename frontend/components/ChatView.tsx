@@ -316,7 +316,7 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
       // Remember last active chat for automatic restoration on reload
       saveLastChatId(threadId);
     }
-  }, [threadId, setInput, clearQuote, clearAttachments, setMessages, initialMessages]);
+  }, [threadId]);
 
   // Persist unsent messages and input as a draft
   useEffect(() => {
