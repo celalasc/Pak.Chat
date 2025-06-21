@@ -166,11 +166,13 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
     setIsOpen(open);
   }, [setIsOpen]);
 
-  const handleAnimationEnd = useCallback((open: boolean) => {
-    if (!open) {
-      resetDrawerState();
+  // Reset state after the drawer/dialog is fully closed
+  useEffect(() => {
+    if (!isOpen) {
+      const timer = setTimeout(() => resetDrawerState(), 200);
+      return () => clearTimeout(timer);
     }
-  }, [resetDrawerState]);
+  }, [isOpen, resetDrawerState]);
 
   // Унифицированный обработчик мобильного эффекта для всех устройств
   const handleMobileEffect = useCallback((shouldApply: boolean) => {
@@ -266,7 +268,6 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
       <Drawer
           open={isOpen}
           onOpenChange={handleOpenChange}
-          onAnimationEnd={handleAnimationEnd}
           shouldScaleBackground={false}
           dismissible={true}
           modal={true}
@@ -328,7 +329,7 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange} onAnimationEnd={handleAnimationEnd}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {children}
       </DialogTrigger>

@@ -211,14 +211,14 @@ function ChatHistoryDrawerComponent({
     [setIsOpen, isOpen],
   );
 
-  const handleAnimationEnd = useCallback(
-    (open: boolean) => {
-      if (!open) {
-        resetDrawerState();
-      }
-    },
-    [resetDrawerState],
-  );
+  // Reset internal state when the drawer or dialog closes
+  useEffect(() => {
+    if (!isOpen) {
+      // Delay slightly so closing animations can finish smoothly
+      const timer = setTimeout(() => resetDrawerState(), 200);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, resetDrawerState]);
 
   // ---------------- Memoized, grouped & sorted thread lists ----------
   const threadGroups = useMemo(() => {
@@ -881,7 +881,7 @@ function ChatHistoryDrawerComponent({
 
   if (isMobile) {
     const main = (
-      <Drawer open={isOpen} onOpenChange={handleOpenChange} onAnimationEnd={handleAnimationEnd}>
+      <Drawer open={isOpen} onOpenChange={handleOpenChange}>
         <DrawerTrigger asChild>{children}</DrawerTrigger>
         <DrawerContent className="max-h-[95vh] flex flex-col w-full">
           <div className="flex h-full max-h-[90vh] flex-col">
@@ -980,11 +980,11 @@ function ChatHistoryDrawerComponent({
   }
 
   const desktop = (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange} onAnimationEnd={handleAnimationEnd}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className={cn(
         "w-[85vw] sm:max-w-none max-w-none h-[80vh] p-0 [&>button]:top-2 [&>button]:right-2 overflow-hidden focus:outline-none grid-rows-none rounded-3xl",
-        !settings.showChatPreview && "w-[650px] max-w-[650px]"
+        !settings.showChatPreview && "w-[320px] max-w-[320px]"
       )}>
         <div className={cn(
           "grid h-full grid-rows-1",
