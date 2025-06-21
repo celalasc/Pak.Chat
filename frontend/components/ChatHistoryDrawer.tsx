@@ -765,6 +765,7 @@ function ChatHistoryDrawerComponent({
               )}
             </>
           )}
+          </div>
         </div>
       </div>
     ),
