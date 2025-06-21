@@ -30,8 +30,9 @@ export default function NewChatButton({
     clearQuote();
     clearAttachments();
     
-    // Простая навигация на новый чат
+    // Навигируем на страницу нового чата и принудительно обновляем роутер
     router.push('/chat');
+    router.refresh();
   };
 
   return (
