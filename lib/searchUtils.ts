@@ -43,9 +43,6 @@ export function filterByTitle<T extends { title: string }>(
 export function highlightSearchText(text: string, query: string): string {
   if (!query.trim()) return text;
   
-  const normalizedText = normalizeSearchText(text);
-  const normalizedQuery = normalizeSearchText(query);
-  
   // Простая подсветка без учета регистра
   const regex = new RegExp(`(${escapeRegExp(query)})`, 'gi');
   return text.replace(regex, '<mark>$1</mark>');
