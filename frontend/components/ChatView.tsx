@@ -28,9 +28,10 @@ interface ChatViewProps {
   thread: Doc<'threads'> | null | undefined;
   initialMessages: UIMessage[];
   showNavBars: boolean;
+  onThreadCreated?: (newThreadId: string) => void;
 }
 
-function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewProps) {
+function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCreated }: ChatViewProps) {
   const { keys } = useAPIKeyStore();
   const { selectedModel, webSearchEnabled } = useModelStore();
   const { clearQuote } = useQuoteStore();
@@ -46,6 +47,9 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
 
   // Флаг для отслеживания первоначальной загрузки чата
   const [hasScrolledToEnd, setHasScrolledToEnd] = useState(false);
+  
+  // Уникальный ключ для принудительного пересоздания useChat хука
+  const [chatKey, setChatKey] = useState(() => `chat-${threadId || 'new'}-${Date.now()}`);
 
   // Определяем какой API endpoint использовать в зависимости от провайдера
   const modelConfig = React.useMemo(() => {
@@ -81,7 +85,9 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
   const handleThreadCreated = useCallback((newThreadId: string) => {
     setCurrentThreadId(newThreadId);
     threadIdRef.current = newThreadId;
-  }, [currentThreadId]);
+    // Уведомляем родительский компонент
+    onThreadCreated?.(newThreadId);
+  }, [onThreadCreated]);
 
   // Функция для принудительного сброса кэша при перегенерации
   const forceRegeneration = useCallback(() => {
@@ -128,7 +134,7 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
     error,
   } = useChat({
     api: apiEndpoint,
-    id: currentThreadId, // Используем обычный threadId
+    id: chatKey, // Используем уникальный ключ для принудительного пересоздания
     initialMessages,
     body: requestBody,
     experimental_prepareRequestBody: prepareRequestBody,
@@ -225,25 +231,30 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
     setCurrentThreadId(threadId);
     threadIdRef.current = threadId;
     
+    // Создаем новый уникальный ключ для useChat при смене чата
+    setChatKey(`chat-${threadId || 'new'}-${Date.now()}`);
+    
+    // Полная очистка состояния для нового чата
     if (!threadId) {
       setInput('');
       clearQuote();
       clearAttachments();
-    }
-    setMessages(initialMessages);
-
-    const draft = loadDraft(threadId);
-    if (draft) {
-      if (draft.input) setInput(draft.input);
-      if (draft.messages.length > 0) {
-        setMessages((prev) => [...prev, ...draft.messages]);
+      setMessages([]); // Очищаем сообщения
+      stop(); // Останавливаем любой активный стрим
+    } else {
+      // Для существующего чата загружаем состояние
+      setMessages(initialMessages);
+      const draft = loadDraft(threadId);
+      if (draft) {
+        if (draft.input) setInput(draft.input);
+        if (draft.messages.length > 0) {
+          setMessages((prev) => [...prev, ...draft.messages]);
+        }
       }
-    }
-    if (threadId) {
       // Remember last active chat for automatic restoration on reload
       saveLastChatId(threadId);
     }
-  }, [threadId]);
+  }, [threadId, setInput, setMessages, clearQuote, clearAttachments, stop]);
 
   // Persist unsent messages and input as a draft
   useEffect(() => {

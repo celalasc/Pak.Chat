@@ -164,11 +164,11 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
 
   const handleOpenChange = useCallback((open: boolean) => {
     setIsOpen(open);
-    // Сбрасываем состояние при закрытии (для Desktop Dialog)
-    if (!open && !isMobile) {
+    // Сбрасываем состояние при закрытии для всех платформ
+    if (!open) {
       resetDrawerState();
     }
-  }, [setIsOpen, resetDrawerState, isMobile]);
+  }, [setIsOpen, resetDrawerState]);
 
   const handleAnimationEnd = useCallback((open: boolean) => {
     // Сбрасываем состояние при закрытии (только для Mobile Drawer)

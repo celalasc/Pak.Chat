@@ -34,6 +34,7 @@ function Chat({ threadId, thread, initialMessages }: ChatProps) {
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const { settings } = useSettingsStore();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [currentThreadId, setCurrentThreadId] = useState(threadId);
 
   useKeyboardInsets((h) => {
     document.documentElement.style.setProperty('--keyboard-inset-height', `${h}px`);
@@ -43,6 +44,16 @@ function Chat({ threadId, thread, initialMessages }: ChatProps) {
   const handleSettingsOpenChange = (open: boolean) => {
     setIsSettingsOpen(open);
   };
+
+  // Обработчик создания нового треда
+  const handleThreadCreated = (newThreadId: string) => {
+    setCurrentThreadId(newThreadId);
+  };
+
+  // Отслеживаем изменения threadId
+  useEffect(() => {
+    setCurrentThreadId(threadId);
+  }, [threadId]);
 
   // Track virtual keyboard visibility on mobile
   useEffect(() => {
@@ -73,7 +84,7 @@ function Chat({ threadId, thread, initialMessages }: ChatProps) {
         {isMobile ? (
         // МОБИЛЬНАЯ версия - только меню с тремя точками для существующих чатов
         <>
-          {threadId ? (
+          {currentThreadId ? (
             // Existing chat - показываем стрелочку назад слева и меню справа
             <>
               <div
@@ -100,7 +111,7 @@ function Chat({ threadId, thread, initialMessages }: ChatProps) {
                   (!isHeaderVisible || isKeyboardVisible) && 'transform translate-x-[calc(100%+1rem)]',
                 )}
               >
-                <MobileChatMenu threadId={threadId} />
+                <MobileChatMenu threadId={currentThreadId} />
               </div>
             </>
           ) : (
@@ -164,6 +175,7 @@ function Chat({ threadId, thread, initialMessages }: ChatProps) {
           thread={thread}
           initialMessages={initialMessages}
           showNavBars={settings.showNavBars}
+          onThreadCreated={handleThreadCreated}
         />
       </div>
     </div>

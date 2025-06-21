@@ -562,6 +562,8 @@ function PureChatInput({
 
   // ИСПРАВЛЕНИЕ: Локальное состояние для отслеживания созданного треда в сессии
   const [sessionThreadId, setSessionThreadId] = useState<string | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [dragCounter, setDragCounter] = useState(0);
 
   // Initialize input from server-side draft when thread changes
   useEffect(() => {
@@ -946,6 +948,194 @@ function PureChatInput({
     }
   }, []);
 
+  // Конвертация изображения в PNG
+  const convertImageToPng = useCallback(async (file: File): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      img.onload = () => {
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        
+        if (ctx) {
+          ctx.drawImage(img, 0, 0);
+          canvas.toBlob((blob) => {
+            if (blob) {
+              const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+              const fileName = `pasted-image-${timestamp}.png`;
+              const pngFile = new File([blob], fileName, { type: 'image/png' });
+              resolve(pngFile);
+            } else {
+              reject(new Error('Failed to convert image to PNG'));
+            }
+          }, 'image/png');
+        } else {
+          reject(new Error('Canvas context not available'));
+        }
+      };
+      
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = URL.createObjectURL(file);
+    });
+  }, []);
+
+  // Обработчик вставки изображений из буфера обмена
+  const handlePaste = useCallback(
+    async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      // Сначала проверяем, есть ли вообще изображения в буфере
+      let hasImages = false;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.startsWith('image/')) {
+          hasImages = true;
+          break;
+        }
+      }
+
+      // Если изображений нет, позволяем стандартной вставке текста продолжиться
+      if (!hasImages) {
+        return;
+      }
+
+      // Если есть изображения, предотвращаем стандартное поведение
+      e.preventDefault();
+
+      const imageFiles: File[] = [];
+      
+      // Обрабатываем каждое изображение
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) {
+            try {
+              // Конвертируем в PNG
+              const pngFile = await convertImageToPng(file);
+              imageFiles.push(pngFile);
+            } catch (error) {
+              console.error('Failed to convert image to PNG:', error);
+              toast.error('Failed to process pasted image');
+            }
+          }
+        }
+      }
+
+      // Добавляем изображения в store
+      if (imageFiles.length > 0) {
+        const { add } = useAttachmentsStore.getState();
+        imageFiles.forEach(file => {
+          add(file);
+        });
+
+        // Показываем уведомление
+        if (imageFiles.length === 1) {
+          toast.success('Image pasted successfully');
+        } else {
+          toast.success(`${imageFiles.length} images pasted successfully`);
+        }
+      }
+    },
+    [convertImageToPng]
+  );
+
+  // Обработчики для drag and drop
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragCounter(prev => prev + 1);
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragCounter(prev => {
+      const newCounter = prev - 1;
+      if (newCounter <= 0) {
+        setIsDragOver(false);
+        return 0;
+      }
+      return newCounter;
+    });
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback(
+    async (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragOver(false);
+      setDragCounter(0);
+
+      const files = Array.from(e.dataTransfer.files);
+      const imageFiles: File[] = [];
+
+      for (const file of files) {
+        if (file.type.startsWith('image/')) {
+          try {
+            // Конвертируем в PNG
+            const pngFile = await convertImageToPng(file);
+            imageFiles.push(pngFile);
+          } catch (error) {
+            console.error('Failed to convert dropped image to PNG:', error);
+            toast.error(`Failed to process ${file.name}`);
+          }
+        } else {
+          // Для не-изображений добавляем как есть
+          imageFiles.push(file);
+        }
+      }
+
+      if (imageFiles.length > 0) {
+        const { add } = useAttachmentsStore.getState();
+        imageFiles.forEach(file => {
+          add(file);
+        });
+
+        // Показываем уведомление
+        if (imageFiles.length === 1) {
+          toast.success('File added successfully');
+        } else {
+          toast.success(`${imageFiles.length} files added successfully`);
+        }
+      }
+    },
+    [convertImageToPng]
+  );
+
+  // Глобальный обработчик для сброса drag состояния
+  useEffect(() => {
+    const handleGlobalDragEnd = () => {
+      setIsDragOver(false);
+      setDragCounter(0);
+    };
+
+    const handleGlobalDragLeave = (e: DragEvent) => {
+      // Если курсор покинул окно браузера
+      if (e.clientX === 0 && e.clientY === 0) {
+        setIsDragOver(false);
+        setDragCounter(0);
+      }
+    };
+
+    document.addEventListener('dragend', handleGlobalDragEnd);
+    document.addEventListener('dragleave', handleGlobalDragLeave);
+
+    return () => {
+      document.removeEventListener('dragend', handleGlobalDragEnd);
+      document.removeEventListener('dragleave', handleGlobalDragLeave);
+    };
+  }, []);
+
   // Если есть ошибка и нельзя отправлять сообщения, показываем форму для ввода API ключей
   if (error && !canChat) {
     return (
@@ -968,9 +1158,37 @@ function PureChatInput({
   return (
     <>
       <div className="w-full flex justify-center pb-safe mobile-keyboard-fix">
-        <div ref={containerRef} className={cn('backdrop-blur-md bg-secondary p-2 pb-0 border-t border-border/50 max-w-3xl w-full', messageCount === 0 ? 'rounded-[20px] sm:rounded-[28px]' : 'rounded-t-[20px] sm:rounded-t-[28px]')}>
+        <div 
+          ref={containerRef} 
+          className={cn(
+            'backdrop-blur-md bg-secondary p-2 pb-0 max-w-3xl w-full transition-all duration-200 relative',
+            messageCount === 0 
+              ? 'rounded-[20px] sm:rounded-[28px]' 
+              : 'rounded-t-[20px] sm:rounded-t-[28px] border-t border-border/50',
+            messageCount === 0 && !isDragOver && 'border border-border/50'
+          )}
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+        >
+          {/* Drag overlay - теперь покрывает весь контейнер */}
+          {isDragOver && (
+            <div className={cn(
+              "absolute inset-0 z-50 flex items-center justify-center bg-primary/10 backdrop-blur-sm border-2 border-dashed border-primary",
+              messageCount === 0 
+                ? 'rounded-[20px] sm:rounded-[28px]' 
+                : 'rounded-t-[20px] sm:rounded-t-[28px]'
+            )}>
+              <div className="text-center p-4">
+                <div className="text-primary font-semibold text-lg mb-2">📁 Drop files here</div>
+                <div className="text-primary/70 text-sm">Images will be converted to PNG</div>
+              </div>
+            </div>
+          )}
 
           <div className="relative rounded-[16px] sm:rounded-[24px] overflow-hidden">
+
             {/* (Provider links removed to avoid unnecessary flicker) */}
 
             <div className="flex flex-col">
@@ -1006,6 +1224,7 @@ function PureChatInput({
                   onKeyDown={handleKeyDown}
                   onChange={handleInputChange}
                   onFocus={handleFocus}
+                  onPaste={handlePaste}
                   aria-label="Chat message input"
                   aria-describedby="chat-input-description"
                   disabled={!canChat}

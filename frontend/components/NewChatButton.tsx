@@ -6,6 +6,8 @@ import { WithTooltip } from './WithTooltip';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { clearDraft } from '@/frontend/lib/drafts';
+import { useQuoteStore } from '@/frontend/stores/QuoteStore';
+import { useAttachmentsStore } from '@/frontend/stores/AttachmentsStore';
 
 interface NewChatButtonProps {
   className?: string;
@@ -19,10 +21,16 @@ export default function NewChatButton({
   size = "icon"
 }: NewChatButtonProps) {
   const router = useRouter();
+  const { clearQuote } = useQuoteStore();
+  const { clear: clearAttachments } = useAttachmentsStore();
 
   const handleClick = () => {
-    // Remove any leftover draft for new chats to start with a clean state
+    // Очищаем все состояние для чистого нового чата
     clearDraft('');
+    clearQuote();
+    clearAttachments();
+    
+    // Простая навигация на новый чат
     router.push('/chat');
   };
 
