@@ -1,13 +1,23 @@
 'use client'
 import Chat from '@/frontend/components/Chat';
-import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { saveLastPath } from '@/frontend/lib/lastChat';
 import { useAuthStore } from '@/frontend/stores/AuthStore';
 
 export default function NewChatPage() {
   const { user, loading } = useAuthStore();
   const router = useRouter();
+  const pathname = usePathname();
+  // Уникальный ключ для принудительного пересоздания компонента при каждом заходе
+  const [chatKey, setChatKey] = useState(() => `new-chat-${Date.now()}`);
+
+  // Обновляем ключ при каждом изменении pathname (переходе на /chat)
+  useEffect(() => {
+    if (pathname === '/chat') {
+      setChatKey(`new-chat-${Date.now()}-${Math.random()}`);
+    }
+  }, [pathname]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -30,10 +40,10 @@ export default function NewChatPage() {
     return <div className="w-full h-screen bg-background" />;
   }
 
-  // Используем простой ключ для нового чата
+  // Используем уникальный ключ для принудительного пересоздания компонента
   return (
     <Chat
-      key="new-chat"
+      key={chatKey}
       threadId=""
       thread={null}
       initialMessages={[]}
