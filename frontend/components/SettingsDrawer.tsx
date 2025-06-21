@@ -158,12 +158,19 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
   const [activeTab, setActiveTab] = useState("customization");
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  const resetDrawerState = useCallback(() => {
+    setActiveTab('customization');
+  }, []);
+
   const handleOpenChange = useCallback((open: boolean) => {
     setIsOpen(open);
+  }, [setIsOpen]);
+
+  const handleAnimationEnd = useCallback((open: boolean) => {
     if (!open) {
-      setActiveTab('customization');
+      resetDrawerState();
     }
-  }, [setIsOpen, setActiveTab]);
+  }, [resetDrawerState]);
 
   // Унифицированный обработчик мобильного эффекта для всех устройств
   const handleMobileEffect = useCallback((shouldApply: boolean) => {
@@ -256,9 +263,10 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
           isOpen && "active"
         )} onClick={() => handleOpenChange(false)} />
         
-              <Drawer 
-          open={isOpen} 
+      <Drawer
+          open={isOpen}
           onOpenChange={handleOpenChange}
+          onAnimationEnd={handleAnimationEnd}
           shouldScaleBackground={false}
           dismissible={true}
           modal={true}
@@ -320,7 +328,7 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange} onAnimationEnd={handleAnimationEnd}>
       <DialogTrigger asChild>
         {children}
       </DialogTrigger>

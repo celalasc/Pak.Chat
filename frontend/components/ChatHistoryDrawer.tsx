@@ -179,26 +179,35 @@ function ChatHistoryDrawerComponent({
   const togglePin = useMutation(api.threads.togglePin);
   const createShareLink = useMutation(api.threads.createShareLink);
 
+  const resetDrawerState = useCallback(() => {
+    setRawQuery("");
+    setEditingThreadId(null);
+    setEditingTitle("");
+    setDeletingThreadId(null);
+    setHoveredThreadId(null);
+    setSelectedThreadIndex(-1);
+    setMobileMenuThreadId(null);
+    allowAutoScrollRef.current = false;
+    lastKeyPressRef.current = 0;
+    pendingScrollRef.current = false;
+  }, []);
+
   const handleOpenChange = useCallback(
     (open: boolean) => {
       if (!open || isOpen !== open) {
         setIsOpen(open);
-                  if (!open) {
-            setRawQuery("");
-            setEditingThreadId(null);
-            setEditingTitle("");
-            setDeletingThreadId(null);
-            setHoveredThreadId(null);
-            setSelectedThreadIndex(-1); // Сброс только при закрытии диалога
-            setMobileMenuThreadId(null);
-            allowAutoScrollRef.current = false;
-            lastKeyPressRef.current = 0;
-            pendingScrollRef.current = false;
-            // Не сбрасываем скролл позицию, чтобы пользователь мог вернуться к тому же месту
-          }
       }
     },
     [setIsOpen, isOpen],
+  );
+
+  const handleAnimationEnd = useCallback(
+    (open: boolean) => {
+      if (!open) {
+        resetDrawerState();
+      }
+    },
+    [resetDrawerState],
   );
 
   // ---------------- Memoized, grouped & sorted thread lists ----------
@@ -858,7 +867,7 @@ function ChatHistoryDrawerComponent({
 
   if (isMobile) {
     const main = (
-      <Drawer open={isOpen} onOpenChange={handleOpenChange}>
+      <Drawer open={isOpen} onOpenChange={handleOpenChange} onAnimationEnd={handleAnimationEnd}>
         <DrawerTrigger asChild>{children}</DrawerTrigger>
         <DrawerContent className="max-h-[95vh] flex flex-col w-full">
           <div className="flex h-full max-h-[90vh] flex-col">
@@ -957,7 +966,7 @@ function ChatHistoryDrawerComponent({
   }
 
   const desktop = (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange} onAnimationEnd={handleAnimationEnd}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className={cn(
         "w-[85vw] sm:max-w-none max-w-none h-[80vh] p-0 [&>button]:top-2 [&>button]:right-2 overflow-hidden focus:outline-none grid-rows-none rounded-3xl",
