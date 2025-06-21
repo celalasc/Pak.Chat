@@ -10,6 +10,7 @@ import Chat from '@/frontend/components/Chat';
 import ErrorBoundary from '@/frontend/components/ErrorBoundary';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { saveLastChatId, saveLastPath } from '@/frontend/lib/lastChat';
+import type { UIMessage } from 'ai';
 
 function CatchAllChatPageInner({ params }: { params: Promise<{ slug: string[] }> }) {
   const resolvedParams = use(params);
@@ -41,10 +42,12 @@ function CatchAllChatPageInner({ params }: { params: Promise<{ slug: string[] }>
     shouldRunQueries ? { threadId: chatId as Id<'threads'> } : 'skip'
   );
 
+  const lastMessagesRef = useRef<UIMessage[]>([]);
+
 
   
   const messages = useMemo(() => {
-    if (!attachments || !messagesResult) return [];
+    if (!attachments || !messagesResult) return lastMessagesRef.current;
 
     const attachmentsMap: Record<
       string,
@@ -68,7 +71,7 @@ function CatchAllChatPageInner({ params }: { params: Promise<{ slug: string[] }>
     // Handle case where the query might still be loading.
     const rawMessages: Doc<'messages'>[] = messagesResult ?? []
 
-    return rawMessages.map(m => ({
+    const formatted = rawMessages.map(m => ({
       id: m._id,
       role: m.role,
       content: m.content,
@@ -77,6 +80,9 @@ function CatchAllChatPageInner({ params }: { params: Promise<{ slug: string[] }>
       attachments: attachmentsMap[m._id] ?? [],
       model: m.model,
     }))
+
+    lastMessagesRef.current = formatted
+    return formatted
   }, [messagesResult, attachments]);
 
   useEffect(() => {
