@@ -29,6 +29,8 @@ import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { useDebounce } from "use-debounce";
+import { filterByTitle } from "@/lib/searchUtils";
+import EmptyState from "@/frontend/components/ui/EmptyState";
 
 type Thread = Doc<"threads">;
 
@@ -141,8 +143,12 @@ function ChatHistoryList({
   // ---------------- Memoized, grouped & sorted thread lists ----------
   const threadGroups = useMemo(() => {
     if (!threads) return [] as ThreadGroup[];
-    return groupThreadsByTime(threads);
-  }, [threads]);
+    
+    // Используем улучшенную фильтрацию с поддержкой Unicode
+    const filteredThreads = filterByTitle(threads, searchQuery);
+    
+    return groupThreadsByTime(filteredThreads);
+  }, [threads, searchQuery]);
 
   const handleThreadClick = useCallback(
     (threadId: Id<"threads">) => {
@@ -488,7 +494,7 @@ function ChatHistoryList({
         <div className="p-4 border-b border-border/50">
           <div className="relative">
             <Input
-              placeholder="Search…"
+              placeholder="Search in any language…"
               className="rounded-lg py-1.5 pl-8 text-sm w-full"
               value={rawQuery}
               onChange={(e) => setRawQuery(e.target.value)}
@@ -500,13 +506,16 @@ function ChatHistoryList({
 
       {/* Thread list */}
       <div className="flex-1 overflow-y-auto scrollbar-none enhanced-scroll px-3 sm:px-4">
-        <div className="space-y-4 sm:space-y-6 pt-2 pb-8">
-          {threadGroups.length === 0 ? (
-            <div className="text-center text-sm text-muted-foreground py-4">
-              {searchQuery ? "No chats found." : "No chat history found."}
-            </div>
-          ) : (
-            threadGroups.map((group, groupIndex) => {
+        {threads === undefined ? (
+          <EmptyState type="loading" />
+        ) : threadGroups.length === 0 ? (
+          <EmptyState 
+            type={trimmedQuery ? "no-search-results" : "no-history"} 
+            searchQuery={trimmedQuery}
+          />
+        ) : (
+          <div className="space-y-4 sm:space-y-6 pt-2 pb-8">
+            {threadGroups.map((group, groupIndex) => {
               let currentThreadIndex = 0;
               // Calculate the starting index for this group
               for (let i = 0; i < groupIndex; i++) {
@@ -525,9 +534,9 @@ function ChatHistoryList({
                   </div>
                 </div>
               );
-            })
-          )}
-        </div>
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

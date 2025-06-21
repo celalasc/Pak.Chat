@@ -4,6 +4,7 @@ import { useChat } from '@ai-sdk/react';
 import Messages from './Messages';
 import ChatInput from './ChatInput';
 import ChatNavigationBars from './ChatNavigationBars';
+import ScrollToBottomButton from './ScrollToBottomButton';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 import { useModelStore } from '@/frontend/stores/ModelStore';
 import { useQuoteStore } from '@/frontend/stores/QuoteStore';
@@ -16,7 +17,7 @@ import { api } from '@/convex/_generated/api';
 import { isConvexId } from '@/lib/ids';
 import { Id, Doc } from '@/convex/_generated/dataModel';
 import type { UIMessage } from 'ai';
-import { useDebounceCallback } from 'usehooks-ts';
+
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { loadDraft, saveDraft, clearDraft } from '@/frontend/lib/drafts';
 import { saveLastChatId } from '@/frontend/lib/lastChat';
@@ -38,7 +39,6 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [currentThreadId, setCurrentThreadId] = useState(threadId);
-  const [currentMessageId, setCurrentMessageId] = useState<string | undefined>();
   
   // Состояние для отслеживания регенераций
   const [isRegenerating, setIsRegenerating] = useState(false);
@@ -69,7 +69,11 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
   const scrollToMessage = (messageId: string) => {
     const element = document.getElementById(`message-${messageId}`);
     if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      element.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'start',
+        inline: 'nearest'
+      });
     }
   };
 
@@ -180,112 +184,35 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
   const mergedMessages = React.useMemo(() => {
     // Если нет Convex сообщений, используем UI сообщения как есть
     if (!convexMessages || convexMessages.length === 0) {
-  
       return messages;
     }
 
+    // Если есть Convex сообщения, используем их как основу
+    const convexAsUIMessages = convexMessages.map(cm => ({
+      id: cm._id as string,
+      role: cm.role as 'user' | 'assistant',
+      content: cm.content,
+      createdAt: new Date(cm.createdAt),
+      parts: [{ type: 'text' as const, text: cm.content }],
+      attachments: cm.attachments || [],
+    }));
 
-
-    // Создаем мапу Convex сообщений для быстрого поиска
-    const convexMap = new Map(convexMessages.map(cm => [cm._id as string, cm]));
-
-    // Обновляем UI сообщения с данными из Convex
-    const updatedMessages = messages.map(uiMessage => {
-      const convexMessage = convexMap.get(uiMessage.id);
-      if (convexMessage) {
-        const merged = {
-          ...uiMessage,
-          attachments: convexMessage.attachments || [],
-        };
-        if (convexMessage.attachments && convexMessage.attachments.length > 0) {
-  
-        }
-        return merged;
-      }
-      return uiMessage;
-    });
-
-    // Добавляем сообщения из Convex, которых нет в UI (например, при обновлении страницы)
-    const uiIds = new Set(messages.map(m => m.id));
-    const missingConvexMessages = convexMessages
-      .filter(cm => !uiIds.has(cm._id as string))
-      .map(cm => ({
-        id: cm._id as string,
-        role: cm.role as 'user' | 'assistant',
-        content: cm.content,
-        createdAt: new Date(cm.createdAt),
-        parts: [{ type: 'text' as const, text: cm.content }],
-        attachments: cm.attachments || [],
-      }));
+    // Добавляем только новые/временные сообщения от useChat (которые еще не сохранены в Convex)
+    const convexIds = new Set(convexMessages.map(cm => cm._id as string));
+    const temporaryMessages = messages.filter(m => !convexIds.has(m.id) && !isConvexId(m.id));
 
     const getTime = (value: any) => {
       if (!value) return 0;
       return value instanceof Date ? value.getTime() : new Date(value).getTime();
     };
 
-    const allMessages = [...updatedMessages, ...missingConvexMessages]
+    const allMessages = [...convexAsUIMessages, ...temporaryMessages]
       .sort((a, b) => getTime(a.createdAt) - getTime(b.createdAt));
 
-    const deduped: typeof allMessages = [];
-    const seen = new Set<string>();
-    for (const msg of allMessages) {
-      if (!seen.has(msg.id)) {
-        seen.add(msg.id);
-        deduped.push(msg);
-      }
-    }
-
-    return deduped;
+    return allMessages;
   }, [messages, convexMessages]);
 
-  // Функция для отслеживания видимых сообщений
-  const updateCurrentMessage = useCallback(() => {
-    const userMessages = mergedMessages.filter((message: UIMessage) => message.role === 'user');
-    if (userMessages.length === 0) return;
 
-    let currentMsg = userMessages[0];
-    let minDistance = Infinity;
-
-    userMessages.forEach((message: UIMessage) => {
-      const element = document.getElementById(`message-${message.id}`);
-      if (element) {
-        const rect = element.getBoundingClientRect();
-        const center = window.innerHeight / 2;
-        const distance = Math.abs(rect.top + rect.height / 2 - center);
-        
-        if (distance < minDistance) {
-          minDistance = distance;
-          currentMsg = message;
-        }
-      }
-    });
-
-    if (currentMessageId !== currentMsg.id) {
-      setCurrentMessageId(currentMsg.id);
-    }
-  }, [mergedMessages, currentMessageId]);
-  
-  const debouncedUpdateCurrentMessage = useDebounceCallback(updateCurrentMessage, 50, { leading: true });
-
-  // Добавляем обработчик скролла на фактический контейнер
-  useEffect(() => {
-    const container =
-      scrollContainerRef.current ||
-      (document.getElementById('messages-scroll-area') as HTMLDivElement | null);
-    if (!container) return;
-
-    const handleScroll = () => {
-      debouncedUpdateCurrentMessage();
-    };
-
-    container.addEventListener('scroll', handleScroll, { passive: true });
-    // Также обновляем при изменении сообщений
-    debouncedUpdateCurrentMessage();
-
-    return () => {
-      container.removeEventListener('scroll', handleScroll);
-    };
-  }, [debouncedUpdateCurrentMessage, mergedMessages.length]);
 
   // Register setter so that other components can alter the input value
   const registerInputSetter = useChatStore((s) => s.registerInputSetter);
@@ -339,11 +266,11 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
     // 3. Это не новый чат (threadId не пустой)
     if (mergedMessages.length > 0 && !hasScrolledToEnd && threadId) {
       const scrollToEnd = () => {
-        // Пробуем разные способы прокрутки в зависимости от контекста
+        // Моментальная прокрутка при заходе в чат
         if (messagesEndRef.current) {
           // Прокрутка через messagesEndRef
           messagesEndRef.current.scrollIntoView({ 
-            behavior: 'smooth', 
+            behavior: 'instant', 
             block: 'end' 
           });
         } else {
@@ -352,7 +279,7 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
           if (scrollArea) {
             scrollArea.scrollTo({
               top: scrollArea.scrollHeight,
-              behavior: 'smooth',
+              behavior: 'instant',
             });
           }
         }
@@ -379,7 +306,6 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
         <ChatNavigationBars 
           messages={mergedMessages} 
           scrollToMessage={scrollToMessage} 
-          currentMessageId={currentMessageId}
         />
       )}
 
@@ -414,6 +340,13 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
             isMobile ? 'bottom-0' : (mergedMessages.length > 0 ? 'bottom-0' : 'top-1/2 -translate-y-1/2'),
           )}
         >
+          {/* Scroll to bottom button */}
+          {mergedMessages.length > 0 && (
+            <div className="absolute right-8 -top-16 z-50">
+              <ScrollToBottomButton />
+            </div>
+          )}
+          
           <ChatInput
             threadId={currentThreadId}
             thread={thread}
