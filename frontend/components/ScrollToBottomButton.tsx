@@ -18,43 +18,26 @@ export default function ScrollToBottomButton({
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    // Because ChatView may mount after this component, the scroll area might
-    // not exist immediately. Keep trying until it becomes available.
-    let scrollArea: HTMLElement | null = null;
-    let interval: number | undefined;
+    const scrollArea = document.getElementById('messages-scroll-area');
+    if (!scrollArea) return;
 
-    const attach = () => {
-      scrollArea = document.getElementById('messages-scroll-area');
-      if (!scrollArea) return false;
-
-      const handleScroll = () => {
-        const { scrollTop, clientHeight, scrollHeight } = scrollArea as HTMLElement;
-        setIsVisible(scrollTop + clientHeight < scrollHeight - threshold);
-      };
-
-      scrollArea.addEventListener('scroll', handleScroll, { passive: true });
-      handleScroll();
-      return () => scrollArea?.removeEventListener('scroll', handleScroll);
+    const handleScroll = () => {
+      const { scrollTop, clientHeight, scrollHeight } = scrollArea;
+      setIsVisible(scrollTop + clientHeight < scrollHeight - threshold);
     };
 
-    let detach: (() => void) | false | void = attach();
-    if (!detach) {
-      interval = window.setInterval(() => {
-        detach = attach();
-        if (detach) clearInterval(interval);
-      }, 300);
-    }
-
+    scrollArea.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll(); // Устанавливаем начальное состояние
+    
     return () => {
-      if (interval) clearInterval(interval);
-      if (typeof detach === 'function') detach();
+      scrollArea.removeEventListener('scroll', handleScroll);
     };
   }, [threshold]);
 
   const scrollToBottom = () => {
-    // Scroll the chat container to the very bottom
     const scrollArea = document.getElementById('messages-scroll-area');
     if (!scrollArea) return;
+    
     scrollArea.scrollTo({
       top: scrollArea.scrollHeight,
       behavior: 'smooth',

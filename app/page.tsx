@@ -35,8 +35,8 @@ export default function Page() {
       }
     }
 
-    // Если пользователь не авторизован, скрываем глобальный лоадер
-    if (!user && !loading && typeof window !== 'undefined') {
+    // Скрываем глобальный лоадер для всех случаев когда загрузка завершена
+    if (!loading && typeof window !== 'undefined') {
       const globalWindow = window as typeof window & { __hideGlobalLoader?: () => void };
       globalWindow.__hideGlobalLoader?.();
     }
@@ -73,9 +73,9 @@ export default function Page() {
     return <AppShellSkeleton />;
   }
 
-  // Если пользователь авторизован, показываем скелет
+  // Если пользователь авторизован, делаем перенаправление без показа скелета
   if (user) {
-    return <AppShellSkeleton />;
+    return null; // Возвращаем null пока происходит перенаправление
   }
 
   return (

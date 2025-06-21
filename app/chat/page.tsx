@@ -1,35 +1,35 @@
 'use client'
 import Chat from '@/frontend/components/Chat';
-import { useConvexAuth } from 'convex/react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { saveLastPath } from '@/frontend/lib/lastChat';
+import { useAuthStore } from '@/frontend/stores/AuthStore';
 
 export default function NewChatPage() {
-  const { isAuthenticated, isLoading } = useConvexAuth();
+  const { user, loading } = useAuthStore();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    if (!loading && !user) {
       router.replace('/');
     }
-  }, [isLoading, isAuthenticated, router]);
+  }, [loading, user, router]);
   
   useEffect(() => {
     // Скрываем глобальный лоадер когда страница готова
-    if (isAuthenticated && !isLoading) {
+    if (user && !loading) {
       if (typeof window !== 'undefined' && window.__hideGlobalLoader) {
         window.__hideGlobalLoader();
       }
       // Сохраняем текущий путь
       saveLastPath('/chat');
     }
-  }, [isAuthenticated, isLoading]);
+  }, [user, loading]);
 
   // Убираем автоматическое перенаправление для новых чатов
   // Мобильные пользователи тоже могут создавать новые чаты через /chat
 
-  if (isLoading || !isAuthenticated) {
+  if (loading || !user) {
     return <div className="w-full h-screen bg-background" />;
   }
 

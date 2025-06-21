@@ -6,7 +6,7 @@ import { useConvexAuth } from 'convex/react';
 import { Button } from '@/frontend/components/ui/button';
 import { MessageSquare, Plus, Settings, Search } from 'lucide-react';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
-import ChatHistoryList from '@/frontend/components/ChatHistoryList';
+import { ChatHistoryList } from '@/frontend/components/chat-history';
 import SettingsDrawer from '@/frontend/components/SettingsDrawer';
 import MobileSearch from '@/frontend/components/MobileSearch';
 import AppShellSkeleton from '@/frontend/components/AppShellSkeleton';

@@ -8,9 +8,9 @@ import React, {
   useDeferredValue,
   useRef,
 } from "react";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+import { Button } from "../../ui/button";
+import { Input } from "../../ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import { useRouter, useParams } from "next/navigation";
 import {
   X,

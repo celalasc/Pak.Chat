@@ -950,7 +950,7 @@ function PureChatInput({
   if (error && !canChat) {
     return (
       <div className="w-full flex justify-center pb-safe mobile-keyboard-fix">
-        <div className={cn('backdrop-blur-md bg-secondary p-4 pb-2 border-t border-border/50 max-w-3xl w-full', messageCount === 0 ? 'rounded-[20px]' : 'rounded-t-[20px]')}>
+        <div className={cn('backdrop-blur-md bg-secondary p-4 pb-2 border-t border-border/50 max-w-3xl w-full', messageCount === 0 ? 'rounded-[20px] sm:rounded-[28px]' : 'rounded-t-[20px] sm:rounded-t-[28px]')}>
           <div className="space-y-2">
             {(['google','openrouter','openai'] as const).map(provider => (
               <Input key={provider}
@@ -968,14 +968,14 @@ function PureChatInput({
   return (
     <>
       <div className="w-full flex justify-center pb-safe mobile-keyboard-fix">
-        <div ref={containerRef} className={cn('backdrop-blur-md bg-secondary p-2 pb-0 border-t border-border/50 max-w-3xl w-full', messageCount === 0 ? 'rounded-[20px]' : 'rounded-t-[20px]')}>
+        <div ref={containerRef} className={cn('backdrop-blur-md bg-secondary p-2 pb-0 border-t border-border/50 max-w-3xl w-full', messageCount === 0 ? 'rounded-[20px] sm:rounded-[28px]' : 'rounded-t-[20px] sm:rounded-t-[28px]')}>
           {/* Scroll to bottom button */}
           {messageCount > 0 && (
             <div className="absolute right-4 -top-12 z-50">
               <ScrollToBottomButton />
             </div>
           )}
-          <div className="relative rounded-[16px] overflow-hidden">
+          <div className="relative rounded-[16px] sm:rounded-[24px] overflow-hidden">
             {/* (Provider links removed to avoid unnecessary flicker) */}
 
             <div className="flex flex-col">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useChat } from '@ai-sdk/react';
-import Messages, { LargeListBoundary } from './Messages';
+import Messages from './Messages';
 import ChatInput from './ChatInput';
 import ChatNavigationBars from './ChatNavigationBars';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
@@ -43,6 +43,9 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
   // Состояние для отслеживания регенераций
   const [isRegenerating, setIsRegenerating] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // Флаг для отслеживания первоначальной загрузки чата
+  const [hasScrolledToEnd, setHasScrolledToEnd] = useState(false);
 
   // Определяем какой API endpoint использовать в зависимости от провайдера
   const modelConfig = React.useMemo(() => {
@@ -235,9 +238,6 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
     return deduped;
   }, [messages, convexMessages]);
 
-  // Determine if virtualization will be used
-  const isVirtualized = mergedMessages.length > LargeListBoundary;
-
   // Функция для отслеживания видимых сообщений
   const updateCurrentMessage = useCallback(() => {
     const userMessages = mergedMessages.filter((message: UIMessage) => message.role === 'user');
@@ -331,6 +331,48 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
     });
   }, [messages, input]);
 
+  // Автоматическая прокрутка к концу переписки при заходе в чат
+  useEffect(() => {
+    // Прокручиваем к концу только если:
+    // 1. Есть сообщения для отображения
+    // 2. Еще не прокручивали для текущего чата
+    // 3. Это не новый чат (threadId не пустой)
+    if (mergedMessages.length > 0 && !hasScrolledToEnd && threadId) {
+      const scrollToEnd = () => {
+        // Пробуем разные способы прокрутки в зависимости от контекста
+        if (messagesEndRef.current) {
+          // Прокрутка через messagesEndRef
+          messagesEndRef.current.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'end' 
+          });
+        } else {
+          // Альтернативная прокрутка через контейнер сообщений
+          const scrollArea = document.getElementById('messages-scroll-area');
+          if (scrollArea) {
+            scrollArea.scrollTo({
+              top: scrollArea.scrollHeight,
+              behavior: 'smooth',
+            });
+          }
+        }
+      };
+
+      // Небольшая задержка для обеспечения полной загрузки DOM
+      const timeoutId = setTimeout(scrollToEnd, 100);
+      setHasScrolledToEnd(true);
+
+      return () => {
+        clearTimeout(timeoutId);
+      };
+    }
+  }, [mergedMessages.length, hasScrolledToEnd, threadId]);
+
+  // Сброс флага прокрутки при смене чата
+  useEffect(() => {
+    setHasScrolledToEnd(false);
+  }, [threadId]);
+
   return (
     <>
       {mergedMessages.length > 0 && showNavBars && (
@@ -345,7 +387,7 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
         <div
           className="flex-1 overflow-y-auto"
           id="messages-scroll-area"
-          ref={!isVirtualized ? scrollContainerRef : undefined}
+          ref={scrollContainerRef}
         >
           <main className="w-full max-w-3xl mx-auto pt-24 pb-44 px-4 min-h-full flex-1">
             {mergedMessages.length > 0 && (
@@ -360,7 +402,6 @@ function ChatView({ threadId, thread, initialMessages, showNavBars }: ChatViewPr
                 stop={stop}
                 forceRegeneration={forceRegeneration}
                 isRegenerating={isRegenerating}
-                scrollRef={isVirtualized ? scrollContainerRef : undefined}
               />
             )}
             <div ref={messagesEndRef} />
