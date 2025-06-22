@@ -15,10 +15,14 @@ import {
   X, 
   Move,
   Palette,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Sparkles
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { useAPIKeyStore } from '../stores/APIKeyStore';
+import { useAuthStore } from '../stores/AuthStore';
+import { toast } from 'sonner';
 
 interface Point {
   x: number;
@@ -61,6 +65,8 @@ const STROKE_WIDTHS = [1, 2, 4, 8, 16];
 export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { isMobile } = useIsMobile();
+  const { keys } = useAPIKeyStore();
+  const { user } = useAuthStore();
   const [isDrawing, setIsDrawing] = useState(false);
   const [tool, setTool] = useState<'brush' | 'rectangle' | 'circle' | 'text' | 'eraser' | 'move'>('brush');
   const [color, setColor] = useState('#000000');
@@ -76,6 +82,19 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
   const [textPosition, setTextPosition] = useState<Point | null>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
   const [showMobileTools, setShowMobileTools] = useState(false);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [imagePrompt, setImagePrompt] = useState('');
+  const [showImagePrompt, setShowImagePrompt] = useState(false);
+  const [generatedImages, setGeneratedImages] = useState<Array<{id: string, data: string, prompt: string}>>([]);
+  const [showImagePreview, setShowImagePreview] = useState(false);
+  const [lastUsedPrompt, setLastUsedPrompt] = useState('');
+  const [imageGenerationParams, setImageGenerationParams] = useState({
+    size: '1024x1024',
+    quality: 'standard',
+    count: 1,
+    format: 'jpeg',
+    compression: 80
+  });
 
   // ====== D5-D7. Resize handles & interaction ======
   const [isResizing, setIsResizing] = useState(false);
@@ -190,22 +209,32 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
     };
   }, [isOpen, insertImageFromFile]);
 
-  // Shift key detection for aspect ratio
+  // Shift key detection for aspect ratio + escape key for modals
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Shift') setIsShiftPressed(true);
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        if (showImagePrompt) {
+          setShowImagePrompt(false);
+          setImagePrompt('');
+        } else if (showImagePreview) {
+          setShowImagePreview(false);
+          setGeneratedImages([]);
+        }
+      }
     };
     const handleKeyUp = (e: KeyboardEvent) => {
       if (e.key === 'Shift') setIsShiftPressed(false);
     };
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keyup', handleKeyUp);
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keyup', handleKeyUp);
     };
-  }, [isOpen]);
+  }, [isOpen, showImagePrompt, showImagePreview]);
 
   // Get resize handles for selected element
   const getResizeHandles = useCallback((element: DrawingElement) => {
@@ -827,6 +856,96 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
     onClose();
   }, [onSave, onClose]);
 
+  const generateImage = useCallback(async (prompt?: string) => {
+    const finalPrompt = prompt || imagePrompt;
+    
+    if (!finalPrompt.trim()) {
+      toast.error('Please enter a prompt for image generation');
+      return;
+    }
+
+    if (!keys.openai) {
+      toast.error('OpenAI API key is required for image generation');
+      return;
+    }
+
+    setIsGeneratingImage(true);
+    setShowImagePreview(true);
+    setLastUsedPrompt(finalPrompt); // Save the prompt for regeneration
+
+    try {
+      const response = await fetch('/api/image-generation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: finalPrompt,
+          apiKeys: keys,
+          userId: user?.uid,
+          size: imageGenerationParams.size,
+          quality: imageGenerationParams.quality === 'high' ? 'hd' : 'standard',
+          count: imageGenerationParams.count,
+          format: imageGenerationParams.format || 'jpeg',
+          compression: imageGenerationParams.compression || 80,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to generate image');
+      }
+
+      const data = await response.json();
+      
+      if (data.images && data.images.length > 0) {
+        // Save generated images to state
+        const newImages = data.images.map((img: any) => ({
+          id: img.id,
+          data: `data:image/png;base64,${img.result}`,
+          prompt: finalPrompt
+        }));
+        
+        setGeneratedImages(newImages);
+        setImagePrompt('');
+        toast.success(`Generated ${data.images.length} image${data.images.length > 1 ? 's' : ''}!`);
+      }
+
+    } catch (error) {
+      console.error('Image generation error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to generate image');
+      setShowImagePreview(false);
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  }, [imagePrompt, keys, user?.uid, imageGenerationParams]);
+
+  const selectAndUseImage = useCallback(async (imageData: string) => {
+    try {
+      // Convert data URL to File and add to canvas
+      const response = await fetch(imageData);
+      const blob = await response.blob();
+      const file = new File([blob], `generated-${Date.now()}.png`, { type: 'image/png' });
+      
+      await insertImageFromFile(file);
+      setGeneratedImages([]);
+      setShowImagePreview(false);
+      toast.success('Image added to canvas!');
+    } catch (error) {
+      console.error('Failed to add image to canvas:', error);
+      toast.error('Failed to add image to canvas');
+    }
+  }, [insertImageFromFile]);
+
+  const regenerateImage = useCallback(() => {
+    if (!lastUsedPrompt) {
+      toast.error('No previous prompt found');
+      return;
+    }
+    // Don't clear images immediately - generateImage will update them
+    generateImage(lastUsedPrompt);
+  }, [generateImage, lastUsedPrompt]);
+
   if (!isOpen) return null;
 
   const drawingCanvasContent = (
@@ -1057,6 +1176,15 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
 
             {/* Actions */}
             <div className="flex items-center gap-1 ml-auto">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setShowImagePrompt(true)}
+                disabled={isGeneratingImage}
+              >
+                <Sparkles className="w-4 h-4 mr-2" />
+                Generate
+              </Button>
               <Button variant="ghost" size="sm" onClick={clear}>
                 Clear
               </Button>
@@ -1068,11 +1196,11 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
           </div>
         )}
 
-        {/* Расширенная мобильная панель инструментов */}
+        {/* Extended mobile toolbar */}
         {isMobile && showMobileTools && (
           <div className="border-b border-border bg-muted/50 p-3">
             <div className="flex flex-wrap gap-2 justify-center">
-              {/* Дополнительные инструменты */}
+              {/* Additional tools */}
               <Button
                 variant={tool === 'text' ? "default" : "ghost"}
                 size="sm"
@@ -1092,7 +1220,7 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
                 Move
               </Button>
               
-              {/* История */}
+              {/* History */}
               <Button
                 variant="ghost"
                 size="sm"
@@ -1104,7 +1232,7 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
                 Redo
               </Button>
               
-              {/* Очистить */}
+              {/* Clear */}
               <Button
                 variant="ghost"
                 size="sm"
@@ -1114,7 +1242,7 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
                 Clear
               </Button>
               
-              {/* Сохранить */}
+              {/* Save */}
               <Button
                 onClick={saveDrawing}
                 size="sm"
@@ -1125,7 +1253,7 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
                 Save
               </Button>
 
-              {/* Вставить изображение */}
+              {/* Insert image */}
               <Button
                 variant="ghost"
                 size="sm"
@@ -1134,6 +1262,18 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
               >
                 <ImageIcon className="w-4 h-4 mr-1" />
                 Image
+              </Button>
+
+              {/* Image generation */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowImagePrompt(true)}
+                disabled={isGeneratingImage}
+                className="w-auto px-3"
+              >
+                <Sparkles className="w-4 h-4 mr-1" />
+                Generate
               </Button>
             </div>
           </div>
@@ -1264,6 +1404,214 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
             )}
           </div>
         </div>
+
+        {/* Image generation prompt modal */}
+        {showImagePrompt && (
+          <div 
+            className="absolute inset-0 bg-black/50 flex items-center justify-center z-50"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setShowImagePrompt(false);
+                setImagePrompt('');
+              }
+            }}
+          >
+            <div className="bg-background rounded-2xl shadow-2xl w-full max-w-md mx-4 animate-in fade-in-0 zoom-in-95 duration-200">
+              <div className="p-6">
+                <h3 className="text-lg font-semibold mb-4 text-center">Generate Image</h3>
+                
+                {/* Prompt input field */}
+                <div className="space-y-4">
+                  <textarea
+                    value={imagePrompt}
+                    onChange={(e) => setImagePrompt(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                        e.preventDefault();
+                        if (imagePrompt.trim()) {
+                          setShowImagePrompt(false);
+                          generateImage();
+                        }
+                      }
+                    }}
+                    placeholder="Describe the image you want to create... (Cmd/Ctrl+Enter to submit)"
+                    className="w-full h-24 p-3 border border-border rounded-lg resize-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    autoFocus
+                  />
+                  
+                  {/* Generation settings */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Size</label>
+                      <select 
+                        value={imageGenerationParams.size}
+                        onChange={(e) => setImageGenerationParams(prev => ({...prev, size: e.target.value}))}
+                        className="w-full p-2 border border-border rounded text-sm"
+                      >
+                        <option value="1024x1024">1024×1024</option>
+                        <option value="1024x1536">1024×1536</option>
+                        <option value="1536x1024">1536×1024</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Quality</label>
+                      <select 
+                        value={imageGenerationParams.quality}
+                        onChange={(e) => setImageGenerationParams(prev => ({...prev, quality: e.target.value}))}
+                        className="w-full p-2 border border-border rounded text-sm"
+                      >
+                        <option value="standard">Standard</option>
+                        <option value="high">HD</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Count</label>
+                      <select 
+                        value={imageGenerationParams.count}
+                        onChange={(e) => setImageGenerationParams(prev => ({...prev, count: parseInt(e.target.value)}))}
+                        className="w-full p-2 border border-border rounded text-sm"
+                      >
+                        <option value={1}>1 image</option>
+                        <option value={2}>2 images</option>
+                        <option value={3}>3 images</option>
+                        <option value={4}>4 images</option>
+                      </select>
+                    </div>
+                  </div>
+                  
+                  {/* Buttons */}
+                  <div className="flex gap-2 pt-2">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        setShowImagePrompt(false);
+                        setImagePrompt('');
+                      }}
+                      className="flex-1"
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      onClick={() => {
+                        setShowImagePrompt(false);
+                        generateImage();
+                      }}
+                      disabled={!imagePrompt.trim()}
+                      className="flex-1"
+                    >
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Generate
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Image preview modal */}
+        {showImagePreview && (
+          <div 
+            className="absolute inset-0 bg-black/50 flex items-center justify-center z-50"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setShowImagePreview(false);
+                setGeneratedImages([]);
+              }
+            }}
+          >
+            <div className="bg-background rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[80vh] overflow-hidden animate-in fade-in-0 zoom-in-95 duration-200">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold">Generated Images</h3>
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={() => {
+                      setShowImagePreview(false);
+                      setGeneratedImages([]);
+                    }}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                {/* Loading or results */}
+                <div className="space-y-4">
+                  {isGeneratingImage ? (
+                    <div className="flex flex-col items-center justify-center py-12">
+                      <div className="relative">
+                        <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+                        <Sparkles className="w-6 h-6 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-primary animate-pulse" />
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-4 animate-pulse">Generating image...</p>
+                    </div>
+                  ) : generatedImages.length > 0 ? (
+                    <div className="space-y-4">
+                      {/* Generated images */}
+                      <div className={cn(
+                        "gap-4 max-h-[400px] overflow-y-auto",
+                        generatedImages.length === 1 ? "grid grid-cols-1" : "grid grid-cols-2"
+                      )}>
+                        {generatedImages.map((image, index) => (
+                          <div 
+                            key={image.id}
+                            className="relative border-2 border-border rounded-lg overflow-hidden hover:border-primary/50 transition-colors group animate-in fade-in-0 slide-in-from-bottom-4 duration-300 cursor-pointer"
+                            style={{ animationDelay: `${index * 100}ms` }}
+                            onClick={() => selectAndUseImage(image.data)}
+                          >
+                            <img 
+                              src={image.data} 
+                              alt={`Generated ${index + 1}`}
+                              className="w-full h-auto"
+                            />
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                              <Button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  selectAndUseImage(image.data);
+                                }}
+                                className="bg-primary hover:bg-primary/90"
+                              >
+                                Add to Canvas
+                              </Button>
+                            </div>
+                            {/* Image number */}
+                            <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                              {index + 1}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {/* Action buttons */}
+                      <div className="flex gap-2 pt-4 border-t">
+                        <Button 
+                          variant="outline"
+                          onClick={regenerateImage}
+                          className="flex-1"
+                        >
+                          <Sparkles className="w-4 h-4 mr-2" />
+                          Regenerate
+                        </Button>
+                        <Button 
+                          variant="ghost"
+                          onClick={() => {
+                            setShowImagePreview(false);
+                            setGeneratedImages([]);
+                          }}
+                          className="flex-1"
+                        >
+                          Close
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

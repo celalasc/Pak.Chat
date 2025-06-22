@@ -20,6 +20,7 @@ import { useRouter } from 'next/navigation';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { SearchIcon } from 'lucide-react';
 import Image from 'next/image';
+import AIImageGeneration from './AIImageGeneration';
 
 function PureMessage({
   threadId,
@@ -46,6 +47,7 @@ function PureMessage({
   const [mobileControlsVisible, setMobileControlsVisible] = useState(false);
   const isWelcome = message.id === 'welcome';
   const attachments = (message as any).attachments as { id: string; url: string; name: string; type: string; ext?: string; size?: number }[] | undefined;
+  const imageGeneration = (message as any).imageGeneration;
   
 
   const [lightbox, setLightbox] = useState<{
@@ -140,6 +142,26 @@ function PureMessage({
         const key = `message-${message.id}-part-${index}`;
 
         if (type === 'text') {
+          // Handle AI image generation
+          if (message.role === 'assistant' && imageGeneration) {
+            return (
+              <div key={key} className="w-full px-2 sm:px-0">
+                <AIImageGeneration
+                  prompt={imageGeneration.prompt}
+                  images={imageGeneration.images}
+                  params={imageGeneration.params}
+                  isGenerating={imageGeneration.isGenerating}
+                  onRegenerate={() => {
+                    // TODO: Implement regeneration
+                  }}
+                  onNewBranch={() => {
+                    // TODO: Implement new branch
+                  }}
+                />
+              </div>
+            );
+          }
+
           if (isWelcome && message.role === 'assistant') {
             return (
               <div key={key} className="w-full px-2 sm:px-0 space-y-4">

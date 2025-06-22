@@ -134,7 +134,7 @@ export const getUrl = query({
   },
 });
 
-// Return a signed URL directly by storage ID
+// Return a signed URL directly by storage ID with caching
 export const getUrlByStorageId = query({
   args: { storageId: v.string() },
   async handler(ctx, { storageId }) {
@@ -144,12 +144,50 @@ export const getUrlByStorageId = query({
         return null;
       }
       
+      // Try to find cached URL first
+      const attachment = await ctx.db
+        .query('attachments')
+        .filter((q) => q.eq(q.field('fileId'), storageId))
+        .first();
+      
+      const now = Date.now();
+      
+      // Return cached URL if it exists and hasn't expired
+      if (attachment?.cachedUrl && attachment.urlExpiresAt && attachment.urlExpiresAt > now) {
+        return attachment.cachedUrl;
+      }
+      
+      // Generate new URL (caching will be handled by mutation)
       const url = await ctx.storage.getUrl(storageId);
       return url;
     } catch (error) {
       // Handle invalid storage ID gracefully
       console.error('Error getting URL for storage ID:', storageId, error);
       return null;
+    }
+  },
+});
+
+// Update cached URL for an attachment (called by client when needed)
+export const updateCachedUrl = mutation({
+  args: { 
+    storageId: v.string(),
+    url: v.string(),
+  },
+  async handler(ctx, { storageId, url }) {
+    const attachment = await ctx.db
+      .query('attachments')
+      .filter((q) => q.eq(q.field('fileId'), storageId))
+      .first();
+    
+    if (attachment) {
+      const now = Date.now();
+      const urlTtlMs = 2 * 60 * 60 * 1000; // 2 hours TTL
+      
+      await ctx.db.patch(attachment._id, {
+        cachedUrl: url,
+        urlExpiresAt: now + urlTtlMs,
+      });
     }
   },
 });

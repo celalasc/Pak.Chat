@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, memo, useCallback } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { MoreHorizontal, Share2, Edit2, Trash2, Pin, PinOff, Check, X } from 'lucide-react';
@@ -19,7 +19,7 @@ interface MobileChatMenuProps {
 
 type MenuMode = 'main' | 'delete-confirm' | 'rename' | 'share';
 
-export default function MobileChatMenu({ threadId, className }: MobileChatMenuProps) {
+function MobileChatMenu({ threadId, className }: MobileChatMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [mode, setMode] = useState<MenuMode>('main');
   const [renameValue, setRenameValue] = useState('');
@@ -77,13 +77,13 @@ export default function MobileChatMenu({ threadId, className }: MobileChatMenuPr
     }
   }, [mode]);
 
-  const handleStartShare = () => {
+  const handleStartShare = useCallback(() => {
     setIsAnonymousShare(false);
     setShareLink(null);
     setMode('share');
-  };
+  }, []);
 
-  const generateShareLink = async () => {
+  const generateShareLink = useCallback(async () => {
     if (!isConvexId(threadId)) return;
     
     const shareId = await createShareLink({ 
@@ -92,20 +92,20 @@ export default function MobileChatMenu({ threadId, className }: MobileChatMenuPr
     });
     const url = `${window.location.origin}/share/${shareId}`;
     setShareLink(url);
-  };
+  }, [threadId, createShareLink, isAnonymousShare]);
 
-  const copyShareLink = () => {
+  const copyShareLink = useCallback(() => {
     if (shareLink) {
       copyText(shareLink);
     }
-  };
+  }, [shareLink]);
 
-  const handleStartRename = () => {
+  const handleStartRename = useCallback(() => {
     setRenameValue(thread?.title || '');
     setMode('rename');
-  };
+  }, [thread?.title]);
 
-  const handleSaveRename = async () => {
+  const handleSaveRename = useCallback(async () => {
     if (isConvexId(threadId) && renameValue.trim()) {
       await renameThread({ 
         threadId: threadId as Id<'threads'>, 
@@ -114,31 +114,31 @@ export default function MobileChatMenu({ threadId, className }: MobileChatMenuPr
     }
     setIsOpen(false);
     setMode('main');
-  };
+  }, [threadId, renameValue, renameThread]);
 
-  const handleCancelRename = () => {
+  const handleCancelRename = useCallback(() => {
     setMode('main');
     setRenameValue('');
-  };
+  }, []);
 
-  const handleStartDelete = () => {
+  const handleStartDelete = useCallback(() => {
     setMode('delete-confirm');
-  };
+  }, []);
 
-  const handleConfirmDelete = async () => {
+  const handleConfirmDelete = useCallback(async () => {
     if (isConvexId(threadId)) {
       await deleteThread({ threadId: threadId as Id<'threads'> });
       router.push('/home');
     }
     setIsOpen(false);
     setMode('main');
-  };
+  }, [threadId, deleteThread, router]);
 
-  const handleCancelDelete = () => {
+  const handleCancelDelete = useCallback(() => {
     setMode('main');
-  };
+  }, []);
 
-  const handleTogglePin = async () => {
+  const handleTogglePin = useCallback(async () => {
     if (!isConvexId(threadId)) return;
     
     await togglePinThread({ 
@@ -147,7 +147,7 @@ export default function MobileChatMenu({ threadId, className }: MobileChatMenuPr
     });
     setIsOpen(false);
     setMode('main');
-  };
+  }, [threadId, thread?.pinned, togglePinThread]);
 
   // Обработка Enter в режиме переименования
   const handleRenameKeyPress = (e: React.KeyboardEvent) => {
@@ -328,4 +328,6 @@ export default function MobileChatMenu({ threadId, className }: MobileChatMenuPr
       )}
     </div>
   );
-} 
+}
+
+export default memo(MobileChatMenu);

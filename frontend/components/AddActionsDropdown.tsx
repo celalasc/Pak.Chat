@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef } from 'react';
-import { Plus, FileIcon, Clock, Brush } from 'lucide-react';
+import { useState, useRef, useCallback } from 'react';
+import { Plus, FileIcon, Clock, Brush, Sparkles } from 'lucide-react';
 import { Button } from './ui/button';
 import {
   DropdownMenu,
@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
 import { useAttachmentsStore } from '../stores/AttachmentsStore';
+import { useChatStore } from '../stores/ChatStore';
 import DrawingCanvas from './DrawingCanvas';
 import RecentFilesDropdown from './RecentFilesDropdown';
 import { toast } from 'sonner';
@@ -23,6 +24,7 @@ interface AddActionsDropdownProps {
 
 export default function AddActionsDropdown({ className, messageCount = 0 }: AddActionsDropdownProps) {
   const { add } = useAttachmentsStore();
+  const { isImageGenerationMode, setImageGenerationMode } = useChatStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDrawingOpen, setIsDrawingOpen] = useState(false);
   const { isMobile } = useIsMobile();
@@ -71,6 +73,10 @@ export default function AddActionsDropdown({ className, messageCount = 0 }: AddA
     }
   };
 
+  const handleImageGenerationToggle = () => {
+    setImageGenerationMode(!isImageGenerationMode);
+  };
+
   return (
     <>
       <DropdownMenu>
@@ -106,12 +112,17 @@ export default function AddActionsDropdown({ className, messageCount = 0 }: AddA
             </RecentFilesDropdown>
           </div>
           
-          <DropdownMenuItem 
-            onClick={() => setIsDrawingOpen(true)} 
-            className="flex items-center gap-2"
-          >
+          <DropdownMenuItem onClick={() => setIsDrawingOpen(true)} className="flex items-center gap-2">
             <Brush className="w-4 h-4" />
             Draw
+          </DropdownMenuItem>
+          
+          <DropdownMenuItem 
+            onClick={handleImageGenerationToggle}
+            className="flex items-center gap-2"
+          >
+            <Sparkles className="w-4 h-4" />
+            {isImageGenerationMode ? 'Exit Image Mode' : 'Generate Image'}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

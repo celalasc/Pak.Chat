@@ -29,6 +29,10 @@ type ChatMessage = Omit<Message, 'id'>;
  */
 export const maxDuration = 300;
 
+// Use Node.js runtime for development compatibility
+// Edge runtime is enabled in production via deployment configuration
+export const runtime = 'nodejs';
+
 // Максимальный допустимый размер загружаемого вложения (30 МБ)
 const MAX_ATTACHMENT_SIZE_BYTES = 30 * 1024 * 1024;
 // Мультимодели спокойно справляются с текстом, JSON, CSV и т. д.
@@ -42,7 +46,12 @@ const EXTRA_TEXT_MIME_TYPES = new Set([
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, model, apiKeys, threadId, userId, search } = await req.json();
+    const { messages, model, apiKeys, threadId, userId, search, imageGeneration } = await req.json();
+    
+    // Debug log for image generation
+    if (imageGeneration?.enabled) {
+      // Image generation request received
+    }
 
     // Для нового чата threadId может быть пустым - это нормально
     // Проверяем только если есть сообщения, которые нужно сохранить в БД
@@ -265,6 +274,96 @@ export async function POST(req: NextRequest) {
     );
 
     const coreMessages = convertToCoreMessages(processedMessages);
+
+    // Handle image generation if enabled - ALWAYS use OpenAI regardless of selected model
+    if (imageGeneration?.enabled) {
+      const openAIApiKey = apiKeys.openai;
+      
+      if (!openAIApiKey) {
+        return new NextResponse(
+          JSON.stringify({ error: 'OpenAI API key required for image generation' }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Get the user's prompt from the last message
+      const lastMessage = messages[messages.length - 1];
+      const prompt = lastMessage?.content || '';
+
+      if (!prompt.trim()) {
+        return new NextResponse(
+          JSON.stringify({ error: 'Prompt required for image generation' }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+
+      try {
+        // Use absolute URL for internal API call
+        const baseUrl = process.env.VERCEL_URL 
+          ? `https://${process.env.VERCEL_URL}` 
+          : process.env.NODE_ENV === 'development' 
+            ? 'http://localhost:3000' 
+            : 'https://pak-chat.vercel.app';
+
+        // Generate image using OpenAI API - always use OpenAI regardless of selected model
+        const response = await fetch(`${baseUrl}/api/image-generation`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            prompt,
+            apiKeys,
+            userId,
+            size: imageGeneration.params.size === 'auto' ? '1024x1024' : imageGeneration.params.size,
+            quality: imageGeneration.params.quality === 'auto' ? 'auto' : 
+                    imageGeneration.params.quality === 'standard' ? 'medium' :
+                    imageGeneration.params.quality === 'low' ? 'low' :
+                    imageGeneration.params.quality === 'high' ? 'high' : 'medium',
+            count: imageGeneration.params.count,
+            format: imageGeneration.params.format || 'jpeg',
+            compression: imageGeneration.params.compression || 80,
+          }),
+        });
+
+        if (!response.ok) {
+          let errorMessage = 'Image generation failed';
+          try {
+            const errorText = await response.text();
+            const errorData = JSON.parse(errorText);
+            errorMessage = errorData.error || errorMessage;
+          } catch (parseError) {
+            // If parsing fails, use generic error message
+            console.error('Failed to parse error response:', parseError);
+          }
+          throw new Error(errorMessage);
+        }
+
+        const imageData = await response.json();
+
+        // Create a special response format for image generation
+        const imageResponse = {
+          type: 'image_generation',
+          prompt: prompt,
+          images: imageData.images,
+          params: imageGeneration.params,
+        };
+
+        return new NextResponse(JSON.stringify(imageResponse), {
+          headers: { 'Content-Type': 'application/json' },
+        });
+
+      } catch (error) {
+        console.error('Image generation error:', error);
+        return new NextResponse(
+          JSON.stringify({ 
+            error: 'Image generation failed', 
+            details: error instanceof Error ? error.message : 'Unknown error' 
+          }),
+          { status: 500, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+    }
 
     const result = await streamText({
       model: aiModel,

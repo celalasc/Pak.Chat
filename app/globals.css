@@ -23,12 +23,10 @@
   --shiki-color-text: #e2e8f0;
 }
 
-/* Font faces - temporarily disabled due to corrupted font files */
-/*
+/* Custom fonts - Inter as Proxima Vara replacement */
 @font-face {
   font-family: 'Proxima Vara';
-  src: url('/fonts/ProximaVara-Regular.woff2') format('woff2'),
-       url('/fonts/ProximaVara-Regular.woff') format('woff');
+  src: url('/fonts/ProximaVara-Regular.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -36,17 +34,7 @@
 
 @font-face {
   font-family: 'Proxima Vara';
-  src: url('/fonts/ProximaVara-Medium.woff2') format('woff2'),
-       url('/fonts/ProximaVara-Medium.woff') format('woff');
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Proxima Vara';
-  src: url('/fonts/ProximaVara-Semibold.woff2') format('woff2'),
-       url('/fonts/ProximaVara-Semibold.woff') format('woff');
+  src: url('/fonts/ProximaVara-Semibold.woff2') format('woff2');
   font-weight: 600;
   font-style: normal;
   font-display: swap;
@@ -54,31 +42,11 @@
 
 @font-face {
   font-family: 'Berkeley Mono';
-  src: url('/fonts/BerkeleyMono-Regular.woff2') format('woff2'),
-       url('/fonts/BerkeleyMono-Regular.woff') format('woff');
+  src: url('/fonts/BerkeleyMono-Regular.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
-
-@font-face {
-  font-family: 'Berkeley Mono';
-  src: url('/fonts/BerkeleyMono-Medium.woff2') format('woff2'),
-       url('/fonts/BerkeleyMono-Medium.woff') format('woff');
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Berkeley Mono';
-  src: url('/fonts/BerkeleyMono-Bold.woff2') format('woff2'),
-       url('/fonts/BerkeleyMono-Bold.woff') format('woff');
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-*/
 
 :root {
   --background: oklch(1 0 0);
@@ -113,9 +81,9 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
-  --font-sans: Geist, sans-serif;
+  --font-sans: 'Proxima Vara', system-ui, sans-serif;
   --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
-  --font-mono: Geist Mono, monospace;
+  --font-mono: 'Berkeley Mono', 'SF Mono', Monaco, monospace;
   --radius: 0.625rem;
   --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
   --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
@@ -164,9 +132,9 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.275 0 0);
   --sidebar-ring: oklch(0.439 0 0);
-  --font-sans: Geist, sans-serif;
+  --font-sans: 'Proxima Vara', system-ui, sans-serif;
   --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
-  --font-mono: Geist Mono, monospace;
+  --font-mono: 'Berkeley Mono', 'SF Mono', Monaco, monospace;
   --radius: 0.625rem;
   --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
   --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);

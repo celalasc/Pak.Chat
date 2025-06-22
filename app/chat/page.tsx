@@ -9,10 +9,11 @@ export default function NewChatPage() {
   const { user, loading } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
-  // Уникальный ключ для принудительного пересоздания компонента при каждом заходе
+  
+  // Уникальный ключ для принудительного пересоздания компонента при заходе на новый чат
   const [chatKey, setChatKey] = useState(() => `new-chat-${Date.now()}`);
 
-  // Обновляем ключ при каждом изменении pathname (переходе на /chat)
+  // Обновляем ключ при каждом переходе на /chat для очистки состояния
   useEffect(() => {
     if (pathname === '/chat') {
       setChatKey(`new-chat-${Date.now()}-${Math.random()}`);
@@ -40,7 +41,6 @@ export default function NewChatPage() {
     return <div className="w-full h-screen bg-background" />;
   }
 
-  // Используем уникальный ключ для принудительного пересоздания компонента
   return (
     <Chat
       key={chatKey}

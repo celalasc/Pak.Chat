@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { use, useEffect, useMemo, useState, useRef } from 'react';
+import { use, useEffect, useMemo, useState, useRef, memo } from 'react';
 import { useQuery, useConvexAuth } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id, Doc } from '@/convex/_generated/dataModel';
@@ -12,7 +12,7 @@ import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { saveLastChatId, saveLastPath } from '@/frontend/lib/lastChat';
 import type { UIMessage } from 'ai';
 
-function CatchAllChatPageInner({ params }: { params: Promise<{ slug: string[] }> }) {
+const CatchAllChatPageInner = memo(function CatchAllChatPageInner({ params }: { params: Promise<{ slug: string[] }> }) {
   const resolvedParams = use(params);
   const chatId = resolvedParams.slug?.[0];
   
@@ -43,9 +43,8 @@ function CatchAllChatPageInner({ params }: { params: Promise<{ slug: string[] }>
   );
 
   const lastMessagesRef = useRef<UIMessage[]>([]);
+  const savedLastChatRef = useRef<{ id?: string, path?: string }>({});
 
-
-  
   const messages = useMemo(() => {
     if (!attachments || !messagesResult) return lastMessagesRef.current;
 
@@ -83,7 +82,7 @@ function CatchAllChatPageInner({ params }: { params: Promise<{ slug: string[] }>
 
     lastMessagesRef.current = formatted
     return formatted
-  }, [messagesResult, attachments]);
+  }, [messagesResult?.length, attachments?.length]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -102,8 +101,15 @@ function CatchAllChatPageInner({ params }: { params: Promise<{ slug: string[] }>
     
     // Если чат успешно загружен, сохраняем его как последний
     if (thread && isValidId) {
-      saveLastChatId(chatId);
-      saveLastPath(`/chat/${chatId}`);
+      if (savedLastChatRef.current.id !== chatId) {
+        saveLastChatId(chatId);
+        savedLastChatRef.current.id = chatId;
+      }
+      const path = `/chat/${chatId}`;
+      if (savedLastChatRef.current.path !== path) {
+        saveLastPath(path);
+        savedLastChatRef.current.path = path;
+      }
     }
   }, [authLoading, isAuthenticated, isValidId, router, chatId, thread]);
 
@@ -113,8 +119,15 @@ function CatchAllChatPageInner({ params }: { params: Promise<{ slug: string[] }>
 
     // Перенаправляем на мобильную версию только, если ранее сайт был открыт на десктопе
     if (isMobile && !wasMobileRef.current) {
-      saveLastChatId(chatId);
-      saveLastPath(`/chat/${chatId}`);
+      if (savedLastChatRef.current.id !== chatId) {
+        saveLastChatId(chatId);
+        savedLastChatRef.current.id = chatId;
+      }
+      const path = `/chat/${chatId}`;
+      if (savedLastChatRef.current.path !== path) {
+        saveLastPath(path);
+        savedLastChatRef.current.path = path;
+      }
       router.replace('/home');
     }
 
@@ -155,7 +168,7 @@ function CatchAllChatPageInner({ params }: { params: Promise<{ slug: string[] }>
       initialMessages={messages}
     />
   )
-}
+});
 
 export default function CatchAllChatPage({ params }: { params: Promise<{ slug: string[] }> }) {
   return (

@@ -56,6 +56,8 @@ import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { Switch } from '@/frontend/components/ui/switch';
 import { CustomSwitch } from '@/frontend/components/ui/custom-switch';
 import { copyText } from '@/lib/copyText';
+import { useConvexAuth, useMutation, useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 
 interface SettingsDrawerProps {
   children: React.ReactNode;
@@ -901,11 +903,24 @@ const ApiKeyField = ({
 const ModelsTab = memo(() => {
   const { settings, setSettings } = useSettingsStore();
   const { saveCustomInstructionsManually } = useSettingsSync();
+  const { isAuthenticated } = useConvexAuth();
+  const settingsDoc = useQuery(api.userSettings.get, isAuthenticated ? {} : 'skip');
+  const saveImageGenerationSettingsMutation = useMutation(api.userSettings.saveImageGenerationSettings);
   const [customInstructionsExpanded, setCustomInstructionsExpanded] = useState(false);
   const [modelVisibilityExpanded, setModelVisibilityExpanded] = useState(false);
+  const [imageGenerationExpanded, setImageGenerationExpanded] = useState(false);
   const [currentTraitInput, setCurrentTraitInput] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isImageGenerationSaving, setIsImageGenerationSaving] = useState(false);
   const [originalCustomInstructions, setOriginalCustomInstructions] = useState<CustomInstructions | null>(null);
+  const [imageGenerationSettings, setImageGenerationSettings] = useState({
+    model: 'gpt-image-1',
+    size: 'auto',
+    quality: 'auto',
+    count: 1,
+    format: 'jpeg',
+    compression: 80,
+  });
   
   // Ensure customInstructions exists with default values
   const customInstructions = {
@@ -930,6 +945,20 @@ const ModelsTab = memo(() => {
       setOriginalCustomInstructions(null);
     }
   }, [customInstructionsExpanded]);
+
+  // Load image generation settings from Convex
+  useEffect(() => {
+    if (settingsDoc) {
+      setImageGenerationSettings({
+        model: settingsDoc.imageGenerationModel || 'gpt-image-1',
+        size: settingsDoc.imageGenerationSize || 'auto',
+        quality: settingsDoc.imageGenerationQuality || 'auto',
+        count: settingsDoc.imageGenerationCount || 1,
+        format: settingsDoc.imageGenerationFormat || 'jpeg',
+        compression: settingsDoc.imageGenerationCompression || 80,
+      });
+    }
+  }, [settingsDoc]);
 
   // Проверяем, есть ли несохраненные изменения
   const hasUnsavedChanges = useMemo(() => {
@@ -1017,6 +1046,62 @@ const ModelsTab = memo(() => {
   const toggleModelVisibilityExpanded = useCallback(() => {
     setModelVisibilityExpanded(prev => !prev);
   }, []);
+
+  const toggleImageGenerationExpanded = useCallback(() => {
+    setImageGenerationExpanded(prev => !prev);
+  }, []);
+
+  const handleImageGenerationSettingChange = useCallback((setting: string, value: any) => {
+    setImageGenerationSettings(prev => ({
+      ...prev,
+      [setting]: value,
+    }));
+  }, []);
+
+  // Save image generation settings to Convex
+  const saveImageGenerationSettings = useCallback(async () => {
+    if (!isAuthenticated) return;
+    
+    setIsImageGenerationSaving(true);
+    try {
+      await saveImageGenerationSettingsMutation({
+        imageGenerationModel: imageGenerationSettings.model,
+        imageGenerationSize: imageGenerationSettings.size,
+        imageGenerationQuality: imageGenerationSettings.quality,
+        imageGenerationCount: imageGenerationSettings.count,
+        imageGenerationFormat: imageGenerationSettings.format,
+        imageGenerationCompression: imageGenerationSettings.compression,
+      });
+    } catch (error) {
+      console.error('Failed to save image generation settings:', error);
+    } finally {
+      setIsImageGenerationSaving(false);
+    }
+  }, [isAuthenticated, saveImageGenerationSettingsMutation, imageGenerationSettings]);
+
+  // Auto-save image generation settings when they change
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (settingsDoc && imageGenerationSettings) {
+        // Check if settings actually changed
+        const hasChanges = 
+          imageGenerationSettings.model !== (settingsDoc.imageGenerationModel || 'gpt-image-1') ||
+          imageGenerationSettings.size !== (settingsDoc.imageGenerationSize || 'auto') ||
+          imageGenerationSettings.quality !== (settingsDoc.imageGenerationQuality || 'auto') ||
+          imageGenerationSettings.count !== (settingsDoc.imageGenerationCount || 1) ||
+          imageGenerationSettings.format !== (settingsDoc.imageGenerationFormat || 'jpeg') ||
+          imageGenerationSettings.compression !== (settingsDoc.imageGenerationCompression || 80);
+        
+        if (hasChanges) {
+          saveImageGenerationSettings();
+        }
+      }
+    }, 500); // Debounce by 500ms
+
+    return () => clearTimeout(timeoutId);
+  }, [imageGenerationSettings, settingsDoc, saveImageGenerationSettings]);
+
+  // Auto-save custom instructions when settings change
 
   // Функция для сохранения кастомных инструкций
   const handleSaveCustomInstructions = useCallback(async () => {
@@ -1250,6 +1335,186 @@ const ModelsTab = memo(() => {
             </Button>
           </div>
         </CardContent>
+        )}
+      </Card>
+
+      {/* Image Generation Section */}
+      <Card>
+        <CardHeader 
+          className="cursor-pointer" 
+          onClick={toggleImageGenerationExpanded}
+        >
+          <CardTitle className="flex items-center justify-between text-base">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4" />
+              Image Generation
+              {isImageGenerationSaving && (
+                <Badge variant="secondary" className="text-xs">
+                  Saving...
+                </Badge>
+              )}
+            </div>
+            {imageGenerationExpanded ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronUp className="h-4 w-4" />
+            )}
+          </CardTitle>
+          <CardDescription className="text-sm">
+            Configure default settings for AI image generation
+          </CardDescription>
+        </CardHeader>
+        {imageGenerationExpanded && (
+          <CardContent className="space-y-6">
+            {/* Model Selection */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Model</Label>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <div className="font-medium text-sm">GPT Image 1</div>
+                      <div className="text-xs text-muted-foreground">Latest AI image generation model</div>
+                    </div>
+                  </div>
+                  <Badge variant="secondary" className="text-xs">Recommended</Badge>
+                </div>
+              </div>
+            </div>
+
+            {/* Size Setting */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Default Size</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { value: 'auto', label: 'Auto', desc: 'Let AI choose' },
+                  { value: '1024x1024', label: '1024×1024', desc: 'Square' },
+                  { value: '1024x1536', label: '1024×1536', desc: 'Portrait' },
+                  { value: '1536x1024', label: '1536×1024', desc: 'Landscape' },
+                ].map((option) => (
+                  <div
+                    key={option.value}
+                    className={cn(
+                      "p-3 rounded-lg border cursor-pointer transition-colors",
+                      imageGenerationSettings.size === option.value
+                        ? "bg-primary/10 border-primary/20"
+                        : "bg-muted/30 hover:bg-muted/50"
+                    )}
+                    onClick={() => handleImageGenerationSettingChange('size', option.value)}
+                  >
+                    <div className="font-medium text-sm">{option.label}</div>
+                    <div className="text-xs text-muted-foreground">{option.desc}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Quality Setting */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Default Quality</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { value: 'auto', label: 'Auto', desc: 'Balanced quality' },
+                  { value: 'low', label: 'Low', desc: 'Faster generation' },
+                  { value: 'medium', label: 'Medium', desc: 'Good balance' },
+                  { value: 'high', label: 'High', desc: 'Best quality' },
+                ].map((option) => (
+                  <div
+                    key={option.value}
+                    className={cn(
+                      "p-3 rounded-lg border cursor-pointer transition-colors",
+                      imageGenerationSettings.quality === option.value
+                        ? "bg-primary/10 border-primary/20"
+                        : "bg-muted/30 hover:bg-muted/50"
+                    )}
+                    onClick={() => handleImageGenerationSettingChange('quality', option.value)}
+                  >
+                    <div className="font-medium text-sm">{option.label}</div>
+                    <div className="text-xs text-muted-foreground">{option.desc}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Count Setting */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Default Count</Label>
+              <div className="flex gap-2">
+                {[1, 2, 3, 4].map((count) => (
+                  <div
+                    key={count}
+                    className={cn(
+                      "flex-1 p-3 rounded-lg border cursor-pointer transition-colors text-center",
+                      imageGenerationSettings.count === count
+                        ? "bg-primary/10 border-primary/20"
+                        : "bg-muted/30 hover:bg-muted/50"
+                    )}
+                    onClick={() => handleImageGenerationSettingChange('count', count)}
+                  >
+                    <div className="font-medium text-sm">{count}</div>
+                    <div className="text-xs text-muted-foreground">
+                      image{count > 1 ? 's' : ''}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Format Setting */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Default Format</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { value: 'jpeg', label: 'JPEG', desc: 'Smaller files' },
+                  { value: 'png', label: 'PNG', desc: 'Best quality' },
+                  { value: 'webp', label: 'WebP', desc: 'Modern format' },
+                ].map((option) => (
+                  <div
+                    key={option.value}
+                    className={cn(
+                      "p-3 rounded-lg border cursor-pointer transition-colors",
+                      imageGenerationSettings.format === option.value
+                        ? "bg-primary/10 border-primary/20"
+                        : "bg-muted/30 hover:bg-muted/50"
+                    )}
+                    onClick={() => handleImageGenerationSettingChange('format', option.value)}
+                  >
+                    <div className="font-medium text-sm">{option.label}</div>
+                    <div className="text-xs text-muted-foreground">{option.desc}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Compression Setting - only for JPEG/WebP */}
+            {(imageGenerationSettings.format === 'jpeg' || imageGenerationSettings.format === 'webp') && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Compression Quality</Label>
+                  <span className="text-xs text-muted-foreground">{imageGenerationSettings.compression}%</span>
+                </div>
+                <div className="space-y-2">
+                  <input
+                    type="range"
+                    min="10"
+                    max="100"
+                    step="10"
+                    value={imageGenerationSettings.compression}
+                    onChange={(e) => handleImageGenerationSettingChange('compression', parseInt(e.target.value))}
+                    className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Smaller file</span>
+                    <span>Better quality</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="text-xs text-muted-foreground p-3 bg-muted/20 rounded-lg">
+              💡 These settings apply only to chat mode. Drawing canvas always generates 1 image.
+            </div>
+          </CardContent>
         )}
       </Card>
 

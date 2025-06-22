@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, Check, ArrowUpIcon, Star, ChevronUp, ChevronLeft, Globe } from 'lucide-react';
+import { ChevronDown, Check, ArrowUpIcon, Star, ChevronUp, ChevronLeft, Globe, X } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Textarea } from '@/frontend/components/ui/textarea';
 
@@ -26,6 +26,7 @@ import { AI_MODELS, AIModel, getModelConfig } from '@/lib/models';
 import { UIMessage } from 'ai';
 import AttachmentsBar from './AttachmentsBar';
 import { useAttachmentsStore } from '../stores/AttachmentsStore';
+import { useChatStore } from '../stores/ChatStore';
 import type { LocalAttachment } from '../stores/AttachmentsStore';
 import { isConvexId } from '@/lib/ids';
 import { StopIcon } from './ui/icons';
@@ -116,6 +117,133 @@ const createUserMessage = (id: string, text: string, attachments?: any[]): UIMes
   };
 };
 
+const ImageGenerationControls = () => {
+  const { imageGenerationParams, setImageGenerationParams } = useChatStore();
+  const { keys } = useAPIKeyStore();
+  
+  const qualityOptions = [
+    { value: 'auto' as const, label: 'Auto' },
+    { value: 'low' as const, label: 'Low' },
+    { value: 'medium' as const, label: 'Medium' },
+    { value: 'high' as const, label: 'High' },
+  ];
+  
+  const sizeOptions = [
+    { value: 'auto' as const, label: 'Auto' },
+    { value: '1024x1024' as const, label: '1024×1024' },
+    { value: '1024x1536' as const, label: '1024×1536' },
+    { value: '1536x1024' as const, label: '1536×1024' },
+  ];
+  
+  const formatOptions = [
+    { value: 'jpeg' as const, label: 'JPEG' },
+    { value: 'png' as const, label: 'PNG' },
+    { value: 'webp' as const, label: 'WebP' },
+  ];
+  
+  const countOptions = [1, 2, 3, 4] as const;
+  
+  return (
+    <div className="flex items-center gap-2 px-2 py-1 bg-muted/30 rounded-lg text-xs">
+      {/* Quality */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs gap-1"
+          >
+            Quality: {qualityOptions.find(opt => opt.value === imageGenerationParams.quality)?.label}
+            <ChevronDown className="w-3 h-3" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          {qualityOptions.map((option) => (
+            <DropdownMenuItem
+              key={option.value}
+              onSelect={() => setImageGenerationParams({ quality: option.value })}
+            >
+              {option.label}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      
+      {/* Size */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs gap-1"
+          >
+            {sizeOptions.find(opt => opt.value === imageGenerationParams.size)?.label}
+            <ChevronDown className="w-3 h-3" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          {sizeOptions.map((option) => (
+            <DropdownMenuItem
+              key={option.value}
+              onSelect={() => setImageGenerationParams({ size: option.value })}
+            >
+              {option.label}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      
+      {/* Count */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs gap-1"
+          >
+            {imageGenerationParams.count}x
+            <ChevronDown className="w-3 h-3" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          {countOptions.map((count) => (
+            <DropdownMenuItem
+              key={count}
+              onSelect={() => setImageGenerationParams({ count })}
+            >
+              {count} image{count > 1 ? 's' : ''}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      
+      {/* Format */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs gap-1"
+          >
+            {formatOptions.find(opt => opt.value === imageGenerationParams.format)?.label}
+            <ChevronDown className="w-3 h-3" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          {formatOptions.map((option) => (
+            <DropdownMenuItem
+              key={option.value}
+              onSelect={() => setImageGenerationParams({ format: option.value })}
+            >
+              {option.label}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+};
+
 const PureChatModelDropdown = ({ messageCount = 0 }: ChatModelDropdownProps) => {
   const { getKey } = useAPIKeyStore();
   const {
@@ -127,6 +255,7 @@ const PureChatModelDropdown = ({ messageCount = 0 }: ChatModelDropdownProps) => 
     setWebSearchEnabled,
     supportsWebSearch,
   } = useModelStore();
+  const { isImageGenerationMode, setImageGenerationMode } = useChatStore();
   const {
     getVisibleFavoriteModels,
     getVisibleGeneralModels,
@@ -213,27 +342,46 @@ const PureChatModelDropdown = ({ messageCount = 0 }: ChatModelDropdownProps) => 
 
   return (
     <div className="flex items-center gap-2">
-      <DropdownMenu
-        open={isOpen}
-        onOpenChange={(open) => {
-          setIsOpen(open);
-          if (!open) {
-            setIsExpanded(false);
-          }
-        }}
-      >
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            className="flex items-center gap-1 h-8 pl-3 pr-2 text-xs rounded-lg text-foreground hover:bg-accent/50 focus-visible:ring-1 focus-visible:ring-offset-0 focus-visible:ring-blue-500 transition-colors"
-            aria-label={`Selected model: ${selectedModel}`}
+      {isImageGenerationMode ? (
+        // Image generation mode - no dropdown, just display with close button
+        <div className="flex items-center gap-1 h-8 pl-3 pr-2 text-xs rounded-lg bg-accent/20 border border-border/30">
+          <span 
+            className="font-medium cursor-pointer hover:text-muted-foreground transition-colors"
+            onClick={() => setImageGenerationMode(false)}
           >
-            <div className="flex items-center gap-1">
-              {selectedModel}
-              <ChevronDown className="w-3 h-3 opacity-50" />
-            </div>
-          </Button>
-        </DropdownMenuTrigger>
+            GPT Image 1
+          </span>
+          <button
+            onClick={() => setImageGenerationMode(false)}
+            className="ml-1 p-0.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded text-red-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+            aria-label="Exit image generation mode"
+          >
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      ) : (
+        // Normal mode - dropdown menu
+        <DropdownMenu
+          open={isOpen}
+          onOpenChange={(open) => {
+            setIsOpen(open);
+            if (!open) {
+              setIsExpanded(false);
+            }
+          }}
+        >
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="flex items-center gap-1 h-8 pl-3 pr-2 text-xs rounded-lg text-foreground hover:bg-accent/50 focus-visible:ring-1 focus-visible:ring-offset-0 focus-visible:ring-blue-500 transition-colors"
+              aria-label={`Selected model: ${selectedModel}`}
+            >
+              <div className="flex items-center gap-1">
+                {selectedModel}
+                <ChevronDown className="w-3 h-3 opacity-50" />
+              </div>
+            </Button>
+          </DropdownMenuTrigger>
         <DropdownMenuContent
           className={cn(
             !isExpanded ? 'w-64' : 'w-80',
@@ -426,7 +574,8 @@ const PureChatModelDropdown = ({ messageCount = 0 }: ChatModelDropdownProps) => 
             )}
           </div>
         </DropdownMenuContent>
-      </DropdownMenu>
+        </DropdownMenu>
+      )}
       {showReasoningEffortButton && (
         <DropdownMenu open={isReasoningEffortOpen} onOpenChange={setIsReasoningEffortOpen}>
           <DropdownMenuTrigger asChild>
@@ -468,7 +617,7 @@ const PureChatModelDropdown = ({ messageCount = 0 }: ChatModelDropdownProps) => 
           </DropdownMenuContent>
         </DropdownMenu>
       )}
-      {showWebSearchButton && (
+      {showWebSearchButton && !isImageGenerationMode && (
         <Button
           variant={webSearchEnabled ? "default" : "ghost"}
           size="icon"
@@ -536,12 +685,15 @@ function PureChatInput({
   messageCount,
   onThreadCreated,
 }: ChatInputProps) {
+  const { isImageGenerationMode, imageGenerationParams, setImageGenerationMode, initializeImageGenerationParams } = useChatStore();
   // Все хуки должны быть вызваны до любых условных возвратов
-  const { hasRequiredKeys, keys, setKeys } = useAPIKeyStore();
+  const { hasRequiredKeys, keys, setKeys, keysLoading } = useAPIKeyStore();
   const { user } = useAuthStore();
   const canChat = hasRequiredKeys();
   const { currentQuote, clearQuote } = useQuoteStore();
-  const [localKeys, setLocalKeys] = useState(keys);
+  
+  // Load user settings for image generation
+  const userSettings = useQuery(api.userSettings.get, user ? {} : 'skip');
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({
@@ -589,24 +741,30 @@ function PureChatInput({
     }
   }, 500);
   
+  // Initialize image generation parameters from user settings
+  useEffect(() => {
+    if (userSettings) {
+      const defaultParams = {
+        quality: (userSettings.imageGenerationQuality as 'auto' | 'low' | 'medium' | 'high') || 'auto',
+        size: (userSettings.imageGenerationSize as 'auto' | '1024x1024' | '1024x1536' | '1536x1024') || 'auto',
+        count: (userSettings.imageGenerationCount as 1 | 2 | 3 | 4) || 1,
+        format: (userSettings.imageGenerationFormat as 'png' | 'jpeg' | 'webp') || 'jpeg',
+        compression: userSettings.imageGenerationCompression || 80,
+      };
+      initializeImageGenerationParams(defaultParams);
+    }
+  }, [userSettings, initializeImageGenerationParams]);
+  
 
   // Интеграция с недавними файлами
   useRecentFilesIntegration();
 
   const isDisabled = useMemo(
-    () => !input.trim() || status === 'streaming' || status === 'submitted' || isSubmitting,
-    [input, status, isSubmitting]
+    () => !input.trim() || status === 'streaming' || status === 'submitted' || isSubmitting || !canChat,
+    [input, status, isSubmitting, canChat]
   );
   
-  // Синхронизируем localKeys с основным состоянием
-  useEffect(() => {
-    setLocalKeys(keys);
-  }, [keys]);
-  
-  const saveKeys = useCallback(async () => {
-    await setKeys(localKeys);
-    toast.success('API keys saved');
-  }, [setKeys, localKeys]);
+
 
   const handleSubmit = useCallback(async () => {
     if (isDisabled) return;
@@ -624,6 +782,23 @@ function PureChatInput({
     adjustHeight(true);
 
     try {
+      // IMAGE GENERATION: Check if image generation mode is enabled
+      if (isImageGenerationMode) {
+        if (!finalMessage.trim()) {
+          toast.error('Please enter a prompt for image generation');
+          setIsSubmitting(false);
+          return;
+        }
+
+        if (!keys.openai) {
+          toast.error('OpenAI API key is required for image generation');
+          setIsSubmitting(false);
+          return;
+        }
+
+        // Keep image generation mode active during processing
+      }
+
       // Проверка: PDF вложения разрешены только для Google (Gemini) моделей
       const provider = getModelConfig(selectedModel).provider;
       if (attachments.some((a) => a.type === 'application/pdf') && provider !== 'google') {
@@ -823,6 +998,17 @@ function PureChatInput({
         url: a.url ?? '',
       }));
 
+      // Check if image generation mode is enabled and pass parameters
+      const imageGenerationData = isImageGenerationMode ? {
+        enabled: true,
+        params: {
+          size: imageGenerationParams.size === 'auto' ? '1024x1024' : imageGenerationParams.size,
+          quality: imageGenerationParams.quality === 'auto' ? 'standard' : 
+                  imageGenerationParams.quality === 'high' ? 'hd' : 'standard',
+          count: imageGenerationParams.count,
+        }
+      } : undefined;
+
       append(
         createUserMessage(dbMsgId, finalMessage, attachmentsForUI),
         {
@@ -830,10 +1016,10 @@ function PureChatInput({
             model: selectedModel,
             apiKeys: keys,
             threadId: ensuredThreadId,
-            userId: user?.uid, // Добавляем userId для получения кастомных инструкций
+            userId: user?.uid,
             search: webSearchEnabled,
-            // Передаем вложения напрямую чтобы избежать race condition
             attachments: attachmentsForLLM,
+            imageGeneration: imageGenerationData,
           },
         }
       );
@@ -843,7 +1029,7 @@ function PureChatInput({
         localAttachments.forEach(attachment => {
           const success = addFileToRecent(attachment.file);
           if (!success) {
-            console.warn(`Failed to add file "${attachment.file.name}" to recent files`);
+            // Failed to add file to recent files
           }
         });
       }
@@ -882,6 +1068,11 @@ function PureChatInput({
 
       // Clear attachments only after successful upload
       clear();
+      
+      // Clear draft after successful message send
+      if (isConvexId(ensuredThreadId)) {
+        saveDraftMutation({ threadId: ensuredThreadId, draft: '' });
+      }
 
       // 11. UI обновится автоматически через useConvexMessages после добавления в DB
 
@@ -915,6 +1106,10 @@ function PureChatInput({
     webSearchEnabled,
     keys,
     updateAttachmentMessageId,
+    isImageGenerationMode,
+    imageGenerationParams,
+    setImageGenerationMode,
+    user,
   ]);
 
   const handleKeyDown = useCallback(
@@ -922,9 +1117,12 @@ function PureChatInput({
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         handleSubmit();
+      } else if (e.key === 'Escape' && isImageGenerationMode) {
+        e.preventDefault();
+        setImageGenerationMode(false);
       }
     },
-    [handleSubmit]
+    [handleSubmit, isImageGenerationMode, setImageGenerationMode]
   );
 
   const handleInputChange = useCallback(
@@ -1112,7 +1310,7 @@ function PureChatInput({
     [convertImageToPng]
   );
 
-  // Глобальный обработчик для сброса drag состояния
+  // Глобальный обработчик для сброса drag состояния и Escape
   useEffect(() => {
     const handleGlobalDragEnd = () => {
       setIsDragOver(false);
@@ -1127,33 +1325,38 @@ function PureChatInput({
       }
     };
 
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isImageGenerationMode) {
+        // Проверяем, что нет открытых модальных окон
+        const hasOpenModal = document.querySelector('[role="dialog"]') || 
+                            document.querySelector('.modal') ||
+                            document.querySelector('[data-state="open"]') ||
+                            document.querySelector('.fixed.inset-0');
+        
+        // Также проверяем, что фокус находится в области чата, а не в модальном окне
+        const isInChatArea = containerRef.current?.contains(document.activeElement) ||
+                            document.activeElement === textareaRef.current ||
+                            document.activeElement === document.body;
+        
+        if (!hasOpenModal && isInChatArea) {
+          e.preventDefault();
+          setImageGenerationMode(false);
+        }
+      }
+    };
+
     document.addEventListener('dragend', handleGlobalDragEnd);
     document.addEventListener('dragleave', handleGlobalDragLeave);
+    document.addEventListener('keydown', handleGlobalKeyDown);
 
     return () => {
       document.removeEventListener('dragend', handleGlobalDragEnd);
       document.removeEventListener('dragleave', handleGlobalDragLeave);
+      document.removeEventListener('keydown', handleGlobalKeyDown);
     };
-  }, []);
+  }, [isImageGenerationMode, setImageGenerationMode]);
 
-  // Если есть ошибка и нельзя отправлять сообщения, показываем форму для ввода API ключей
-  if (error && !canChat) {
-    return (
-      <div className="w-full flex justify-center pb-safe mobile-keyboard-fix">
-        <div className={cn('backdrop-blur-md bg-secondary p-4 pb-2 border-t border-border/50 max-w-3xl w-full', messageCount === 0 ? 'rounded-[20px] sm:rounded-[28px]' : 'rounded-t-[20px] sm:rounded-t-[28px]')}>
-          <div className="space-y-2">
-            {(['google','openrouter','openai'] as const).map(provider => (
-              <Input key={provider}
-                value={localKeys[provider]||''}
-                onChange={e => setLocalKeys((prev: APIKeys) => ({ ...prev, [provider]: e.target.value }))}
-                placeholder={`${provider.charAt(0).toUpperCase()+provider.slice(1)} API Key`} />
-            ))}
-          </div>
-          <Button className="mt-2 w-full" onClick={saveKeys}>Save API Keys</Button>
-        </div>
-      </div>
-    );
-  }
+
 
   return (
     <>
@@ -1211,7 +1414,11 @@ function PureChatInput({
                 <Textarea
                   id="chat-input"
                   value={input}
-                  placeholder={!canChat ? "Enter API key to enable chat" : "What can I do for you?"}
+                  placeholder={
+                    isImageGenerationMode 
+                      ? "Describe the image you want to generate..." 
+                      : "What can I do for you?"
+                  }
                   className={cn(
                     'w-full px-4 py-3 border-none shadow-none dark:bg-transparent',
                     'placeholder:text-muted-foreground resize-none',
@@ -1230,7 +1437,9 @@ function PureChatInput({
                   disabled={!canChat}
                 />
                 <span id="chat-input-description" className="sr-only">
-                  {canChat ? 'Press Enter to send, Shift+Enter for new line' : 'Enter API key to enable chat'}
+                  {isImageGenerationMode 
+                    ? 'Describe image to generate, Press Enter to create' 
+                    : 'Press Enter to send, Shift+Enter for new line'}
                 </span>
               </div>
             </div>
@@ -1242,6 +1451,7 @@ function PureChatInput({
                 <div className="flex items-center gap-2">
                   <AttachmentsBar mode="compact" messageCount={messageCount} />
                   <ChatModelDropdown messageCount={messageCount} />
+                  {isImageGenerationMode && <ImageGenerationControls />}
                 </div>
                 
                 {/* Right side: Send/Stop button */}
@@ -1249,7 +1459,7 @@ function PureChatInput({
                   {status === 'submitted' || status === 'streaming' ? (
                     <StopButton stop={stop} />
                   ) : (
-                    <SendButton onSubmit={handleSubmit} disabled={isDisabled || !canChat} />
+                    <SendButton onSubmit={handleSubmit} disabled={isDisabled} />
                   )}
                 </div>
               </div>

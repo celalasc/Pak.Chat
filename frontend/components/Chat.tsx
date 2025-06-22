@@ -13,7 +13,7 @@ import { useScrollHide } from '@/frontend/hooks/useScrollHide';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { useKeyboardInsets } from '../hooks/useKeyboardInsets';
 import { cn } from '@/lib/utils';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useSettingsStore } from '@/frontend/stores/SettingsStore';
 import { useModelStore } from '@/frontend/stores/ModelStore';
 import type { UIMessage } from 'ai';
@@ -41,14 +41,27 @@ function Chat({ threadId, thread, initialMessages }: ChatProps) {
   });
 
   // Handle settings drawer open/close for mobile animation
-  const handleSettingsOpenChange = (open: boolean) => {
+  const handleSettingsOpenChange = useCallback((open: boolean) => {
     setIsSettingsOpen(open);
-  };
+  }, []);
 
   // Обработчик создания нового треда
-  const handleThreadCreated = (newThreadId: string) => {
+  const handleThreadCreated = useCallback((newThreadId: string) => {
     setCurrentThreadId(newThreadId);
-  };
+  }, []);
+
+  // Мемоизированные обработчики для предотвращения лишних ререндеров
+  const handleGoHome = useCallback(() => {
+    router.push('/home');
+  }, [router]);
+
+  const handleGoNewChat = useCallback(() => {
+    router.push('/chat');
+  }, [router]);
+
+  const handleOpenSettings = useCallback(() => {
+    handleSettingsOpenChange(true);
+  }, [handleSettingsOpenChange]);
 
   // Отслеживаем изменения threadId
   useEffect(() => {
@@ -98,7 +111,7 @@ function Chat({ threadId, thread, initialMessages }: ChatProps) {
                     variant="ghost"
                     size="icon"
                       className="bg-background/60 backdrop-blur-xl border border-border/20 rounded-full h-9 w-9 shadow-lg touch-target"
-                    onClick={() => router.push('/home')}
+                    onClick={handleGoHome}
                     aria-label="Back to home"
                   >
                     <ArrowLeft className="h-4 w-4" />
@@ -122,7 +135,7 @@ function Chat({ threadId, thread, initialMessages }: ChatProps) {
                   variant="ghost"
                   size="icon"
                     className="bg-background/60 backdrop-blur-xl border border-border/20 rounded-full h-9 w-9 shadow-lg touch-target"
-                  onClick={() => router.push('/home')}
+                  onClick={handleGoHome}
                   aria-label="Back to home"
                 >
                   <ArrowLeft className="h-4 w-4" />
@@ -148,7 +161,7 @@ function Chat({ threadId, thread, initialMessages }: ChatProps) {
                   size="icon"
                   className="bg-background/80 backdrop-blur-sm border-border/50"
                   aria-label="Open settings"
-                    onClick={() => handleSettingsOpenChange(true)}
+                    onClick={handleOpenSettings}
                 >
                   <Settings className="h-5 w-5" />
                 </Button>
@@ -160,7 +173,7 @@ function Chat({ threadId, thread, initialMessages }: ChatProps) {
           <div className="fixed left-4 top-4 z-50">
             <span
               className="text-xl font-bold text-foreground hover:text-primary transition-colors cursor-pointer"
-              onClick={() => router.push('/chat')}
+              onClick={handleGoNewChat}
             >
               Pak.Chat
             </span>
