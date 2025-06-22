@@ -80,6 +80,8 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
   const [showStrokeWidth, setShowStrokeWidth] = useState(false);
   const [textInput, setTextInput] = useState('');
   const [textPosition, setTextPosition] = useState<Point | null>(null);
+  const [editingTextId, setEditingTextId] = useState<string | null>(null);
+  const [editingTextValue, setEditingTextValue] = useState('');
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
   const [showMobileTools, setShowMobileTools] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
@@ -116,6 +118,8 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
     setDragStart(null);
     setTextInput('');
     setTextPosition(null);
+    setEditingTextId(null);
+    setEditingTextValue('');
     imageCache.current.clear(); // Clear image cache
   }, []);
 
@@ -400,15 +404,6 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
             ctx.beginPath();
             ctx.rect(element.x, element.y, element.width, element.height);
             ctx.stroke();
-            
-            // Выделение для выбранного элемента
-            if (selectedElement === element.id) {
-              ctx.strokeStyle = '#007AFF';
-              ctx.lineWidth = 1;
-              ctx.setLineDash([5, 5]);
-              ctx.stroke();
-              ctx.setLineDash([]);
-            }
           }
           break;
 
@@ -418,14 +413,6 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
             ctx.beginPath();
             ctx.arc(element.x + element.width / 2, element.y + element.height / 2, radius, 0, 2 * Math.PI);
             ctx.stroke();
-            
-            if (selectedElement === element.id) {
-              ctx.strokeStyle = '#007AFF';
-              ctx.lineWidth = 1;
-              ctx.setLineDash([5, 5]);
-              ctx.stroke();
-              ctx.setLineDash([]);
-            }
           }
           break;
 
@@ -434,15 +421,6 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
             ctx.fillStyle = element.color;
             ctx.font = `${element.strokeWidth * 8}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
             ctx.fillText(element.text, element.x, element.y);
-            
-            if (selectedElement === element.id) {
-              const textMetrics = ctx.measureText(element.text);
-              ctx.strokeStyle = '#007AFF';
-              ctx.lineWidth = 1;
-              ctx.setLineDash([5, 5]);
-              ctx.strokeRect(element.x - 2, element.y - element.strokeWidth * 8, textMetrics.width + 4, element.strokeWidth * 8 + 4);
-              ctx.setLineDash([]);
-            }
           }
           break;
 
@@ -473,11 +451,9 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
       
       // Draw resize preview if resizing
       if (resizePreview && isResizing) {
-        ctx.strokeStyle = '#007AFF';
+        ctx.strokeStyle = '#0066FF';
         ctx.lineWidth = 2;
-        ctx.setLineDash([10, 5]);
         ctx.strokeRect(resizePreview.x, resizePreview.y, resizePreview.width, resizePreview.height);
-        ctx.setLineDash([]);
       }
       
       // Draw selection box for non-brush elements
@@ -490,54 +466,40 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
             if (ctx) {
               ctx.font = `${selectedEl.strokeWidth * 8}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
               const textMetrics = ctx.measureText(selectedEl.text);
-              ctx.strokeStyle = '#007AFF';
-              ctx.lineWidth = 1;
-              ctx.setLineDash([5, 5]);
+              ctx.strokeStyle = '#0066FF';
+              ctx.lineWidth = 1.5;
               ctx.strokeRect(selectedEl.x - 2, selectedEl.y - selectedEl.strokeWidth * 8, textMetrics.width + 4, selectedEl.strokeWidth * 8 + 4);
-              ctx.setLineDash([]);
             }
           }
         } else if (selectedEl.x !== undefined && selectedEl.y !== undefined && selectedEl.width !== undefined && selectedEl.height !== undefined) {
           // Draw regular selection box
-          ctx.strokeStyle = '#007AFF';
-          ctx.lineWidth = 1;
-          ctx.setLineDash([5, 5]);
+          ctx.strokeStyle = '#0066FF';
+          ctx.lineWidth = 1.5;
           ctx.strokeRect(selectedEl.x, selectedEl.y, selectedEl.width, selectedEl.height);
-          ctx.setLineDash([]);
         }
       }
       
       // Draw resize handles with improved styling
       handles.forEach((handle, index) => {
-        const handleSize = isMobile ? 12 : 8;
-        const borderSize = 2;
+        const handleSize = isMobile ? 10 : 8;
+        const borderSize = 1.5;
         
-        // Draw handle background
+        // Draw white handle with blue border (Figma style)
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(handle.x - handleSize/2, handle.y - handleSize/2, handleSize, handleSize);
         
         // Draw handle border
-        ctx.strokeStyle = '#007AFF';
+        ctx.strokeStyle = '#0066FF';
         ctx.lineWidth = borderSize;
-        ctx.setLineDash([]);
         ctx.strokeRect(handle.x - handleSize/2, handle.y - handleSize/2, handleSize, handleSize);
         
         // Add visual feedback for active handle
         if (resizeHandle === handle.id && isResizing) {
-          ctx.fillStyle = '#007AFF';
-          ctx.fillRect(handle.x - handleSize/2 + borderSize, handle.y - handleSize/2 + borderSize, 
-                      handleSize - borderSize*2, handleSize - borderSize*2);
+          ctx.fillStyle = '#0066FF';
+          ctx.fillRect(handle.x - handleSize/2 + borderSize + 0.5, handle.y - handleSize/2 + borderSize + 0.5, 
+                      handleSize - (borderSize + 0.5)*2, handleSize - (borderSize + 0.5)*2);
         }
       });
-      
-      // Show resize instructions
-      if (selectedEl.type !== 'brush' && !isResizing) {
-        ctx.fillStyle = 'rgba(0, 122, 255, 0.1)';
-        ctx.fillRect(selectedEl.x || 0, (selectedEl.y || 0) - 25, 150, 20);
-        ctx.fillStyle = '#007AFF';
-        ctx.font = '12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-        ctx.fillText('Drag corners/edges to resize', (selectedEl.x || 0) + 5, (selectedEl.y || 0) - 10);
-      }
     }
   }, [elements, selectedElement, getResizeHandles, isResizing, resizePreview]);
 
@@ -764,19 +726,22 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
       const dx = pos.x - dragStart.x;
       const dy = pos.y - dragStart.y;
       
-      setElements(prev => prev.map(el => {
-        if (el.id === selectedElement) {
-          return {
-            ...el,
-            x: (el.x || 0) + dx,
-            y: (el.y || 0) + dy,
-            points: el.points?.map(p => ({ x: p.x + dx, y: p.y + dy }))
-          };
-        }
-        return el;
-      }));
-      
-      setDragStart(pos);
+      // Если мы изменяем размер, не двигаем элемент
+      if (!isResizing) {
+        setElements(prev => prev.map(el => {
+          if (el.id === selectedElement) {
+            return {
+              ...el,
+              x: (el.x || 0) + dx,
+              y: (el.y || 0) + dy,
+              points: el.points?.map(p => ({ x: p.x + dx, y: p.y + dy }))
+            };
+          }
+          return el;
+        }));
+        
+        setDragStart(pos);
+      }
       return;
     }
 
@@ -792,8 +757,19 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
           
           // Handle text resizing (change font size)
           if (el.type === 'text') {
-            const scaleFactor = Math.max(0.1, 1 + (dx + dy) / 100);
-            newEl.strokeWidth = Math.max(1, (initial.strokeWidth || 1) * scaleFactor);
+            // Рассчитываем изменение размера на основе направления handle
+            let scaleFactor = 1;
+            
+            if (['br', 'tr', 'mr'].includes(resizeHandle)) {
+              scaleFactor = 1 + dx / 200; // Правые handle используют dx
+            } else if (['bl', 'tl', 'ml'].includes(resizeHandle)) {
+              scaleFactor = 1 - dx / 200; // Левые handle используют -dx
+            } else if (['tm', 'bm'].includes(resizeHandle)) {
+              scaleFactor = 1 + (resizeHandle === 'bm' ? dy : -dy) / 200; // Вертикальные handle используют dy
+            }
+            
+            scaleFactor = Math.max(0.2, Math.min(5, scaleFactor)); // Ограничиваем масштаб от 20% до 500%
+            newEl.strokeWidth = Math.max(1, Math.round((initial.strokeWidth || 1) * scaleFactor));
             return newEl;
           }
           
@@ -928,6 +904,32 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
       setTextPosition(null);
     }
   }, [textInput, textPosition, color, strokeWidth, elements, addToHistory]);
+
+  const handleEditTextSubmit = useCallback(() => {
+    if (editingTextValue.trim() && editingTextId) {
+      const newElements = elements.map(el => {
+        if (el.id === editingTextId) {
+          return { ...el, text: editingTextValue.trim() };
+        }
+        return el;
+      });
+      setElements(newElements);
+      addToHistory(newElements);
+      setEditingTextId(null);
+      setEditingTextValue('');
+    }
+  }, [editingTextValue, editingTextId, elements, addToHistory]);
+
+  const handleDoubleClick = useCallback((e: MouseEvent) => {
+    const pos = getCoords(e);
+    const element = findElementAtPoint(pos);
+    
+    if (element && element.type === 'text') {
+      setEditingTextId(element.id);
+      setEditingTextValue(element.text || '');
+      setSelectedElement(element.id);
+    }
+  }, [getCoords, findElementAtPoint]);
 
   const undo = useCallback(() => {
     if (historyIndex > 0) {
@@ -1467,19 +1469,6 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
 
         {/* Canvas Area */}
         <div className="flex-1 flex items-center justify-center p-4 overflow-auto">
-          {/* Instructions for resize functionality */}
-          {tool === 'move' && (
-            <div className="absolute top-20 left-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-sm text-blue-700 dark:text-blue-300 z-10 max-w-xs">
-              <div className="font-medium mb-1">Resize Instructions:</div>
-              <ul className="text-xs space-y-1">
-                <li>• Click to select elements</li>
-                <li>• Drag corners/edges to resize</li>
-                <li>• Hold Shift for aspect ratio</li>
-                {isMobile && <li>• Pinch with 2 fingers to scale</li>}
-              </ul>
-            </div>
-          )}
-          
           <div className="relative">
             <canvas
               ref={canvasRef}
@@ -1496,6 +1485,7 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
               onMouseMove={(e) => draw(e.nativeEvent)}
               onMouseUp={stopDrawing}
               onMouseLeave={stopDrawing}
+              onDoubleClick={(e) => handleDoubleClick(e.nativeEvent)}
               onTouchStart={(e) => startDrawing(e.nativeEvent)}
               onTouchMove={(e) => draw(e.nativeEvent)}
               onTouchEnd={stopDrawing}
@@ -1553,6 +1543,59 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
                 </div>
               </div>
             )}
+            
+            {/* Text Edit Overlay for existing text */}
+            {editingTextId && (() => {
+              const element = elements.find(el => el.id === editingTextId);
+              if (!element || element.type !== 'text') return null;
+              
+              return (
+                <div 
+                  className="absolute bg-background border-2 border-primary rounded px-2 py-1 shadow-lg"
+                  style={{ 
+                    left: element.x, 
+                    top: (element.y || 0) - (element.strokeWidth || 2) * 8 - 10,
+                    zIndex: 20 
+                  }}
+                >
+                  <input
+                    type="text"
+                    value={editingTextValue}
+                    onChange={(e) => setEditingTextValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleEditTextSubmit();
+                      } else if (e.key === 'Escape') {
+                        setEditingTextId(null);
+                        setEditingTextValue('');
+                      }
+                    }}
+                    placeholder="Edit text..."
+                    className="text-sm bg-transparent border-none outline-none min-w-[100px]"
+                    style={{ 
+                      fontSize: `${(element.strokeWidth || 2) * 8}px`,
+                      color: element.color
+                    }}
+                    autoFocus
+                  />
+                  <div className="flex gap-1 mt-1">
+                    <Button size="sm" variant="default" onClick={handleEditTextSubmit}>
+                      Save
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      onClick={() => {
+                        setEditingTextId(null);
+                        setEditingTextValue('');
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
 
