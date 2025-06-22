@@ -555,7 +555,16 @@ const ChatHistoryMobileComponent: React.FC<ChatHistoryMobileProps> = ({
 
   return (
     <>
-      <Drawer open={isOpen} onOpenChange={handleOpenChange}>
+      <Drawer 
+        open={isOpen} 
+        onOpenChange={handleOpenChange}
+        shouldScaleBackground={false}
+        dismissible={true}
+        modal={true}
+        snapPoints={[1]}
+        fadeFromIndex={0}
+        closeThreshold={0.5}
+      >
         <DrawerTrigger asChild>{children}</DrawerTrigger>
         <DrawerContent className="h-[85vh] flex flex-col bg-background border-border">
           <div className="flex-1 flex flex-col overflow-hidden">
@@ -588,7 +597,13 @@ const ChatHistoryMobileComponent: React.FC<ChatHistoryMobileProps> = ({
             {/* List */}
             <div className="flex-1 min-h-0 overflow-y-auto scrollbar-none enhanced-scroll bg-background">
               {threads === undefined ? (
-                <EmptyState type="loading" />
+                searchQuery.trim() ? (
+                  <EmptyState type="loading" />
+                ) : (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="animate-pulse text-muted-foreground text-sm">Loading chats...</div>
+                  </div>
+                )
               ) : threadGroups.length === 0 ? (
                 <EmptyState 
                   type={searchQuery.trim() ? "no-search-results" : "no-history"} 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Button } from './ui/button';
+import { Button } from '../ui/button';
 import { X, Download, Smartphone } from 'lucide-react';
 import { cn } from '@/lib/utils';
 

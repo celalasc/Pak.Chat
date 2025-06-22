@@ -3,8 +3,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Search } from 'lucide-react';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
 import { cn } from '@/lib/utils';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
@@ -39,12 +39,17 @@ export default function MobileSearch({ isOpen, onClose }: MobileSearchProps) {
     }
   }, [isOpen]);
 
-  // Очистка при закрытии
+  // Очистка при закрытии и монтировании
   useEffect(() => {
     if (!isOpen) {
       setSearchQuery('');
     }
   }, [isOpen]);
+
+  // Сброс поиска при монтировании компонента
+  useEffect(() => {
+    setSearchQuery('');
+  }, []);
 
   const handleThreadClick = (threadId: Id<'threads'>) => {
     router.push(`/chat/${threadId}`);
@@ -91,12 +96,24 @@ export default function MobileSearch({ isOpen, onClose }: MobileSearchProps) {
       {/* Results */}
       <div className="flex-1 overflow-y-auto">
         {searchQuery.trim() === '' ? (
-          <EmptyState 
-            type="no-history" 
-            className="h-full flex flex-col justify-center"
-          />
+          <div className="h-full flex flex-col justify-center items-center px-6 text-center">
+            <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-muted/30 border border-border/50 mb-4">
+              <Search className="w-8 h-8 text-muted-foreground/60" />
+            </div>
+            <h3 className="font-semibold text-lg text-muted-foreground mb-2">
+              Search your chats
+            </h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Type to search through your conversation history
+            </p>
+            <p className="text-xs text-muted-foreground/70 italic pt-2">
+              Search works in any language
+            </p>
+          </div>
         ) : threads === undefined ? (
-          <EmptyState type="loading" className="h-full flex flex-col justify-center" />
+          <div className="h-full flex flex-col justify-center items-center">
+            <div className="animate-pulse text-muted-foreground text-sm">Searching...</div>
+          </div>
         ) : threads.length === 0 ? (
           <EmptyState 
             type="no-search-results" 

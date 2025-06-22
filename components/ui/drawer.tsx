@@ -36,9 +36,10 @@ function DrawerOverlay({
     <DrawerPrimitive.Overlay
       data-slot="drawer-overlay"
       className={cn(
-        // при открытии задаёт полупрозрачный фон + blur-sm (легкое размытие)
+        // быстрые анимации без конфликтов
         "data-[state=open]:animate-in data-[state=closed]:animate-out " +
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 " +
+        "data-[state=open]:duration-200 data-[state=closed]:duration-200 " +
         "bg-background/50 fixed inset-0 z-50 backdrop-blur-sm",
         className
       )}
@@ -59,6 +60,17 @@ function DrawerContent({
         data-slot="drawer-content"
         className={cn(
           "group/drawer-content bg-background fixed z-50 flex flex-col",
+          // быстрые анимации для контента
+          "data-[state=open]:animate-in data-[state=closed]:animate-out " +
+          "data-[state=open]:duration-200 data-[state=closed]:duration-200 " +
+          "data-[vaul-drawer-direction=bottom]:slide-in-from-bottom " +
+          "data-[vaul-drawer-direction=bottom]:slide-out-to-bottom " +
+          "data-[vaul-drawer-direction=top]:slide-in-from-top " +
+          "data-[vaul-drawer-direction=top]:slide-out-to-top " +
+          "data-[vaul-drawer-direction=left]:slide-in-from-left " +
+          "data-[vaul-drawer-direction=left]:slide-out-to-left " +
+          "data-[vaul-drawer-direction=right]:slide-in-from-right " +
+          "data-[vaul-drawer-direction=right]:slide-out-to-right ",
           // позиции для разных сторон (top/bottom/right/left)
           "data-[vaul-drawer-direction=top]:inset-x-0 data-[vaul-drawer-direction=top]:top-0 " +
             "data-[vaul-drawer-direction=top]:max-h-[80vh] data-[vaul-drawer-direction=top]:rounded-b-lg data-[vaul-drawer-direction=top]:border-b",

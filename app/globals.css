@@ -609,11 +609,10 @@ code[class*="language-"] {
   animation: shine 2s ease-in-out infinite;
 }
 
-/* Mobile Settings Animation */
+/* Mobile Settings Animation - плавные без застывания */
 .main-content {
-  transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), 
-              border-radius 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), 
-              filter 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
+              border-radius 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .mobile-settings-active {
@@ -632,7 +631,7 @@ code[class*="language-"] {
   -webkit-backdrop-filter: blur(4px);
   z-index: 39;
   opacity: 0;
-  transition: opacity 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: none;
 }
 
@@ -641,27 +640,45 @@ code[class*="language-"] {
   pointer-events: auto;
 }
 
-/* Унифицированные стили для мобильного drawer настроек */
+/* Плавные анимации для vaul drawer без застывания */
 [data-vaul-drawer] {
   margin: 0 !important;
   margin-bottom: 16px !important;
   margin-left: 16px !important;
   margin-right: 16px !important;
-  /* Принудительно убираем все отступы которые могут добавляться */
   padding: 0 !important;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  animation-duration: 0.25s !important;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 [data-vaul-drawer][data-vaul-drawer-direction="bottom"] {
   bottom: 16px !important;
   left: 16px !important;
   right: 16px !important;
-  /* Принудительно задаем ширину */
   width: calc(100vw - 32px) !important;
   max-width: calc(100vw - 32px) !important;
   min-width: calc(100vw - 32px) !important;
-  /* Убираем любые margin которые могут влиять */
   margin-left: 0 !important;
   margin-right: 0 !important;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  animation-duration: 0.25s !important;
+}
+
+/* Плавные анимации для overlay */
+[data-vaul-overlay] {
+  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  animation-duration: 0.2s !important;
+}
+
+[data-vaul-drawer-wrapper] {
+  transition: none !important;
+}
+
+/* Убираем любые задержки в конце анимации */
+[data-vaul-drawer] * {
+  transition-delay: 0s !important;
+  animation-delay: 0s !important;
 }
 
 /* Унифицированная высота и поведение drawer */
@@ -696,6 +713,15 @@ code[class*="language-"] {
     width: 100% !important;
     max-width: 100% !important;
   }
+  
+  /* Принудительно устанавливаем плавные анимации на всех модальных окнах */
+  [data-radix-popper-content-wrapper],
+  [data-radix-dialog-content],
+  [data-radix-dropdown-menu-content] {
+    animation-duration: 0.2s !important;
+    transition-duration: 0.2s !important;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
 }
 
 /* Smooth fade-in animation */
@@ -710,6 +736,55 @@ code[class*="language-"] {
 
 .animate-fade-in {
   animation: fade-in 0.3s ease-in-out;
+}
+
+/* Ripple эффект для мобильных устройств - плавный и естественный */
+@keyframes ripple {
+  0% {
+    transform: scale(0);
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+/* Улучшенные touch эффекты для мобильных - плавные и отзывчивые */
+@media (hover: none) and (pointer: coarse) {
+  .mobile-touch-item {
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .mobile-touch-item:active {
+    transform: scale(0.98);
+  }
+
+  /* Специальные стили для кнопок с ripple эффектом */
+  .ripple-button {
+    position: relative;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .ripple-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: transparent;
+    pointer-events: none;
+    border-radius: inherit;
+  }
 }
 
 

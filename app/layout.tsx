@@ -7,8 +7,8 @@ import { Suspense } from 'react';
 import AuthListener from '@/frontend/components/AuthListener';
 import ConvexClientProvider from '@/frontend/components/ConvexClientProvider';
 import UserSync from '@/frontend/components/UserSync';
-import PWAInstallPrompt from '@/frontend/components/PWAInstallPrompt';
-import MobileEnhancements from '@/frontend/components/MobileEnhancements';
+import PWAInstallPrompt from '@/frontend/components/mobile/PWAInstallPrompt';
+import MobileEnhancements from '@/frontend/components/mobile/MobileEnhancements';
 import ClientScripts from '@/frontend/components/ClientScripts';
 
 export const dynamic = 'force-dynamic';
