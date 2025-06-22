@@ -82,7 +82,7 @@ const CatchAllChatPageInner = memo(function CatchAllChatPageInner({ params }: { 
 
     lastMessagesRef.current = formatted
     return formatted
-  }, [messagesResult?.length, attachments?.length]);
+  }, [messagesResult, attachments]);
 
   useEffect(() => {
     if (authLoading) return;
