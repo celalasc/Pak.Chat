@@ -98,10 +98,11 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
 
   // ====== D5-D7. Resize handles & interaction ======
   const [isResizing, setIsResizing] = useState(false);
-  const [resizeHandle, setResizeHandle] = useState<string | null>(null); // 'br', 'tr', 'bl', 'tl', etc.
+  const [resizeHandle, setResizeHandle] = useState<string | null>(null); // 'br', 'tr', 'bl', 'tl', 'tm', 'bm', 'ml', 'mr'
   const [initialElementState, setInitialElementState] = useState<DrawingElement | null>(null);
   const [isShiftPressed, setIsShiftPressed] = useState(false);
   const [pinchStart, setPinchStart] = useState<{ distance: number; center: Point } | null>(null);
+  const [resizePreview, setResizePreview] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
   // Image cache to prevent flicker
   const imageCache = useRef<Map<string, HTMLImageElement>>(new Map());
@@ -254,10 +255,14 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
           const y = element.y - height;
           
           const handles = [
-            { id: 'tl', x: x, y: y },
-            { id: 'tr', x: x + width, y: y },
-            { id: 'bl', x: x, y: y + height },
-            { id: 'br', x: x + width, y: y + height },
+            { id: 'tl', x: x, y: y, cursor: 'nw-resize' },
+            { id: 'tr', x: x + width, y: y, cursor: 'ne-resize' },
+            { id: 'bl', x: x, y: y + height, cursor: 'sw-resize' },
+            { id: 'br', x: x + width, y: y + height, cursor: 'se-resize' },
+            { id: 'tm', x: x + width / 2, y: y, cursor: 'n-resize' },
+            { id: 'bm', x: x + width / 2, y: y + height, cursor: 's-resize' },
+            { id: 'ml', x: x, y: y + height / 2, cursor: 'w-resize' },
+            { id: 'mr', x: x + width, y: y + height / 2, cursor: 'e-resize' },
           ];
           return handles;
         }
@@ -267,31 +272,31 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
     if (element.x === undefined || element.y === undefined || element.width === undefined || element.height === undefined) return [];
     
     const handles = [
-      { id: 'tl', x: element.x, y: element.y },
-      { id: 'tr', x: element.x + element.width, y: element.y },
-      { id: 'bl', x: element.x, y: element.y + element.height },
-      { id: 'br', x: element.x + element.width, y: element.y + element.height },
-      { id: 'tm', x: element.x + element.width / 2, y: element.y },
-      { id: 'bm', x: element.x + element.width / 2, y: element.y + element.height },
-      { id: 'ml', x: element.x, y: element.y + element.height / 2 },
-      { id: 'mr', x: element.x + element.width, y: element.y + element.height / 2 },
+      { id: 'tl', x: element.x, y: element.y, cursor: 'nw-resize' },
+      { id: 'tr', x: element.x + element.width, y: element.y, cursor: 'ne-resize' },
+      { id: 'bl', x: element.x, y: element.y + element.height, cursor: 'sw-resize' },
+      { id: 'br', x: element.x + element.width, y: element.y + element.height, cursor: 'se-resize' },
+      { id: 'tm', x: element.x + element.width / 2, y: element.y, cursor: 'n-resize' },
+      { id: 'bm', x: element.x + element.width / 2, y: element.y + element.height, cursor: 's-resize' },
+      { id: 'ml', x: element.x, y: element.y + element.height / 2, cursor: 'w-resize' },
+      { id: 'mr', x: element.x + element.width, y: element.y + element.height / 2, cursor: 'e-resize' },
     ];
     
     return handles;
   }, []);
 
   // Check if point is on resize handle
-  const getHandleAtPoint = useCallback((point: Point, element: DrawingElement): string | null => {
+  const getHandleAtPoint = useCallback((point: Point, element: DrawingElement): { id: string; cursor: string } | null => {
     const handles = getResizeHandles(element);
-    const tolerance = 8; // handle size
+    const tolerance = isMobile ? 12 : 8; // Larger touch targets on mobile
     
     for (const handle of handles) {
       if (Math.abs(point.x - handle.x) <= tolerance && Math.abs(point.y - handle.y) <= tolerance) {
-        return handle.id;
+        return { id: handle.id, cursor: handle.cursor };
       }
     }
     return null;
-  }, [getResizeHandles]);
+  }, [getResizeHandles, isMobile]);
 
   // Функция для расчета адаптивного размера canvas (D2.1)
   const calculateCanvasSize = useCallback(() => {
@@ -466,6 +471,15 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
     if (selectedEl) {
       const handles = getResizeHandles(selectedEl);
       
+      // Draw resize preview if resizing
+      if (resizePreview && isResizing) {
+        ctx.strokeStyle = '#007AFF';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([10, 5]);
+        ctx.strokeRect(resizePreview.x, resizePreview.y, resizePreview.width, resizePreview.height);
+        ctx.setLineDash([]);
+      }
+      
       // Draw selection box for non-brush elements
       if (selectedEl.type !== 'brush') {
         if (selectedEl.type === 'text' && selectedEl.text && selectedEl.x !== undefined && selectedEl.y !== undefined) {
@@ -493,16 +507,39 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
         }
       }
       
-      // Draw resize handles
-      handles.forEach(handle => {
-        ctx.fillStyle = '#007AFF';
-        ctx.fillRect(handle.x - 4, handle.y - 4, 8, 8);
-        ctx.strokeStyle = '#FFFFFF';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(handle.x - 4, handle.y - 4, 8, 8);
+      // Draw resize handles with improved styling
+      handles.forEach((handle, index) => {
+        const handleSize = isMobile ? 12 : 8;
+        const borderSize = 2;
+        
+        // Draw handle background
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(handle.x - handleSize/2, handle.y - handleSize/2, handleSize, handleSize);
+        
+        // Draw handle border
+        ctx.strokeStyle = '#007AFF';
+        ctx.lineWidth = borderSize;
+        ctx.setLineDash([]);
+        ctx.strokeRect(handle.x - handleSize/2, handle.y - handleSize/2, handleSize, handleSize);
+        
+        // Add visual feedback for active handle
+        if (resizeHandle === handle.id && isResizing) {
+          ctx.fillStyle = '#007AFF';
+          ctx.fillRect(handle.x - handleSize/2 + borderSize, handle.y - handleSize/2 + borderSize, 
+                      handleSize - borderSize*2, handleSize - borderSize*2);
+        }
       });
+      
+      // Show resize instructions
+      if (selectedEl.type !== 'brush' && !isResizing) {
+        ctx.fillStyle = 'rgba(0, 122, 255, 0.1)';
+        ctx.fillRect(selectedEl.x || 0, (selectedEl.y || 0) - 25, 150, 20);
+        ctx.fillStyle = '#007AFF';
+        ctx.font = '12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+        ctx.fillText('Drag corners/edges to resize', (selectedEl.x || 0) + 5, (selectedEl.y || 0) - 10);
+      }
     }
-  }, [elements, selectedElement, getResizeHandles]);
+  }, [elements, selectedElement, getResizeHandles, isResizing, resizePreview]);
 
   // Перерисовываем canvas при изменении элементов
   useEffect(() => {
@@ -642,9 +679,15 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
         const handle = getHandleAtPoint(pos, element);
         if (handle) {
           setIsResizing(true);
-          setResizeHandle(handle);
+          setResizeHandle(handle.id);
           setInitialElementState(JSON.parse(JSON.stringify(element)));
           setSelectedElement(element.id);
+          
+          // Set cursor for resize
+          const canvas = canvasRef.current;
+          if (canvas) {
+            canvas.style.cursor = handle.cursor;
+          }
           return;
         }
         
@@ -681,6 +724,38 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
 
   const draw = useCallback((e: MouseEvent | TouchEvent) => {
     e.preventDefault();
+    
+    // Handle two-finger pinch for mobile resizing
+    if (e instanceof TouchEvent && e.touches.length === 2 && pinchStart && selectedElement) {
+      const currentDistance = getTouchDistance(e.touches);
+      const currentCenter = getTouchCenter(e.touches);
+      const scale = currentDistance / pinchStart.distance;
+      
+      setElements(prev => prev.map(el => {
+        if (el.id === selectedElement && initialElementState) {
+          const newWidth = Math.max(10, (initialElementState.width || 0) * scale);
+          const newHeight = Math.max(10, (initialElementState.height || 0) * scale);
+          
+          // Keep center position
+          const newX = currentCenter.x - newWidth / 2;
+          const newY = currentCenter.y - newHeight / 2;
+          
+          const newEl = { ...el };
+          newEl.width = newWidth;
+          newEl.height = newHeight;
+          newEl.x = newX;
+          newEl.y = newY;
+          
+          // Update resize preview
+          setResizePreview({ x: newX, y: newY, width: newWidth, height: newHeight });
+          
+          return newEl;
+        }
+        return el;
+      }));
+      return;
+    }
+    
     if (!isDrawing || !dragStart) return;
 
     const pos = getCoords(e);
@@ -705,7 +780,7 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
       return;
     }
 
-    // Handle resizing
+    // Handle resizing with improved logic
     if (isResizing && resizeHandle && selectedElement && initialElementState) {
       const dx = pos.x - dragStart.x;
       const dy = pos.y - dragStart.y;
@@ -722,7 +797,7 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
             return newEl;
           }
           
-          // Calculate new dimensions based on handle
+          // Calculate new dimensions based on handle - IMPROVED LOGIC
           let newWidth = initial.width || 0;
           let newHeight = initial.height || 0;
           let newX = initial.x || 0;
@@ -730,45 +805,66 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
           
           switch (resizeHandle) {
             case 'br': // bottom-right
-              newWidth = (initial.width || 0) + dx;
-              newHeight = (initial.height || 0) + dy;
+              newWidth = Math.max(10, (initial.width || 0) + dx);
+              newHeight = Math.max(10, (initial.height || 0) + dy);
               break;
             case 'tr': // top-right
-              newWidth = (initial.width || 0) + dx;
-              newHeight = (initial.height || 0) - dy;
+              newWidth = Math.max(10, (initial.width || 0) + dx);
+              newHeight = Math.max(10, (initial.height || 0) - dy);
               newY = (initial.y || 0) + dy;
               break;
             case 'bl': // bottom-left
-              newWidth = (initial.width || 0) - dx;
-              newHeight = (initial.height || 0) + dy;
+              newWidth = Math.max(10, (initial.width || 0) - dx);
+              newHeight = Math.max(10, (initial.height || 0) + dy);
               newX = (initial.x || 0) + dx;
               break;
             case 'tl': // top-left
-              newWidth = (initial.width || 0) - dx;
-              newHeight = (initial.height || 0) - dy;
+              newWidth = Math.max(10, (initial.width || 0) - dx);
+              newHeight = Math.max(10, (initial.height || 0) - dy);
               newX = (initial.x || 0) + dx;
               newY = (initial.y || 0) + dy;
+              break;
+            // ADDED: Middle handles
+            case 'tm': // top-middle
+              newHeight = Math.max(10, (initial.height || 0) - dy);
+              newY = (initial.y || 0) + dy;
+              break;
+            case 'bm': // bottom-middle
+              newHeight = Math.max(10, (initial.height || 0) + dy);
+              break;
+            case 'ml': // middle-left
+              newWidth = Math.max(10, (initial.width || 0) - dx);
+              newX = (initial.x || 0) + dx;
+              break;
+            case 'mr': // middle-right
+              newWidth = Math.max(10, (initial.width || 0) + dx);
               break;
           }
           
           // Maintain aspect ratio for circles or when Shift is pressed
           if (isShiftPressed || el.type === 'circle') {
             const ratio = (initial.width || 1) / (initial.height || 1);
-            if (Math.abs(dx) > Math.abs(dy)) {
+            if (['tm', 'bm'].includes(resizeHandle)) {
+              newWidth = newHeight * ratio;
+            } else if (['ml', 'mr'].includes(resizeHandle)) {
               newHeight = newWidth / ratio;
             } else {
-              newWidth = newHeight * ratio;
+              // For corner handles
+              if (Math.abs(dx) > Math.abs(dy)) {
+                newHeight = newWidth / ratio;
+              } else {
+                newWidth = newHeight * ratio;
+              }
             }
           }
-          
-          // Prevent negative dimensions
-          newWidth = Math.max(10, newWidth);
-          newHeight = Math.max(10, newHeight);
           
           newEl.width = newWidth;
           newEl.height = newHeight;
           newEl.x = newX;
           newEl.y = newY;
+          
+          // Update resize preview
+          setResizePreview({ x: newX, y: newY, width: newWidth, height: newHeight });
           
           return newEl;
         }
@@ -792,7 +888,7 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
 
       return newElements;
     });
-  }, [isDrawing, dragStart, tool, selectedElement, getCoords, isResizing, resizeHandle, initialElementState, isShiftPressed, pinchStart, getTouchDistance]);
+  }, [isDrawing, dragStart, tool, selectedElement, getCoords, isResizing, resizeHandle, initialElementState, isShiftPressed, pinchStart, getTouchDistance, getTouchCenter]);
 
   const stopDrawing = useCallback(() => {
     if (isDrawing) {
@@ -804,7 +900,14 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
     setResizeHandle(null);
     setInitialElementState(null);
     setPinchStart(null);
-  }, [isDrawing, elements, addToHistory]);
+    setResizePreview(null);
+    
+    // Reset cursor
+    const canvas = canvasRef.current;
+    if (canvas) {
+      canvas.style.cursor = tool === 'move' ? 'default' : 'crosshair';
+    }
+  }, [isDrawing, elements, addToHistory, tool]);
 
   const handleTextSubmit = useCallback(() => {
     if (textInput.trim() && textPosition) {
@@ -946,6 +1049,39 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
     generateImage(lastUsedPrompt);
   }, [generateImage, lastUsedPrompt]);
 
+  // Handle mouse move for cursor changes
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (tool !== 'move') return;
+    
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const pos = getCoords(e);
+    const element = findElementAtPoint(pos);
+    
+    if (element) {
+      const handle = getHandleAtPoint(pos, element);
+      if (handle) {
+        canvas.style.cursor = handle.cursor;
+      } else {
+        canvas.style.cursor = 'move';
+      }
+    } else {
+      canvas.style.cursor = 'default';
+    }
+  }, [tool, getCoords, findElementAtPoint, getHandleAtPoint]);
+
+  // Add mouse move listener for cursor changes
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !isOpen) return;
+    
+    canvas.addEventListener('mousemove', handleMouseMove);
+    return () => {
+      canvas.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, [handleMouseMove, isOpen]);
+
   if (!isOpen) return null;
 
   const drawingCanvasContent = (
@@ -1044,7 +1180,7 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
                 { tool: 'circle', icon: Circle, label: 'Circle' },
                 { tool: 'text', icon: Type, label: 'Text' },
                 { tool: 'eraser', icon: Eraser, label: 'Eraser' },
-                { tool: 'move', icon: Move, label: 'Move' },
+                { tool: 'move', icon: Move, label: 'Move & Resize' },
               ].map(({ tool: toolName, icon: Icon, label }) => (
                 <Button
                   key={toolName}
@@ -1215,6 +1351,7 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
                 size="sm"
                 onClick={() => setTool('move')}
                 className="w-auto px-3"
+                title="Move & Resize elements"
               >
                 <Move className="w-4 h-4 mr-1" />
                 Move
@@ -1330,6 +1467,19 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
 
         {/* Canvas Area */}
         <div className="flex-1 flex items-center justify-center p-4 overflow-auto">
+          {/* Instructions for resize functionality */}
+          {tool === 'move' && (
+            <div className="absolute top-20 left-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-sm text-blue-700 dark:text-blue-300 z-10 max-w-xs">
+              <div className="font-medium mb-1">Resize Instructions:</div>
+              <ul className="text-xs space-y-1">
+                <li>• Click to select elements</li>
+                <li>• Drag corners/edges to resize</li>
+                <li>• Hold Shift for aspect ratio</li>
+                {isMobile && <li>• Pinch with 2 fingers to scale</li>}
+              </ul>
+            </div>
+          )}
+          
           <div className="relative">
             <canvas
               ref={canvasRef}
@@ -1339,7 +1489,8 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
               style={{
                 width: `${canvasSize.width}px`,
                 height: `${canvasSize.height}px`,
-                touchAction: 'none' // Предотвращаем скролл на мобильных при рисовании
+                touchAction: 'none', // Предотвращаем скролл на мобильных при рисовании
+                cursor: tool === 'move' ? 'default' : 'crosshair'
               }}
               onMouseDown={(e) => startDrawing(e.nativeEvent)}
               onMouseMove={(e) => draw(e.nativeEvent)}
