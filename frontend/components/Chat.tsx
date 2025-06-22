@@ -3,7 +3,7 @@
 import { ChatHistoryButton } from './chat-history';
 import NewChatButton from './NewChatButton';
 import SettingsDrawer from './SettingsDrawer';
-import MobileChatMenu from './MobileChatMenu';
+import MobileChatMenu from './mobile/MobileChatMenu';
 import ChatView from './ChatView';
 import { useRouter } from 'next/navigation';
 import { Button } from './ui/button';

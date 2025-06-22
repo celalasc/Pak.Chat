@@ -7,6 +7,7 @@ import React, {
   memo,
   useDeferredValue,
   useRef,
+  useEffect,
 } from "react";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
@@ -115,6 +116,11 @@ function ChatHistoryList({
 }: ChatHistoryListProps) {
   const [rawQuery, setRawQuery] = useState("");
   const searchQuery = useDeferredValue(rawQuery);
+  
+  // Сброс поиска при монтировании компонента
+  useEffect(() => {
+    setRawQuery("");
+  }, []);
   const [editingThreadId, setEditingThreadId] = useState<Id<"threads"> | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
   const [deletingThreadId, setDeletingThreadId] = useState<Id<"threads"> | null>(null);
@@ -507,7 +513,13 @@ function ChatHistoryList({
       {/* Thread list */}
       <div className="flex-1 overflow-y-auto scrollbar-none enhanced-scroll px-3 sm:px-4">
         {threads === undefined ? (
-          <EmptyState type="loading" />
+          trimmedQuery ? (
+            <EmptyState type="loading" />
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <div className="animate-pulse text-muted-foreground text-sm">Loading chats...</div>
+            </div>
+          )
         ) : threadGroups.length === 0 ? (
           <EmptyState 
             type={trimmedQuery ? "no-search-results" : "no-history"} 

@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect, memo, useCallback } from 'react';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
 import { MoreHorizontal, Share2, Edit2, Trash2, Pin, PinOff, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { copyText } from '@/lib/copyText';

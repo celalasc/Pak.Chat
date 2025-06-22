@@ -533,7 +533,13 @@ const ChatHistoryDesktopComponent: React.FC<ChatHistoryDesktopProps> = ({
                   <CommandList className="max-h-none h-full bg-background">
                     <CommandEmpty className="py-0">
                       {threads === undefined ? (
-                        <EmptyState type="loading" />
+                        searchQuery.trim() ? (
+                          <EmptyState type="loading" />
+                        ) : (
+                          <div className="flex items-center justify-center h-full py-16">
+                            <div className="animate-pulse text-muted-foreground text-sm">Loading chats...</div>
+                          </div>
+                        )
                       ) : memoizedThreadGroups.length === 0 ? (
                         <EmptyState 
                           type={searchQuery.trim() ? "no-search-results" : "no-history"} 

@@ -277,6 +277,9 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
           shouldScaleBackground={false}
           dismissible={true}
           modal={true}
+          snapPoints={[1]}
+          fadeFromIndex={0}
+          closeThreshold={0.5}
           onDrag={(event, percentageDragged) => {
             // Унифицированная анимация для всех мобильных устройств
             if (isMobile && percentageDragged > 0) {
