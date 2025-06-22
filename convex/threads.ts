@@ -167,6 +167,7 @@ export const clone = mutation({
           content: m.content,
           createdAt: m.createdAt,
           model: (m as any).model,
+          metadata: (m as any).metadata, // Копируем metadata с imageGeneration данными
         });
         idMap.set(m._id, newId as Id<"messages">);
       })
@@ -185,6 +186,13 @@ export const clone = mutation({
           name: a.name,
           type: a.type,
           messageId: a.messageId ? idMap.get(a.messageId) : undefined,
+          width: a.width,
+          height: a.height,
+          previewId: a.previewId,
+          size: a.size,
+          cachedUrl: a.cachedUrl,
+          cachedPreviewUrl: a.cachedPreviewUrl,
+          urlExpiresAt: a.urlExpiresAt,
         })
       )
     );

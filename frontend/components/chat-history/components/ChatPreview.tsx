@@ -17,6 +17,7 @@ import { copyText } from '@/lib/copyText';
 import { useMutation, useQuery as useConvexQuery } from "convex/react";
 import { isConvexId } from "@/lib/ids";
 import { useRouter } from "next/navigation";
+import AIImageGeneration from "../../AIImageGeneration";
 
 /* ------------------------------------------------------------------ */
 /* Константы — подстрой под свой реальный сайдбар                     */
@@ -94,7 +95,7 @@ PreviewMessageControls.displayName = "PreviewMessageControls";
 /* ------------------------------------------------------------------ */
 /* Одно сообщение                                                      */
 /* ------------------------------------------------------------------ */
-const PreviewMessage = memo(
+  const PreviewMessage = memo(
   ({
     message,
     threadId,
@@ -113,6 +114,15 @@ const PreviewMessage = memo(
       ext?: string;
       size?: number;
     }[] | undefined;
+    const imageGeneration = (message as any).metadata?.imageGeneration;
+    
+    // Хуки для новой ветки изображений
+    const cloneThread = useMutation(api.threads.clone);
+    const thread = useConvexQuery(
+      api.threads.get,
+      isConvexId(threadId) ? { threadId: threadId as Id<"threads"> } : "skip"
+    );
+    const router = useRouter();
 
     // Извлекаем reasoning из сообщения
     const reasoningData = useMemo(() => {
@@ -144,10 +154,11 @@ const PreviewMessage = memo(
       <div className={cn("flex flex-col", isUser ? "items-end mb-2" : "items-start mb-4")}>
         {isUser ? (
           <div className="relative group px-4 py-3 rounded-xl bg-secondary max-w-[85%] break-words mb-2">
-            {attachments && attachments.length > 0 && (
+            {/* Показываем attachments только если НЕТ imageGeneration */}
+            {attachments && attachments.length > 0 && !imageGeneration && (
               <div className="flex gap-2 flex-wrap mb-3">
                 {attachments.map((a, index) =>
-                  a.type.startsWith('image') ? (
+                  a.type.startsWith('image') && a.url ? (
                     <Image
                       key={`${a.id}-${index}`}
                       src={a.url}
@@ -156,7 +167,7 @@ const PreviewMessage = memo(
                       width={64}
                       height={64}
                     />
-                  ) : (
+                  ) : a.url ? (
                     <a
                       key={`${a.id}-${index}`}
                       href={a.url}
@@ -166,7 +177,7 @@ const PreviewMessage = memo(
                       <span className="line-clamp-1">{a.name}</span>
                       <span className="text-muted-foreground">{a.ext}</span>
                     </a>
-                  )
+                  ) : null
                 )}
               </div>
             )}
@@ -190,16 +201,44 @@ const PreviewMessage = memo(
               />
             )}
 
-            <SelectableText messageId={message._id}>
-              <div className="prose prose-xs dark:prose-invert max-w-none prose-code:before:content-none prose-code:after:content-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 break-words">
-                <MarkdownRenderer content={message.content} />
+            {/* Handle AI image generation */}
+            {imageGeneration ? (
+              <div className="w-full overflow-hidden">
+                <AIImageGeneration
+                  prompt={imageGeneration.prompt}
+                  images={imageGeneration.images}
+                  params={{
+                    ...imageGeneration.params,
+                    format: imageGeneration.params.format || 'png'
+                  }}
+                  isGenerating={imageGeneration.isGenerating}
+                  isStopped={imageGeneration.isStopped}
+                  disableImageClick={true} // Отключаем клик на фото в превью
+                  onNewBranch={async () => {
+                    if (!isConvexId(threadId)) return;
+                    const title = thread?.title ?? imageGeneration.prompt.slice(0, 30);
+                    const newId = await cloneThread({
+                      threadId: threadId as Id<"threads">,
+                      title,
+                    });
+                    router.push(`/chat/${newId}`);
+                    onClose?.();
+                  }}
+                />
               </div>
-            </SelectableText>
+            ) : (
+              <SelectableText messageId={message._id}>
+                <div className="prose prose-xs dark:prose-invert max-w-none prose-code:before:content-none prose-code:after:content-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 break-words">
+                  <MarkdownRenderer content={message.content} />
+                </div>
+              </SelectableText>
+            )}
 
-            {attachments && attachments.length > 0 && (
+            {/* Показываем attachments только если НЕТ imageGeneration */}
+            {attachments && attachments.length > 0 && !imageGeneration && (
               <div className="flex gap-2 flex-wrap mt-2">
                 {attachments.map((a, index) =>
-                  a.type.startsWith('image') ? (
+                  a.type.startsWith('image') && a.url ? (
                     <Image
                       key={`${a.id}-${index}`}
                       src={a.url}
@@ -208,7 +247,7 @@ const PreviewMessage = memo(
                       width={48}
                       height={48}
                     />
-                  ) : (
+                  ) : a.url ? (
                     <a
                       key={`${a.id}-${index}`}
                       href={a.url}
@@ -218,17 +257,20 @@ const PreviewMessage = memo(
                       <span className="line-clamp-1">{a.name}</span>
                       <span className="text-muted-foreground">{a.ext}</span>
                     </a>
-                  )
+                  ) : null
                 )}
               </div>
             )}
 
-            <PreviewMessageControls
-              threadId={threadId}
-              content={message.content}
-              message={message}
-              onClose={onClose}
-            />
+            {/* Показываем PreviewMessageControls только если НЕТ imageGeneration */}
+            {!imageGeneration && (
+              <PreviewMessageControls
+                threadId={threadId}
+                content={message.content}
+                message={message}
+                onClose={onClose}
+              />
+            )}
           </div>
         )}
       </div>

@@ -61,8 +61,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Используем настройки пользователя или переданные параметры
-    const imageSize = size || userSettings?.imageGenerationSize || '1024x1024';
-    const imageQuality = quality || userSettings?.imageGenerationQuality || 'medium';
+    const imageSize = (size === 'auto' || !size) ? (userSettings?.imageGenerationSize || '1024x1024') : size;
+    const imageQuality = (quality === 'auto' || !quality) ? (userSettings?.imageGenerationQuality || 'medium') : quality;
     const imageFormat = format || userSettings?.imageGenerationFormat || 'jpeg';
     const imageCompression = compression || userSettings?.imageGenerationCompression || 80;
     let imageModel = userSettings?.imageGenerationModel || 'gpt-image-1';

@@ -76,7 +76,8 @@ export default defineSchema({
     content: v.string(),
     createdAt: v.number(),
     model: v.optional(v.string()),
-    // Message metadata
+    // Message metadata (for storing imageGeneration data, etc.)
+    metadata: v.optional(v.any()),
   }).index("by_thread_and_time", ["threadId", "createdAt"]),
 
   // Attachments for messages

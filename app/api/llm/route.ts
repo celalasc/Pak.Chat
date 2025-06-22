@@ -346,7 +346,7 @@ export async function POST(req: NextRequest) {
           type: 'image_generation',
           prompt: prompt,
           images: imageData.images,
-          params: imageGeneration.params,
+          params: imageData.settings, // Use actual settings from API response instead of input params
         };
 
         return new NextResponse(JSON.stringify(imageResponse), {

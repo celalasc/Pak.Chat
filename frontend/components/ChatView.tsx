@@ -207,12 +207,20 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCrea
           if (isConvexId(latestThreadId)) {
             const { selectedModel: currentModel } = useModelStore.getState();
             
-            // Save minimal content for image generation messages
+            // Save minimal content for image generation messages with metadata
             realId = await sendMessage({
               threadId: latestThreadId as Id<'threads'>,
               role: 'assistant',
               content: '🖼️', // Минимальный контент для сообщений с изображениями
               model: currentModel,
+              metadata: {
+                imageGeneration: {
+                  prompt: data.prompt,
+                  images: data.images,
+                  params: data.params,
+                  isGenerating: false,
+                }
+              },
             });
 
             // Save images as attachments to reduce message size
@@ -351,27 +359,52 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCrea
       return messages;
     }
 
-    // Если есть Convex сообщения, используем их как основу
-    const convexAsUIMessages = convexMessages.map(cm => ({
-      id: cm._id as string,
-      role: cm.role as 'user' | 'assistant',
-      content: cm.content,
-      createdAt: new Date(cm.createdAt),
-      parts: [{ type: 'text' as const, text: cm.content }],
-      attachments: cm.attachments || [],
-    }));
+    // Создаем карту UI-сообщений для быстрого доступа
+    const uiMessagesMap = new Map(messages.map(m => [m.id, m]));
 
-    // Добавляем только новые/временные сообщения от useChat (которые еще не сохранены в Convex)
+    // Обогащаем сообщения из Convex данными из локального UI-состояния
+    const enrichedConvexMessages = convexMessages.map(convexMsg => {
+      const uiMsg = uiMessagesMap.get(convexMsg._id);
+      
+      // Если есть соответствующее UI-сообщение, объединяем их
+      if (uiMsg) {
+        return {
+          ...convexMsg, // Берем за основу данные из БД (_id, _creationTime)
+          ...uiMsg,     // Перезаписываем поля из локального состояния (content, imageGeneration и т.д.)
+          id: convexMsg._id, // Убеждаемся что ID из БД
+          createdAt: new Date(convexMsg.createdAt),
+          // Приоритет: локальные данные -> metadata из БД
+          imageGeneration: (uiMsg as any).imageGeneration || (convexMsg as any).metadata?.imageGeneration,
+          attachments: (uiMsg as any).attachments || convexMsg.attachments || [],
+        };
+      }
+      
+      // Если UI-сообщения нет, просто форматируем сообщение из БД
+      return {
+        id: convexMsg._id as string,
+        role: convexMsg.role as 'user' | 'assistant',
+        content: convexMsg.content,
+        createdAt: new Date(convexMsg.createdAt),
+        parts: [{ type: 'text' as const, text: convexMsg.content }],
+        attachments: (convexMsg as any).attachments || [],
+        // Извлекаем imageGeneration из metadata
+        imageGeneration: (convexMsg as any).metadata?.imageGeneration,
+      };
+    });
+
+    // Добавляем временные сообщения, которых еще нет в Convex
     const convexIds = new Set(convexMessages.map(cm => cm._id as string));
-    const temporaryMessages = messages.filter(m => !convexIds.has(m.id) && !isConvexId(m.id));
-
+    const temporaryMessages = messages.filter(m => !convexIds.has(m.id));
+    
+    // Объединяем и сортируем
+    const allMessages = [...enrichedConvexMessages, ...temporaryMessages];
+    
     const getTime = (value: any) => {
       if (!value) return 0;
       return value instanceof Date ? value.getTime() : new Date(value).getTime();
     };
 
-    const allMessages = [...convexAsUIMessages, ...temporaryMessages]
-      .sort((a, b) => getTime(a.createdAt) - getTime(b.createdAt));
+    allMessages.sort((a, b) => getTime(a.createdAt) - getTime(b.createdAt));
 
     return allMessages;
   }, [messages, convexMessages]);
@@ -469,6 +502,31 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCrea
     setHasScrolledToEnd(false);
   }, [threadId]);
 
+  // Wrap the stop function to also stop image generation properly
+  const stopWithCleanup = useCallback(() => {
+    // Abort the current fetch/stream
+    stop();
+
+    // Stop image generation animations and mark as stopped
+    setMessages((prev) => prev.map((m) => {
+      const imgGen = (m as any).imageGeneration;
+      if (imgGen && imgGen.isGenerating) {
+        return {
+          ...m,
+          imageGeneration: {
+            ...imgGen,
+            isGenerating: false,
+            isStopped: true, // Добавляем флаг остановки
+          }
+        };
+      }
+      return m;
+    }));
+    // Exit image generation mode if it was enabled
+    const { setImageGenerationMode } = useChatStore.getState();
+    setImageGenerationMode(false);
+  }, [stop, setMessages]);
+
   return (
     <>
       {mergedMessages.length > 0 && showNavBars && (
@@ -494,7 +552,7 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCrea
                 reload={reload}
                 append={append}
                 error={error}
-                stop={stop}
+                stop={stopWithCleanup}
                 forceRegeneration={forceRegeneration}
                 isRegenerating={isRegenerating}
               />
@@ -525,7 +583,7 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCrea
             setInput={setInput}
             setMessages={setMessages}
             append={append}
-            stop={stop}
+            stop={stopWithCleanup}
             error={error}
             messageCount={mergedMessages.length}
             onThreadCreated={handleThreadCreated}
