@@ -87,7 +87,7 @@ export default function AddActionsDropdown({ className, messageCount = 0 }: AddA
     <Button
       variant="ghost"
       size="icon"
-      className={`flex items-center justify-center w-8 h-8 rounded-lg border border-border/30 hover:border-border/60 bg-accent hover:bg-accent/80 flex-shrink-0 transition-colors ${className || ''}`}
+      className={`flex items-center justify-center w-8 h-8 rounded-lg border border-border/30 hover:border-border/60 bg-transparent hover:bg-accent/50 flex-shrink-0 transition-colors ${className || ''}`}
       aria-label="Add content"
     >
       <Plus className="w-4 h-4" />

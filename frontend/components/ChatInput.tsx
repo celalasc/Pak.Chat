@@ -1573,11 +1573,12 @@ function PureChatInput({
         <div 
           ref={containerRef} 
           className={cn(
-            'backdrop-blur-md bg-secondary p-2 pb-0 max-w-3xl w-full transition-all duration-200 relative',
+            'backdrop-blur-md bg-white dark:bg-secondary p-2 pb-0 max-w-3xl w-full transition-all duration-200 relative',
             messageCount === 0 
               ? 'rounded-[20px] sm:rounded-[28px]' 
               : 'rounded-t-[20px] sm:rounded-t-[28px] border-t border-border/50',
-            messageCount === 0 && !isDragOver && 'border border-border/50'
+            messageCount === 0 && !isDragOver && 'border border-border/50',
+            'border border-gray-200 dark:border-border/50'
           )}
           onDragEnter={handleDragEnter}
           onDragLeave={handleDragLeave}
@@ -1599,27 +1600,27 @@ function PureChatInput({
             </div>
           )}
 
-          <div className="relative rounded-[16px] sm:rounded-[24px] overflow-hidden">
+          <div className="relative rounded-[16px] sm:rounded-[24px] overflow-hidden bg-white dark:bg-transparent">
 
             {/* (Provider links removed to avoid unnecessary flicker) */}
 
             <div className="flex flex-col">
               {/* Attachments at the top */}
               {attachments.length > 0 && (
-                <div className="bg-secondary px-4 pt-3">
+                <div className="bg-white dark:bg-secondary px-4 pt-3">
                   <AttachmentsBar mode="full" />
                 </div>
               )}
               
               {/* Quote display */}
               {currentQuote && (
-                <div className="bg-secondary px-4 pt-3">
+                <div className="bg-white dark:bg-secondary px-4 pt-3">
                   <QuoteDisplay quote={currentQuote} onRemove={clearQuote} />
                 </div>
               )}
               
               {/* Text input */}
-              <div className="bg-secondary overflow-y-auto max-h-[300px]">
+              <div className="bg-white dark:bg-secondary overflow-y-auto max-h-[300px]">
                 <Textarea
                   id="chat-input"
                   value={input}
@@ -1629,7 +1630,7 @@ function PureChatInput({
                       : "What can I do for you?"
                   }
                   className={cn(
-                    'w-full px-4 py-3 border-none shadow-none dark:bg-transparent',
+                    'w-full px-4 py-3 border-none shadow-none bg-white dark:bg-transparent',
                     'placeholder:text-muted-foreground resize-none',
                     'focus-visible:ring-0 focus-visible:ring-offset-0',
                     'scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted-foreground/30',
@@ -1654,7 +1655,7 @@ function PureChatInput({
             </div>
             
             {/* Bottom controls */}
-            <div className="h-14 flex items-center px-2">
+            <div className="h-14 flex items-center px-2 bg-white dark:bg-transparent">
               <div className="flex items-center justify-between w-full gap-2 overflow-x-auto">
                 {/* Left side: Add file button and model selection */}
                 <div className="flex items-center gap-2">
