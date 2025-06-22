@@ -1,10 +1,22 @@
-const cache: Record<string, Worker> = {};
+let worker: Worker | null = null;
 
-export async function getShikiWorker(lang: string): Promise<Worker> {
-  if (cache[lang]) return cache[lang];
-  const worker = new Worker(new URL('./shikiWorker.ts', import.meta.url), {
+export function getShikiWorker(): Worker {
+  if (worker) {
+    return worker;
+  }
+  
+  // Создаем воркер один раз
+  worker = new Worker(new URL('./shikiWorker.ts', import.meta.url), {
     type: 'module',
   });
-  cache[lang] = worker;
+  
   return worker;
+}
+
+// Функция для очистки воркера при необходимости
+export function cleanupShikiWorker() {
+  if (worker) {
+    worker.terminate();
+    worker = null;
+  }
 }
