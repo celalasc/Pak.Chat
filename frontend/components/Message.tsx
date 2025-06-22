@@ -15,12 +15,18 @@ import { Input } from '@/frontend/components/ui/input';
 import { Button } from '@/frontend/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useAPIKeyStore, type APIKeys } from '@/frontend/stores/APIKeyStore';
+import { useChatStore } from '@/frontend/stores/ChatStore';
+import { useModelStore } from '@/frontend/stores/ModelStore';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { SearchIcon } from 'lucide-react';
 import Image from 'next/image';
 import AIImageGeneration from './AIImageGeneration';
+import { useMutation, useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { isConvexId } from '@/lib/ids';
+import type { Id } from '@/convex/_generated/dataModel';
 
 function PureMessage({
   threadId,
@@ -59,6 +65,14 @@ function PureMessage({
   const { keys, setKeys } = useAPIKeyStore();
   const [localKeys, setLocalKeys] = useState<APIKeys>(keys);
   const { isMobile } = useIsMobile();
+  const { setImageGenerationMode } = useChatStore();
+  const { selectedModel, webSearchEnabled } = useModelStore();
+  const cloneThread = useMutation(api.threads.clone);
+  const prepareForRegenerate = useMutation(api.messages.prepareForRegeneration);
+  const thread = useQuery(
+    api.threads.get,
+    isConvexId(threadId) ? { threadId: threadId as Id<'threads'> } : 'skip'
+  );
   
   useEffect(() => { setLocalKeys(keys); }, [keys]);
   
@@ -144,18 +158,101 @@ function PureMessage({
         if (type === 'text') {
           // Handle AI image generation
           if (message.role === 'assistant' && imageGeneration) {
+            // Ensure format is present in params, fallback to 'png' if missing
+            const paramsWithFormat = {
+              ...imageGeneration.params,
+              format: imageGeneration.params.format || 'png'
+            };
+
             return (
               <div key={key} className="w-full px-2 sm:px-0">
                 <AIImageGeneration
                   prompt={imageGeneration.prompt}
                   images={imageGeneration.images}
-                  params={imageGeneration.params}
+                  params={paramsWithFormat}
                   isGenerating={imageGeneration.isGenerating}
-                  onRegenerate={() => {
-                    // TODO: Implement regeneration
+                  isStopped={imageGeneration.isStopped}
+                  onRegenerate={async () => {
+                    // Останавливаем текущий стрим
+                    stop();
+
+                    if (!isConvexId(threadId)) return;
+
+                    // Находим текущее сообщение в массиве
+                    const currentIndex = messages.findIndex((m) => m.id === message.id);
+                    if (currentIndex === -1) {
+                      console.error('Could not find the current message in the messages array.');
+                      return;
+                    }
+
+                    // Находим предыдущее пользовательское сообщение
+                    let parentMessageIndex = -1;
+                    for (let i = currentIndex; i >= 0; i--) {
+                      if (messages[i].role === 'user') {
+                        parentMessageIndex = i;
+                        break;
+                      }
+                    }
+
+                    if (parentMessageIndex === -1) {
+                      console.error('Could not find a parent user message for regeneration.');
+                      return;
+                    }
+
+                    const parentMessageToResend = messages[parentMessageIndex];
+
+                    // Очищаем БД от сообщений после пользовательского
+                    if (isConvexId(parentMessageToResend.id)) {
+                      try {
+                        await prepareForRegenerate({
+                          threadId: threadId as Id<'threads'>,
+                          userMessageId: parentMessageToResend.id as Id<'messages'>,
+                        });
+                      } catch (error) {
+                        console.error('Error during regeneration cleanup:', error);
+                      }
+                    }
+
+                    // Включаем режим генерации изображений ПЕРЕД обрезкой сообщений
+                    setImageGenerationMode(true);
+
+                    // Обрезаем локальные сообщения до пользовательского
+                    const messagesUpToParent = messages.slice(0, parentMessageIndex + 1);
+                    setMessages(messagesUpToParent);
+                    forceRegeneration();
+
+                    // Небольшая задержка для обновления UI
+                    await new Promise(resolve => setTimeout(resolve, 50));
+
+                    // Запускаем регенерацию с актуальными настройками
+                    const {
+                      selectedModel: currentModel,
+                      webSearchEnabled: currentSearch,
+                    } = useModelStore.getState();
+
+                    reload({
+                      body: {
+                        model: currentModel,
+                        apiKeys: keys,
+                        threadId,
+                        search: currentSearch,
+                        imageGeneration: {
+                          enabled: true,
+                          params: imageGeneration.params
+                        }
+                      },
+                    });
                   }}
-                  onNewBranch={() => {
-                    // TODO: Implement new branch
+                  onNewBranch={async () => {
+                    // Клонируем тред как в MessageControls
+                    if (!isConvexId(threadId)) return;
+                    
+                    const title = thread?.title ?? imageGeneration.prompt.slice(0, 30);
+                    const newId = await cloneThread({
+                      threadId: threadId as Id<'threads'>,
+                      title,
+                    });
+                    router.push(`/chat/${newId}`);
                   }}
                 />
               </div>
@@ -219,12 +316,12 @@ function PureMessage({
               {attachments && attachments.length > 0 && (
                 <div className="flex gap-2 flex-wrap mb-3">
                   {attachments.map((a, index) =>
-                    a.type.startsWith('image') ? (
+                    a.type.startsWith('image') && a.url ? (
                       <Image
                         key={`${a.id}-${index}`}
                         src={a.url}
                         className="h-32 w-32 rounded cursor-pointer hover:scale-105 transition object-cover"
-                        onClick={() => setLightbox({
+                        onClick={() => a.url && setLightbox({
                           url: a.url,
                           name: a.name,
                           type: a.type,
@@ -236,7 +333,7 @@ function PureMessage({
                         loading="eager"
                         decoding="async"
                       />
-                    ) : (
+                    ) : a.url ? (
                       <a
                         key={`${a.id}-${index}`}
                         href={a.url}
@@ -246,7 +343,7 @@ function PureMessage({
                         <span className="line-clamp-1">{a.name}</span>
                         <span className="text-muted-foreground">{a.ext}</span>
                       </a>
-                    )
+                    ) : null
                   )}
                 </div>
               )}
@@ -298,12 +395,12 @@ function PureMessage({
               {attachments && attachments.length > 0 && (
                 <div className="flex gap-2 flex-wrap mt-2">
                   {attachments.map((a, index) =>
-                    a.type.startsWith('image') ? (
+                    a.type.startsWith('image') && a.url ? (
                       <Image
                         key={`${a.id}-${index}`}
                         src={a.url}
                         className="h-24 w-24 rounded cursor-pointer hover:scale-105 transition"
-                        onClick={() => setLightbox({
+                        onClick={() => a.url && setLightbox({
                           url: a.url,
                           name: a.name,
                           type: a.type,
@@ -315,7 +412,7 @@ function PureMessage({
                         width={96}
                         height={96}
                       />
-                    ) : (
+                    ) : a.url ? (
                       <a
                         key={`${a.id}-${index}`}
                         href={a.url}
@@ -325,7 +422,7 @@ function PureMessage({
                         <span className="line-clamp-1">{a.name}</span>
                         <span className="text-muted-foreground">{a.ext}</span>
                       </a>
-                    )
+                    ) : null
                   )}
                 </div>
               )}
@@ -358,14 +455,14 @@ function PureMessage({
 
       })}
     </div>
-    {lightbox && (
+    {lightbox && lightbox.url && (
       <ImageModal
         isOpen={Boolean(lightbox)}
         onClose={() => setLightbox(null)}
-        imageUrl={lightbox!.url}
-        fileName={lightbox!.name}
-        fileType={lightbox!.type}
-        fileSize={lightbox!.size}
+        imageUrl={lightbox.url}
+        fileName={lightbox.name}
+        fileType={lightbox.type}
+        fileSize={lightbox.size}
       />
     )}
     </>

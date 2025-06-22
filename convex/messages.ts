@@ -68,6 +68,7 @@ export const get = query({
           ...m, 
           content: await tryDecrypt(m.content),
           attachments: attachmentsWithUrls,
+          metadata: (m as any).metadata, // Включаем metadata в ответ
         };
       })
     );
@@ -103,7 +104,11 @@ export const getOne = query({
       throw new Error("Permission denied: User does not own this thread.");
     }
 
-    return { ...msg, content: await tryDecrypt(msg.content) };
+    return { 
+      ...msg, 
+      content: await tryDecrypt(msg.content),
+      metadata: (msg as any).metadata, // Включаем metadata в ответ
+    };
   },
 });
 
@@ -158,6 +163,7 @@ export const preview = query({
           ...m,
           content: await tryDecrypt(m.content),
           attachments: attachmentsWithUrls,
+          metadata: (m as any).metadata, // Включаем metadata в ответ
         };
       })
     );
@@ -172,6 +178,7 @@ export const send = mutation({
     role: v.union(v.literal("user"), v.literal("assistant")),
     content: v.string(),
     model: v.optional(v.string()),
+    metadata: v.optional(v.any()),
   },
   async handler(ctx, args) {
     const uid = await currentUserId(ctx);
@@ -187,6 +194,7 @@ export const send = mutation({
       content: await encrypt(args.content),
       createdAt: Date.now(),
       model: args.model,
+      metadata: args.metadata,
     });
     // Clear saved draft after successful send
     await ctx.db.patch(args.threadId, { draft: "" });
@@ -279,6 +287,10 @@ export const prepareForRegeneration = mutation({
 
     await Promise.all(toDelete.map((m) => ctx.db.delete(m._id)));
 
-    return { ...userMessage, content: await tryDecrypt(userMessage.content) };
+    return { 
+      ...userMessage, 
+      content: await tryDecrypt(userMessage.content),
+      metadata: (userMessage as any).metadata, // Включаем metadata в ответ
+    };
   },
 });
