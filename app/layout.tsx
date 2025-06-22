@@ -60,8 +60,15 @@ export default function RootLayout({
       </head>
       <body suppressHydrationWarning className="antialiased font-sans font-mono">
         {/* Глобальный прелоадер для предотвращения миганий */}
-        <div id="global-loader" className="fixed inset-0 bg-background z-[100] flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div 
+          id="global-loader" 
+          className="fixed inset-0 bg-background z-[100] flex items-center justify-center"
+          suppressHydrationWarning
+        >
+          <div 
+            className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"
+            suppressHydrationWarning
+          ></div>
         </div>
         <script dangerouslySetInnerHTML={{
           __html: `

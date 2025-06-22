@@ -1,6 +1,9 @@
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '@/convex/_generated/api';
 
+// Use Node.js runtime for file handling compatibility
+export const runtime = 'nodejs';
+
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export async function GET(
@@ -12,21 +15,21 @@ export async function GET(
     
     // Validate storageId format
     if (!storageId || typeof storageId !== 'string' || storageId.length === 0) {
-      console.log('API: Invalid storageId:', storageId);
+      // Invalid storageId
       return new Response('Invalid storage ID', { status: 400 });
     }
     
-    console.log('API: Getting file for storageId:', storageId);
+    // Getting file for storageId
     
     // Получаем URL файла из Convex Storage
     const fileUrl = await convex.query(api.attachments.getUrlByStorageId, { 
       storageId 
     });
     
-    console.log('API: Got fileUrl:', fileUrl);
+            // Got fileUrl
     
     if (!fileUrl) {
-      console.log('API: File not found for storageId:', storageId);
+              // File not found
       return new Response('File not found', { status: 404 });
     }
     

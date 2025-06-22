@@ -113,6 +113,69 @@ export const saveCustomInstructions = mutation({
   },
 });
 
+/** Save image generation settings */
+export const saveImageGenerationSettings = mutation({
+  args: {
+    imageGenerationModel: v.optional(v.string()),
+    imageGenerationSize: v.optional(v.string()),
+    imageGenerationQuality: v.optional(v.string()),
+    imageGenerationCount: v.optional(v.number()),
+    imageGenerationFormat: v.optional(v.string()),
+    imageGenerationCompression: v.optional(v.number()),
+  },
+  async handler(ctx, args) {
+    const uid = await currentUserId(ctx);
+    if (!uid) throw new Error('Unauthenticated');
+    
+    // Validate arguments
+    if (args.imageGenerationModel && args.imageGenerationModel !== 'gpt-image-1') {
+      throw new Error('Invalid image generation model');
+    }
+    if (args.imageGenerationSize && !['auto', '1024x1024', '1024x1536', '1536x1024'].includes(args.imageGenerationSize)) {
+      throw new Error('Invalid image generation size');
+    }
+    if (args.imageGenerationQuality && !['auto', 'low', 'medium', 'high'].includes(args.imageGenerationQuality)) {
+      throw new Error('Invalid image generation quality');
+    }
+    if (args.imageGenerationCount && (args.imageGenerationCount < 1 || args.imageGenerationCount > 4)) {
+      throw new Error('Invalid image generation count');
+    }
+    if (args.imageGenerationFormat && !['png', 'jpeg', 'webp'].includes(args.imageGenerationFormat)) {
+      throw new Error('Invalid image generation format');
+    }
+    if (args.imageGenerationCompression && (args.imageGenerationCompression < 0 || args.imageGenerationCompression > 100)) {
+      throw new Error('Invalid image generation compression');
+    }
+    
+    const existing = await ctx.db
+      .query('userSettings')
+      .withIndex('by_user', (q) => q.eq('userId', uid))
+      .unique();
+      
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        imageGenerationModel: args.imageGenerationModel,
+        imageGenerationSize: args.imageGenerationSize,
+        imageGenerationQuality: args.imageGenerationQuality,
+        imageGenerationCount: args.imageGenerationCount,
+        imageGenerationFormat: args.imageGenerationFormat,
+        imageGenerationCompression: args.imageGenerationCompression,
+      });
+    } else {
+      await ctx.db.insert('userSettings', {
+        userId: uid,
+        encryptedApiKeys: '',
+        imageGenerationModel: args.imageGenerationModel,
+        imageGenerationSize: args.imageGenerationSize,
+        imageGenerationQuality: args.imageGenerationQuality,
+        imageGenerationCount: args.imageGenerationCount,
+        imageGenerationFormat: args.imageGenerationFormat,
+        imageGenerationCompression: args.imageGenerationCompression,
+      });
+    }
+  },
+});
+
 /** Get user settings by thread ID (for API endpoints) */
 export const getByThreadId = query({
   args: { threadId: v.id("threads") },

@@ -16,6 +16,7 @@ interface Attachment {
 }
 
 export const maxDuration = 300;
+export const runtime = 'edge'; // Edge Runtime для оптимальной производительности
 
 const MAX_ATTACHMENT_SIZE_BYTES = 30 * 1024 * 1024;
 const EXTRA_TEXT_MIME_TYPES = new Set([

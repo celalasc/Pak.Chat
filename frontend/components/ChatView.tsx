@@ -57,10 +57,16 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCrea
     return config;
   }, [selectedModel]);
 
+  const { isImageGenerationMode } = useChatStore(); // Get from store to track changes
+  
   const apiEndpoint = React.useMemo(() => {
-    // Используем новый endpoint для Google моделей
+    // Always use /api/llm for image generation, regardless of model
+    if (isImageGenerationMode) {
+      return '/api/llm'; // Force use of main LLM endpoint for image generation
+    }
+    // Use provider-specific endpoint for regular chat
     return modelConfig.provider === 'google' ? '/api/llm-google' : '/api/llm';
-  }, [modelConfig.provider]);
+  }, [modelConfig.provider, isImageGenerationMode]);
 
   // Keep latest thread ID in a ref to avoid stale closures in callbacks
   const threadIdRef = useRef<string>(threadId);
@@ -69,6 +75,8 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCrea
   }, [currentThreadId]);
 
   const sendMessage = useMutation<typeof api.messages.send>(api.messages.send);
+  const generateUploadUrl = useMutation(api.attachments.generateUploadUrl);
+  const saveAttachments = useMutation(api.attachments.save);
 
   const scrollToMessage = (messageId: string) => {
     const element = document.getElementById(`message-${messageId}`);
@@ -107,15 +115,25 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCrea
 
   const prepareRequestBody = React.useCallback(
     ({ messages }: { messages: UIMessage[] }) => {
-      // Используем актуальный threadId из ref вместо мемоизированного requestBody
       const currentThreadId = threadIdRef.current;
+      const { isImageGenerationMode, imageGenerationParams } = useChatStore.getState();
+      
       const body = {
         messages: messages.map((m) => ({ ...m, id: m.id })),
         model: selectedModel,
         apiKeys: keys,
         threadId: currentThreadId,
         search: webSearchEnabled,
+        imageGeneration: isImageGenerationMode ? {
+          enabled: true,
+          params: imageGenerationParams
+        } : undefined,
       };
+
+      // Debug log
+      if (isImageGenerationMode) {
+        // ChatView prepareRequestBody debug removed
+      }
 
       return body;
     },
@@ -134,10 +152,156 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCrea
     error,
   } = useChat({
     api: apiEndpoint,
-    id: chatKey, // Используем уникальный ключ для принудительного пересоздания
+    id: chatKey,
     initialMessages,
     body: requestBody,
     experimental_prepareRequestBody: prepareRequestBody,
+    fetch: async (url, init) => {
+      // Check if this is an image generation request
+      const body = typeof init?.body === 'string' ? JSON.parse(init.body) : null;
+      const isImageGeneration = body?.imageGeneration?.enabled;
+      
+      let loadingMessageId: string | null = null;
+      
+      // Create loading message for image generation
+      if (isImageGeneration) {
+        const lastMessage = body.messages[body.messages.length - 1];
+        const prompt = lastMessage?.content || '';
+        
+        loadingMessageId = `image-gen-loading-${Date.now()}`;
+        const loadingMessage: any = {};
+        loadingMessage.id = loadingMessageId;
+        loadingMessage.role = 'assistant';
+        loadingMessage.content = '';
+        loadingMessage.createdAt = new Date();
+        loadingMessage.parts = [{ type: 'text', text: '' }];
+        // @ts-ignore: Adding custom imageGeneration property
+        loadingMessage.imageGeneration = {
+          prompt,
+          images: [],
+          params: body.imageGeneration.params,
+          isGenerating: true,
+        };
+
+        // Add loading message after a small delay to ensure user message is processed first
+        setTimeout(() => {
+          (setMessages as any)((prev: any) => {
+            return [...prev, loadingMessage];
+          });
+        }, 50);
+      }
+      
+      const response = await fetch(url, init);
+      
+      // Check if response is JSON (image generation)
+      const contentType = response.headers.get('content-type');
+      if (contentType?.includes('application/json')) {
+        const data = await response.json();
+        
+        // Handle image generation response
+        if (data.type === 'image_generation') {
+          // Save to database first
+          const latestThreadId = threadIdRef.current;
+          let realId = loadingMessageId;
+          
+          if (isConvexId(latestThreadId)) {
+            const { selectedModel: currentModel } = useModelStore.getState();
+            
+            // Save minimal content for image generation messages
+            realId = await sendMessage({
+              threadId: latestThreadId as Id<'threads'>,
+              role: 'assistant',
+              content: '🖼️', // Минимальный контент для сообщений с изображениями
+              model: currentModel,
+            });
+
+            // Save images as attachments to reduce message size
+            try {
+              const uploadedImages = await Promise.all(
+                data.images.map(async (img: any, index: number) => {
+                  // Convert base64 to blob
+                  const byteCharacters = atob(img.result);
+                  const byteNumbers = new Array(byteCharacters.length);
+                  for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                  }
+                  const byteArray = new Uint8Array(byteNumbers);
+                  const blob = new Blob([byteArray], { type: 'image/png' });
+                  
+                  // Upload to Convex Storage
+                  const uploadUrl = await generateUploadUrl();
+                  const uploadResponse = await fetch(uploadUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'image/png' },
+                    body: blob,
+                  });
+                  
+                  if (!uploadResponse.ok) {
+                    throw new Error(`Failed to upload image ${index + 1}`);
+                  }
+                  
+                  const { storageId } = await uploadResponse.json();
+                  return {
+                    storageId,
+                    name: `generated-image-${index + 1}.png`,
+                    type: 'image/png',
+                    messageId: realId,
+                    size: blob.size,
+                  };
+                })
+              );
+
+              // Save attachment metadata
+              if (uploadedImages.length > 0) {
+                await saveAttachments({
+                  threadId: latestThreadId as Id<'threads'>,
+                  attachments: uploadedImages,
+                });
+              }
+            } catch (error) {
+              console.error('Failed to save generated images as attachments:', error);
+            }
+          }
+
+          // Update the loading message with actual images (keep base64 for UI)
+          setMessages((prev) => {
+            const idx = prev.findIndex((m) => m.id === loadingMessageId);
+            if (idx === -1) return prev;
+            
+            const next = [...prev];
+            next[idx] = {
+              ...(next[idx] as any),
+              id: realId,
+              imageGeneration: {
+                prompt: data.prompt,
+                images: data.images,
+                params: data.params,
+                isGenerating: false,
+              },
+            } as any;
+            return next;
+          });
+
+          // Return a streaming response that immediately ends to keep user message in UI
+          const encoder = new TextEncoder();
+          const stream = new ReadableStream({
+            start(controller) {
+              controller.close();
+            },
+          });
+          
+          return new Response(stream, {
+            status: 200,
+            headers: { 
+              'Content-Type': 'text/plain; charset=utf-8',
+              'X-Vercel-AI-Data-Stream': 'v1'
+            },
+          });
+        }
+      }
+      
+      return response;
+    },
     onFinish: async (finalMsg) => {
       const latestThreadId = threadIdRef.current;
       
@@ -147,7 +311,6 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCrea
         !isConvexId(finalMsg.id) &&
         isConvexId(latestThreadId)
       ) {
-        // Persist the assistant message with the **model actually used**.
         const { selectedModel: currentModel } = useModelStore.getState();
 
         const realId = await sendMessage({
@@ -157,14 +320,9 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCrea
           model: currentModel,
         });
 
-        // Replace the temporary message ID with the real Convex ID
         setMessages((prev) => {
           const idx = prev.findIndex((m) => m.id === finalMsg.id);
-
-          // If the message is already replaced or not found, skip updating to
-          // avoid creating an identical array that would trigger another rerender.
           if (idx === -1) return prev;
-
           const next = [...prev];
           next[idx] = { ...(next[idx] as any), id: realId, model: currentModel } as any;
           return next;

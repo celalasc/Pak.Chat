@@ -2,6 +2,9 @@ import { GoogleGenAI } from '@google/genai';
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 
+// Use Node.js runtime for development compatibility
+export const runtime = 'nodejs';
+
 export async function POST(req: Request) {
   const headersList = await headers();
   const googleApiKey = headersList.get('X-Google-API-Key');

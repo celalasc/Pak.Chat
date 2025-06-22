@@ -5,7 +5,7 @@ const require = createRequire(import.meta.url)
 const withAnalyzer = require('@next/bundle-analyzer')({ enabled: process.env.ANALYZE === 'true' });
 const withPWA = require('next-pwa')({ 
   dest: 'public', 
-  disable: true, // ВРЕМЕННО ОТКЛЮЧАЕМ PWA ПОЛНОСТЬЮ
+  disable: process.env.NODE_ENV === 'development', // PWA только в production
   sw: 'sw.js',
   register: false,
   skipWaiting: true,
@@ -48,6 +48,23 @@ const withPWA = require('next-pwa')({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Bundle optimization - отключаем проблемные модули
+  // modularizeImports: {
+  //   'lucide-react': {
+  //     transform: 'lucide-react/dist/esm/{{kebabCase member}}',
+  //   },
+  // },
+  
+  // Production runtime optimization
+  experimental: {
+    // Enable server actions and other optimizations
+    serverActions: {
+      bodySizeLimit: '10mb',
+    },
+    // Optimize for Edge Runtime in production builds
+    runtime: process.env.NODE_ENV === 'production' ? 'edge' : 'nodejs',
+  },
+  
   // Секция headers остается, она нужна для правильной работы Firebase Auth.
   headers() {
     return [
@@ -77,6 +94,10 @@ const nextConfig = {
   // Эта конфигурация для Turbopack остается, она не мешает.
   turbopack: {
     resolveExtensions: ['.ts', '.tsx', '.js', '.jsx', '.json', '.css'],
+    // Optimize for better module resolution
+    resolveAlias: {
+      '@': './frontend',
+    },
   },
   images: {
     domains: ['lh3.googleusercontent.com'],

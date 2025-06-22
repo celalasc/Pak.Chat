@@ -18,19 +18,19 @@ export default function Page() {
     if (loading || !mounted) return;
 
     if (user && !hasRedirectedRef.current) {
-      console.log('User authenticated, redirecting...');
+      // User authenticated, redirecting...
       hasRedirectedRef.current = true;
       
       const lastPath = getLastPath();
       
       // Если это перезагрузка и есть последний путь, переходим туда
       if (isReload() && lastPath && lastPath !== '/') {
-        console.log('Redirecting to last path:', lastPath);
+        // Redirecting to last path
         router.replace(lastPath);
       }      // Иначе всегда переходим на соответствующую главную страницу устройства
       else {
         const targetPath = isMobile ? '/home' : '/chat';
-        console.log('Redirecting to main page for device type:', targetPath);
+        // Redirecting to main page
         router.replace(targetPath);
       }
     }
@@ -53,7 +53,7 @@ export default function Page() {
     if ((currentPath === '/home' && !isMobile) || (currentPath === '/chat' && isMobile)) {
       // Добавляем небольшую задержку чтобы избежать конфликтов с первоначальным перенаправлением
       const timeoutId = setTimeout(() => {
-        console.log('Device type changed, redirecting to:', targetPath);
+        // Device type changed, redirecting
         router.replace(targetPath);
       }, 100);
       

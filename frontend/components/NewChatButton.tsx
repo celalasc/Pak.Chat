@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { clearDraft } from '@/frontend/lib/drafts';
 import { useQuoteStore } from '@/frontend/stores/QuoteStore';
 import { useAttachmentsStore } from '@/frontend/stores/AttachmentsStore';
+import { memo, useCallback } from 'react';
 
 interface NewChatButtonProps {
   className?: string;
@@ -15,7 +16,7 @@ interface NewChatButtonProps {
   size?: "default" | "sm" | "lg" | "icon";
 }
 
-export default function NewChatButton({
+function NewChatButton({
   className,
   variant = "outline",
   size = "icon"
@@ -24,7 +25,7 @@ export default function NewChatButton({
   const { clearQuote } = useQuoteStore();
   const { clear: clearAttachments } = useAttachmentsStore();
 
-  const handleClick = () => {
+  const handleClick = useCallback(() => {
     // Очищаем все состояние для чистого нового чата
     clearDraft('');
     clearQuote();
@@ -32,7 +33,7 @@ export default function NewChatButton({
     
     // Чистый переход на новый чат
     router.push('/chat');
-  };
+  }, [router, clearQuote, clearAttachments]);
 
   return (
     <WithTooltip label="New Chat" side="bottom">
@@ -48,3 +49,5 @@ export default function NewChatButton({
     </WithTooltip>
   );
 }
+
+export default memo(NewChatButton);

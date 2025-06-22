@@ -26,6 +26,13 @@ export default defineSchema({
     customInstructionsTraits: v.optional(v.array(v.string())), // Готовые плитки
     customInstructionsTraitsText: v.optional(v.string()), // Свободный текст для traits
     customInstructionsAdditionalInfo: v.optional(v.string()),
+    // Image generation settings
+    imageGenerationModel: v.optional(v.string()), // 'gpt-image-1'
+    imageGenerationSize: v.optional(v.string()), // 'auto', '1024x1024', '1024x1536', '1536x1024'
+    imageGenerationQuality: v.optional(v.string()), // 'auto', 'low', 'medium', 'high'
+    imageGenerationCount: v.optional(v.number()), // 1-4
+    imageGenerationFormat: v.optional(v.string()), // 'png', 'jpeg', 'webp'
+    imageGenerationCompression: v.optional(v.number()), // 0-100 for jpeg/webp
   }).index("by_user", ["userId"]),
 
   // API Keys stored securely in Convex
@@ -85,6 +92,10 @@ export default defineSchema({
     previewId: v.optional(v.string()),
     // Original file size in bytes – helps decide when to lazy-load
     size: v.optional(v.number()),
+    // Cached signed URLs with TTL
+    cachedUrl: v.optional(v.string()),
+    cachedPreviewUrl: v.optional(v.string()),
+    urlExpiresAt: v.optional(v.number()), // timestamp
   })
     .index("by_thread", ["threadId"])
     .index("by_message", ["messageId"]),
