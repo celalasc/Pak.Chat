@@ -2,13 +2,36 @@ import { NextRequest, NextResponse } from 'next/server';
 import { fetchQuery } from 'convex/nextjs';
 import { api } from '@/convex/_generated/api';
 
+interface ImageData {
+  id: string;
+  result: string;
+  revisedPrompt: string;
+}
+
+interface ImageOutput {
+  type: string;
+  result: string;
+}
+
+interface ResponseData {
+  output?: ImageOutput[];
+}
+
+interface ImageGenerationTool {
+  type: 'image_generation';
+  size?: string;
+  quality?: string;
+  output_format: string;
+  output_compression?: number;
+}
+
 export const maxDuration = 300; // 5 минут для генерации изображений
 // Use Node.js runtime for stable development and production
 export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {
-    const { prompt, model, apiKeys, userId, size, quality, count, format, compression, useDirectApi } = await req.json();
+    const { prompt, apiKeys, userId, size, quality, format, compression } = await req.json();
 
     if (!prompt) {
       return NextResponse.json(
@@ -40,7 +63,6 @@ export async function POST(req: NextRequest) {
     // Используем настройки пользователя или переданные параметры
     const imageSize = size || userSettings?.imageGenerationSize || '1024x1024';
     const imageQuality = quality || userSettings?.imageGenerationQuality || 'medium';
-    const imageCount = count || userSettings?.imageGenerationCount || 1;
     const imageFormat = format || userSettings?.imageGenerationFormat || 'jpeg';
     const imageCompression = compression || userSettings?.imageGenerationCompression || 80;
     let imageModel = userSettings?.imageGenerationModel || 'gpt-image-1';
@@ -50,10 +72,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Генерация GPT Image 1 через Images API
-    let imageData = [] as any[];
+    let imageData: ImageData[] = [];
 
     // GPT Image 1 generation via Responses API
-    const imageGenerationTool: any = {
+    const imageGenerationTool: ImageGenerationTool = {
       type: "image_generation",
       size: imageSize === 'auto' ? undefined : imageSize,
       quality: imageQuality === 'auto' ? undefined : 
@@ -82,7 +104,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify(responseParams),
     });
 
-    let data;
+    let data: ResponseData;
     if (!response.ok) {
       let errorDetails = 'Unknown error';
       try {
@@ -96,16 +118,17 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      data = await response.json();
+      data = (await response.json()) as ResponseData;
     } catch (parseError) {
       console.error('Failed to parse response JSON:', parseError);
       throw new Error('Invalid response format from OpenAI API');
     }
     
     // Извлекаем изображения из ответа
-    const imageOutputs = data.output?.filter((output: any) => output.type === 'image_generation_call') || [];
-    
-    imageData = imageOutputs.map((img: any, index: number) => ({
+    const imageOutputs: ImageOutput[] =
+      (data.output ?? []).filter((output) => output.type === 'image_generation_call');
+
+    imageData = imageOutputs.map((img, index) => ({
       id: `gpt-image-${Date.now()}-${index}`,
       result: img.result, // base64 data
       revisedPrompt: prompt, // Responses API не возвращает revised prompt
