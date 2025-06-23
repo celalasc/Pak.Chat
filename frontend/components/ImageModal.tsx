@@ -158,11 +158,11 @@ export default function ImageModal({
 
   return (
     <div 
-      className="fixed inset-0 z-50 bg-background/20 backdrop-blur-md flex items-center justify-center"
+      className="fixed inset-0 z-50 bg-background/20 backdrop-blur-md flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div 
-        className="relative bg-background/95 backdrop-blur-sm rounded-xl shadow-2xl w-full h-full max-w-none max-h-none overflow-hidden flex flex-col border border-border/50"
+        className="relative bg-background/95 backdrop-blur-sm rounded-xl shadow-2xl w-full h-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col border border-border/50"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
