@@ -19,6 +19,7 @@ import { Id, Doc } from '@/convex/_generated/dataModel';
 import type { UIMessage } from 'ai';
 
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
+import { useQuoteShortcuts } from '@/frontend/hooks/useQuoteShortcuts';
 import { loadDraft, saveDraft, clearDraft } from '@/frontend/lib/drafts';
 import { saveLastChatId } from '@/frontend/lib/lastChat';
 import { getModelConfig } from '@/lib/models';
@@ -37,6 +38,9 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCrea
   const { clearQuote } = useQuoteStore();
   const { clear: clearAttachments } = useAttachmentsStore();
   const { isMobile } = useIsMobile();
+  
+  // Включаем обработчик клавиши ESC для отмены цитирования
+  useQuoteShortcuts();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [currentThreadId, setCurrentThreadId] = useState(threadId);
