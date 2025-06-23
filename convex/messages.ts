@@ -40,20 +40,28 @@ export const get = query({
         const attachmentsWithUrls = await Promise.all(
           attachments.map(async (a) => {
             let url: string | null = null;
-            // Для изображений используем превью если есть, иначе оригинал
+            let originalUrl: string | null = null;
+            
             if (a.type.startsWith('image/')) {
+              // Always get original URL for images
+              originalUrl = await ctx.storage.getUrl(a.fileId);
+              
+              // Use preview for small thumbnails if available
               if (a.previewId) {
                 url = await ctx.storage.getUrl(a.previewId);
               } else {
-                url = await ctx.storage.getUrl(a.fileId);
+                url = originalUrl; // Fallback to original if no preview
               }
             } else {
-              // For non-image files return full URL
+              // For non-image files, always use original
               url = await ctx.storage.getUrl(a.fileId);
+              originalUrl = url;
             }
+            
             return {
               id: a._id,
               url,
+              originalUrl, // Add original URL for high-quality viewing
               name: a.name,
               type: a.type,
               ext: a.name.split('.').pop() ?? '',
@@ -137,18 +145,28 @@ export const preview = query({
         const attachmentsWithUrls = await Promise.all(
           attachments.map(async (a) => {
             let url: string | null = null;
+            let originalUrl: string | null = null;
+            
             if (a.type.startsWith('image/')) {
+              // Always get original URL for images
+              originalUrl = await ctx.storage.getUrl(a.fileId);
+              
+              // Use preview for small thumbnails if available
               if (a.previewId) {
                 url = await ctx.storage.getUrl(a.previewId);
               } else {
-                url = await ctx.storage.getUrl(a.fileId);
+                url = originalUrl; // Fallback to original if no preview
               }
             } else {
+              // For non-image files, always use original
               url = await ctx.storage.getUrl(a.fileId);
+              originalUrl = url;
             }
+            
             return {
               id: a._id,
               url,
+              originalUrl, // Add original URL for high-quality viewing
               name: a.name,
               type: a.type,
               ext: a.name.split('.').pop() ?? '',

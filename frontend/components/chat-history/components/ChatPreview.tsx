@@ -162,10 +162,15 @@ PreviewMessageControls.displayName = "PreviewMessageControls";
                     <Image
                       key={`${a.id}-${index}`}
                       src={a.url}
-                      className="h-16 w-16 rounded object-cover"
+                      className="h-16 w-16 rounded object-cover cursor-pointer hover:scale-105 transition"
                       alt={a.name}
                       width={64}
                       height={64}
+                      onClick={() => {
+                        // Use original URL for high-quality viewing
+                        const imageUrl = (a as any).originalUrl || a.url;
+                        window.open(imageUrl, '_blank');
+                      }}
                     />
                   ) : a.url ? (
                     <a
@@ -242,10 +247,15 @@ PreviewMessageControls.displayName = "PreviewMessageControls";
                     <Image
                       key={`${a.id}-${index}`}
                       src={a.url}
-                      className="h-12 w-12 rounded object-cover"
+                      className="h-12 w-12 rounded object-cover cursor-pointer hover:scale-105 transition"
                       alt={a.name}
                       width={48}
                       height={48}
+                      onClick={() => {
+                        // Use original URL for high-quality viewing
+                        const imageUrl = (a as any).originalUrl || a.url;
+                        window.open(imageUrl, '_blank');
+                      }}
                     />
                   ) : a.url ? (
                     <a
