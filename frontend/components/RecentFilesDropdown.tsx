@@ -117,28 +117,26 @@ export default function RecentFilesDropdown({ children, onFileSelect, messageCou
     try {
       if (recentFile.storageId) {
         // Build remote attachment object and add to store
-
         
-        // Для изображений пытаемся получить актуальный URL
-        let previewUrl = recentFile.preview;
+        // Для изображений формируем корректный preview URL
+        let previewUrl = '';
         
-        // Если это изображение и у нас есть previewId или storageId, 
-        // создаем URL к Convex Storage
         if (recentFile.type.startsWith('image/')) {
+          // Приоритет: previewId > storageId
           if (recentFile.previewId) {
-            // Для превью используем URL к preview файлу
             previewUrl = `/api/files/${recentFile.previewId}`;
-  
           } else if (recentFile.storageId) {
-            // Если нет превью, используем оригинальный файл
             previewUrl = `/api/files/${recentFile.storageId}`;
-  
           }
-        } else {
-          // Для не-изображений не используем preview URL (он не нужен для иконок)
-          previewUrl = '';
-
+          
+          // Если ни previewId, ни storageId нет, это ошибка для изображений
+          if (!previewUrl) {
+            console.warn('No valid preview URL for image file:', recentFile.name);
+            toast.error(`Cannot display preview for "${recentFile.name}"`);
+            return;
+          }
         }
+        // Для не-изображений preview URL не нужен
         
         addRemote({
           storageId: recentFile.storageId,

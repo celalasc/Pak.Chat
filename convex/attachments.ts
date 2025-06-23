@@ -44,18 +44,30 @@ export const save = mutation({
           messageId: messageIdToSave,
         });
         
-        // Получаем URL для превью (если есть) иначе оригинал
+        // Get URLs for both preview and original
         let url: string | null = null;
-        if (a.previewId) {
-          url = await ctx.storage.getUrl(a.previewId);
-        } else if (!a.type.startsWith('image/')) {
-          // For non-image files we can safely return full URL (e.g. PDFs, text),
-          // since they are typically downloaded only on click.
+        let originalUrl: string | null = null;
+        
+        if (a.type.startsWith('image/')) {
+          // Always get original URL for images
+          originalUrl = await ctx.storage.getUrl(a.storageId);
+          
+          // Use preview for small thumbnails if available
+          if (a.previewId) {
+            url = await ctx.storage.getUrl(a.previewId);
+          } else {
+            url = originalUrl; // Fallback to original if no preview
+          }
+        } else {
+          // For non-image files, always use original
           url = await ctx.storage.getUrl(a.storageId);
+          originalUrl = url;
         }
+        
         return {
           id: attachmentId,
           url,
+          originalUrl, // Add original URL for high-quality viewing
           name: a.name,
           type: a.type,
           width: a.width,
@@ -66,6 +78,7 @@ export const save = mutation({
         };
       })
     );
+    
     return saved;
   },
 });
@@ -82,13 +95,24 @@ export const byThread = query({
     const attachmentsWithUrls = await Promise.all(
       attachments.map(async (a) => {
         let url: string | null = null;
-        if (a.previewId) {
-          url = await ctx.storage.getUrl(a.previewId);
-        } else if (!a.type.startsWith('image/')) {
-          // For non-image files we can safely return full URL (e.g. PDFs, text),
-          // since they are typically downloaded only on click.
+        let originalUrl: string | null = null;
+        
+        if (a.type.startsWith('image/')) {
+          // Always get original URL for images
+          originalUrl = await ctx.storage.getUrl(a.fileId);
+          
+          // Use preview for small thumbnails if available
+          if (a.previewId) {
+            url = await ctx.storage.getUrl(a.previewId);
+          } else {
+            url = originalUrl; // Fallback to original if no preview
+          }
+        } else {
+          // For non-image files, always use original
           url = await ctx.storage.getUrl(a.fileId);
+          originalUrl = url;
         }
+        
         return {
           id: a._id,
           messageId: a.messageId,
@@ -100,6 +124,7 @@ export const byThread = query({
           previewId: a.previewId,
           fileId: a.fileId,
           url,
+          originalUrl, // Add original URL for high-quality viewing
         };
       })
     );
@@ -205,13 +230,24 @@ export const getByMessageId = query({
     const attachmentsWithUrls = await Promise.all(
       attachments.map(async (a) => {
         let url: string | null = null;
-        if (a.previewId) {
-          url = await ctx.storage.getUrl(a.previewId);
-        } else if (!a.type.startsWith('image/')) {
-          // For non-image files we can safely return full URL (e.g. PDFs, text),
-          // since they are typically downloaded only on click.
+        let originalUrl: string | null = null;
+        
+        if (a.type.startsWith('image/')) {
+          // Always get original URL for images
+          originalUrl = await ctx.storage.getUrl(a.fileId);
+          
+          // Use preview for small thumbnails if available
+          if (a.previewId) {
+            url = await ctx.storage.getUrl(a.previewId);
+          } else {
+            url = originalUrl; // Fallback to original if no preview
+          }
+        } else {
+          // For non-image files, always use original
           url = await ctx.storage.getUrl(a.fileId);
+          originalUrl = url;
         }
+        
         return {
           id: a._id,
           messageId: a.messageId,
@@ -223,6 +259,7 @@ export const getByMessageId = query({
           previewId: a.previewId,
           fileId: a.fileId,
           url,
+          originalUrl, // Add original URL for high-quality viewing
         };
       })
     );

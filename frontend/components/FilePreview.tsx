@@ -53,14 +53,55 @@ export default function FilePreview({ file, onRemove, showPreview = true }: File
     return 'text-gray-600 dark:text-gray-400';
   };
 
+  // Get the best quality image URL
+  const getImageUrl = (preferOriginal = false) => {
+    if (!file.preview) return '';
+    
+    // For remote files, prefer original when requesting high quality
+    if (file.remote && file.storageId && preferOriginal) {
+      return `/api/files/${file.storageId}`;
+    }
+    
+    return file.preview;
+  };
+
+  const handleImageClick = () => {
+    if (file.storageId) {
+      // Open original file for the best quality
+      window.open(`/api/files/${file.storageId}`, '_blank');
+    } else if (file.preview && file.preview.startsWith('blob:')) {
+      window.open(file.preview, '_blank');
+    }
+  };
+
   // Для изображений с превью при наведении
   if (file.type.startsWith('image/')) {
-    const hasValidPreview = file.preview && 
-                            file.preview !== '' && 
-                            file.preview.length > 5 && // Минимальная длина URL
-                            (file.preview.startsWith('blob:') || 
-                             file.preview.startsWith('http') || 
-                             file.preview.startsWith('/api/'));
+    // Улучшенная валидация preview URL с fallback механизмами
+    const hasValidPreview = (() => {
+      if (!file.preview || file.preview === '') {
+        // Для remote файлов пытаемся использовать storageId как fallback
+        if (file.remote && file.storageId) {
+          // Обновляем preview URL на лету
+          file.preview = `/api/files/${file.storageId}`;
+          return true;
+        }
+        return false;
+      }
+      
+      if (file.preview.length <= 5) return false;
+      
+      const isValidUrl = file.preview.startsWith('blob:') || 
+                        file.preview.startsWith('http') || 
+                        file.preview.startsWith('/api/');
+      
+      // Дополнительная проверка для remote файлов
+      if (!isValidUrl && file.remote && file.storageId) {
+        file.preview = `/api/files/${file.storageId}`;
+        return true;
+      }
+      
+      return isValidUrl;
+    })();
     
     return (
       <div 
@@ -71,20 +112,27 @@ export default function FilePreview({ file, onRemove, showPreview = true }: File
         <div className="relative">
           {hasValidPreview ? (
             <Image
-              src={file.preview}
+              src={getImageUrl(false)} // Use preview for small thumbnails
               className={cn(
-                "h-16 w-16 object-cover rounded-lg border-2 border-blue-200 dark:border-blue-800 shadow-sm",
+                "h-16 w-16 object-cover rounded-lg border-2 border-blue-200 dark:border-blue-800 shadow-sm cursor-pointer hover:shadow-md transition-shadow",
                 file.isUploading && "opacity-50"
               )}
               alt={file.name}
               width={64}
               height={64}
+              onClick={handleImageClick}
+              onError={() => {
+                console.warn('Failed to load image preview:', file.preview, 'for file:', file.name);
+              }}
             />
           ) : (
-            <div className={cn(
-              "h-16 w-16 bg-blue-50 border-2 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800 rounded-lg flex items-center justify-center",
-              file.isUploading && "opacity-50"
-            )}>
+            <div 
+              className={cn(
+                "h-16 w-16 bg-blue-50 border-2 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800 rounded-lg flex items-center justify-center",
+                file.isUploading && "opacity-50"
+              )}
+              title={`Preview not available for ${file.name}`}
+            >
               <ImageIcon className="w-8 h-8 text-blue-600 dark:text-blue-400" />
             </div>
           )}
@@ -96,20 +144,24 @@ export default function FilePreview({ file, onRemove, showPreview = true }: File
             </div>
           )}
           
-          {/* Превью при наведении - показываем под файлом */}
+          {/* Увеличенный превью при наведении - показываем под файлом */}
           {showPreview && isHovered && hasValidPreview && (
             <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 z-[200] pointer-events-none">
               <div className="bg-background border border-border rounded-lg shadow-xl p-3">
                 <Image
-                  src={file.preview}
+                  src={getImageUrl(true)} // Use high quality original for hover preview
                   alt={file.name}
-                  className="w-64 h-64 object-cover rounded-lg"
-                  width={256}
-                  height={256}
+                  className="w-80 h-80 object-contain rounded-lg cursor-pointer"
+                  width={320}
+                  height={320}
+                  onError={() => {
+                    console.warn('Failed to load hover preview:', getImageUrl(true), 'for file:', file.name);
+                  }}
                 />
                 <div className="mt-2 text-sm text-muted-foreground text-center">
-                  <div className="font-medium truncate max-w-64">{file.name}</div>
+                  <div className="font-medium truncate max-w-80">{file.name}</div>
                   <div>{formatFileSize(file.size)}</div>
+                  <div className="text-xs text-muted-foreground/70 mt-1">Click to view full size</div>
                 </div>
               </div>
             </div>
@@ -139,11 +191,9 @@ export default function FilePreview({ file, onRemove, showPreview = true }: File
   const handleFileClick = () => {
     if (file.storageId) {
       // Открываем файл через наш API
-
       window.open(`/api/files/${file.storageId}`, '_blank');
     } else if (file.preview && file.preview.startsWith('blob:')) {
       // Для локальных файлов используем blob URL
-
       window.open(file.preview, '_blank');
     } else {
       console.warn('Cannot open file - no storageId or blob URL:', file.name);

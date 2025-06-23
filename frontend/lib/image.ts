@@ -1,8 +1,8 @@
-export async function createImagePreview(file: File, maxDim = 400): Promise<File | null> {
+export async function createImagePreview(file: File, maxDim = 800): Promise<File | null> {
   if (!file.type.startsWith('image/')) return null;
 
-  // Skip very small images to save CPU; preview not necessary
-  if (file.size <= 200 * 1024) return null; // 200 KB
+  // Skip small images to save CPU and bandwidth
+  if (file.size <= 500 * 1024) return null; // 500 KB (increased from 200 KB)
 
   // Read the file into a data URL
   const dataUrl: string = await new Promise((resolve, reject) => {
@@ -43,14 +43,24 @@ export async function createImagePreview(file: File, maxDim = 400): Promise<File
   if (!ctx) return null;
   ctx.drawImage(img, 0, 0, width, height);
 
-  // Convert canvas back to Blob (JPEG 0.7 quality)
+  // Preserve original format for PNG, use JPEG for others with higher quality
+  const isOriginallyPng = file.type === 'image/png';
+  const outputFormat = isOriginallyPng ? 'image/png' : 'image/jpeg';
+  const quality = isOriginallyPng ? undefined : 0.9; // PNG doesn't use quality, JPEG quality 90%
+
+  // Convert canvas back to Blob
   const blob: Blob | null = await new Promise((resolve) => {
-    canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.7);
+    if (isOriginallyPng) {
+      canvas.toBlob((b) => resolve(b), outputFormat);
+    } else {
+      canvas.toBlob((b) => resolve(b), outputFormat, quality);
+    }
   });
 
   if (!blob) return null;
 
-  // Return as File object
-  const previewFileName = file.name.replace(/\.[^/.]+$/, '') + '_preview.jpg';
-  return new File([blob], previewFileName, { type: 'image/jpeg' });
+  // Return as File object with appropriate extension
+  const fileExt = isOriginallyPng ? '.png' : '.jpg';
+  const previewFileName = file.name.replace(/\.[^/.]+$/, '') + '_preview' + fileExt;
+  return new File([blob], previewFileName, { type: outputFormat });
 } 

@@ -1114,6 +1114,9 @@ function PureChatInput({
           // 3. Image dimensions
           const dimensions = await getImageDimensions(attachment.file);
 
+          // Убираем индикатор загрузки для этого конкретного файла после успешной загрузки
+          setUploading(attachment.id, false);
+
           return {
             storageId,
             previewId,
@@ -1126,6 +1129,7 @@ function PureChatInput({
           };
           } catch (error) {
             console.error('Failed to upload file:', attachment.name, error);
+            // Убираем индикатор загрузки для этого конкретного файла при ошибке
             setUploading(attachment.id, false);
             throw error;
           }
@@ -1145,10 +1149,7 @@ function PureChatInput({
           height: undefined,
           size: att.size,
         };
-      }      );
-      
-      // Убираем состояние загрузки после завершения
-      localAttachments.forEach(att => setUploading(att.id, false));
+      });
       
       uploadedFiles.push(...reusedFiles);
 

@@ -13,6 +13,7 @@ import { Button } from '../ui/button';
 import { useRippleEffect } from '../../hooks/useRippleEffect';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 // Импортируем компоненты из RecentFilesDropdown
 import { useState as useRecentState, useEffect, useMemo, useCallback as useRecentCallback } from 'react';
@@ -146,17 +147,25 @@ export default function MobileAddActionsDrawer({
     createRipple(event);
     try {
       if (file.storageId) {
-        let previewUrl = file.preview;
+        // Формируем корректный preview URL для изображений
+        let previewUrl = '';
         
         if (file.type.startsWith('image/')) {
+          // Приоритет: previewId > storageId
           if (file.previewId) {
             previewUrl = `/api/files/${file.previewId}`;
           } else if (file.storageId) {
             previewUrl = `/api/files/${file.storageId}`;
           }
-        } else {
-          previewUrl = '';
+          
+          // Если ни previewId, ни storageId нет, это ошибка для изображений
+          if (!previewUrl) {
+            console.warn('No valid preview URL for image file:', file.name);
+            toast.error(`Cannot display preview for "${file.name}"`);
+            return;
+          }
         }
+        // Для не-изображений preview URL не нужен
         
         addRemote({
           storageId: file.storageId,
@@ -178,9 +187,19 @@ export default function MobileAddActionsDrawer({
         localStorage.setItem(RECENT_FILES_KEY, JSON.stringify(updated));
         
         onOpenChange(false);
+        toast.success(`Reattached "${file.name}"`);
+      } else {
+        toast.info(
+          `Cannot reattach "${file.name}" from recent files. Please select the file from your device again.`,
+          {
+            duration: 5000,
+            description: 'This file was stored only as a history entry without data.',
+          }
+        );
       }
     } catch (error) {
       console.error('Error attaching file:', error);
+      toast.error('An error occurred while attaching the file.');
     }
   }, [createRipple, recentFiles, addRemote, onOpenChange]);
 

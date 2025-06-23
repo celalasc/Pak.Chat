@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { useAPIKeyStore, type APIKeys } from '@/frontend/stores/APIKeyStore';
 import { useChatStore } from '@/frontend/stores/ChatStore';
 import { useModelStore } from '@/frontend/stores/ModelStore';
+import { useSettingsStore } from '@/frontend/stores/SettingsStore';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
@@ -67,6 +68,7 @@ function PureMessage({
   const { isMobile } = useIsMobile();
   const { setImageGenerationMode } = useChatStore();
   const { selectedModel, webSearchEnabled } = useModelStore();
+  const { settings } = useSettingsStore();
   const cloneThread = useMutation(api.threads.clone);
   const prepareForRegenerate = useMutation(api.messages.prepareForRegeneration);
   const thread = useQuery(
@@ -321,12 +323,16 @@ function PureMessage({
                         key={`${a.id}-${index}`}
                         src={a.url}
                         className="h-32 w-32 rounded cursor-pointer hover:scale-105 transition object-cover"
-                        onClick={() => a.url && setLightbox({
-                          url: a.url,
-                          name: a.name,
-                          type: a.type,
-                          size: a.size,
-                        })}
+                        onClick={() => {
+                          // Use original URL for high-quality lightbox view
+                          const imageUrl = (a as any).originalUrl || a.url;
+                          setLightbox({
+                            url: imageUrl,
+                            name: a.name,
+                            type: a.type,
+                            size: a.size,
+                          })
+                        }}
                         alt={a.name}
                         width={128}
                         height={128}
@@ -400,12 +406,16 @@ function PureMessage({
                         key={`${a.id}-${index}`}
                         src={a.url}
                         className="h-24 w-24 rounded cursor-pointer hover:scale-105 transition"
-                        onClick={() => a.url && setLightbox({
-                          url: a.url,
-                          name: a.name,
-                          type: a.type,
-                          size: a.size,
-                        })}
+                        onClick={() => {
+                          // Use original URL for high-quality lightbox view
+                          const imageUrl = (a as any).originalUrl || a.url;
+                          setLightbox({
+                            url: imageUrl,
+                            name: a.name,
+                            type: a.type,
+                            size: a.size,
+                          })
+                        }}
                         loading="eager"
                         decoding="async"
                         alt={a.name}

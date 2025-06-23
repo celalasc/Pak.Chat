@@ -158,15 +158,15 @@ export default function ImageModal({
 
   return (
     <div 
-      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-background/20 backdrop-blur-md flex items-center justify-center"
       onClick={onClose}
     >
       <div 
-        className="relative bg-background rounded-xl shadow-2xl max-w-4xl max-h-[90vh] w-full overflow-hidden"
+        className="relative bg-background/95 backdrop-blur-sm rounded-xl shadow-2xl w-full h-full max-w-none max-h-none overflow-hidden flex flex-col border border-border/50"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border">
+        <div className="flex items-center justify-between p-4 border-b border-border flex-shrink-0 bg-background/98 backdrop-blur-sm">
           <div className="flex-1 min-w-0">
             <h3 className="text-lg font-semibold truncate">{fileName}</h3>
             <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
@@ -183,10 +183,10 @@ export default function ImageModal({
           </button>
         </div>
 
-        {/* Image */}
+        {/* Image Container - занимает все оставшееся место */}
         <div 
           ref={containerRef}
-          className="flex items-center justify-center p-4 max-h-[calc(90vh-120px)] overflow-hidden relative cursor-grab"
+          className="flex items-center justify-center flex-1 overflow-hidden relative cursor-grab bg-muted/10"
           onWheel={handleWheel}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
@@ -202,10 +202,10 @@ export default function ImageModal({
             ref={imageRef}
             src={imageUrl}
             alt={fileName}
-            className="object-contain rounded-lg"
+            className="object-contain rounded-lg shadow-lg"
             loading="lazy"
-            width={800}
-            height={600}
+            width={1200}
+            height={800}
             style={{
               transform: `scale(${scale}) translate(${translateX}px, ${translateY}px)`,
               transition: isDragging ? 'none' : 'transform 0.1s ease-out', // Smooth transition when not dragging
