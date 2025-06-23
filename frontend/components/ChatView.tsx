@@ -573,8 +573,10 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCrea
         >
           {/* Scroll to bottom button - позиционируем ВНУТРИ контейнера поля ввода */}
           {mergedMessages.length > 0 && (
-            <div className="absolute -top-16 right-4 z-10">
-              <ScrollToBottomButton />
+            <div className="absolute right-8 bottom-[88px] z-40">
+              <ScrollToBottomButton 
+                scrollContainerRef={scrollContainerRef} 
+              />
             </div>
           )}
           
