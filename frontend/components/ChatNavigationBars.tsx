@@ -155,13 +155,13 @@ export default function ChatNavigationBars({ messages, scrollToMessage }: ChatNa
           // Плитка при нажатии на точку (как на ПК)
           <div className={cn(
             "bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg pointer-events-auto",
-            userMessages.length > 15 ? "w-80 h-96" : "min-w-[200px] max-w-[280px]"
+            userMessages.length > 15 ? "w-80 h-96 flex flex-col" : "min-w-[200px] max-w-[280px]"
           )}>
             <div 
               ref={tileContentRef}
               className={cn(
                 "p-2",
-                userMessages.length > 15 ? "h-full overflow-y-auto" : ""
+                userMessages.length > 15 ? "flex-1 overflow-y-auto" : ""
               )}
             >
               {/* Показываем ВСЕ сообщения в плашке, не только видимые 10 */}
@@ -230,13 +230,13 @@ export default function ChatNavigationBars({ messages, scrollToMessage }: ChatNa
         // Плитка при наведении
         <div className={cn(
           "bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg pointer-events-auto",
-          userMessages.length > 15 ? "w-80 h-96" : "min-w-[200px] max-w-[280px]"
+          userMessages.length > 15 ? "w-80 h-96 flex flex-col" : "min-w-[200px] max-w-[280px]"
         )}>
           <div 
             ref={tileContentRef}
             className={cn(
               "p-2",
-              userMessages.length > 15 ? "h-full overflow-y-auto" : ""
+              userMessages.length > 15 ? "flex-1 overflow-y-auto" : ""
             )}
           >
             {userMessages.map((message) => {
