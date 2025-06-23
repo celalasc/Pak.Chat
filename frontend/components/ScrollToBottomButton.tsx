@@ -3,68 +3,49 @@
 import { Button } from '@/frontend/components/ui/button';
 import { cn } from '@/lib/utils';
 import { ChevronDown } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, RefObject } from 'react';
 
 export type ScrollToBottomButtonProps = {
   className?: string;
   threshold?: number;
+  scrollContainerRef: RefObject<HTMLElement | null>;
 } & React.ButtonHTMLAttributes<HTMLButtonElement>;
 
 export default function ScrollToBottomButton({
   className,
-  threshold = 100, // Увеличиваю threshold для более раннего появления
+  threshold = 20, // Уменьшаем порог для большей отзывчивости
+  scrollContainerRef,
   ...props
 }: ScrollToBottomButtonProps) {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    let retryCount = 0;
-    const maxRetries = 10; // Попытки найти элемент
-    
-    const findElementAndSetupScroll = () => {
-      const scrollArea = document.getElementById('messages-scroll-area');
-      
-      if (!scrollArea) {
-        // Retry через небольшой интервал если элемент не найден
-        if (retryCount < maxRetries) {
-          retryCount++;
-          setTimeout(findElementAndSetupScroll, 100);
-        }
-        return;
-      }
+    // Получаем скролл-контейнер напрямую через ref
+    const scrollArea = scrollContainerRef.current;
+    if (!scrollArea) return;
 
-      const handleScroll = () => {
-        const { scrollTop, clientHeight, scrollHeight } = scrollArea;
-        
-        // Более надежное определение что пользователь не в самом низу
-        const distanceFromBottom = scrollHeight - (scrollTop + clientHeight);
-        const shouldBeVisible = distanceFromBottom > threshold && scrollHeight > clientHeight;
-        
-        setIsVisible(shouldBeVisible);
-      };
-
-      // Добавляем обработчик скролла
-      scrollArea.addEventListener('scroll', handleScroll, { passive: true });
+    const handleScroll = () => {
+      const { scrollTop, clientHeight, scrollHeight } = scrollArea;
+      const distanceFromBottom = scrollHeight - (scrollTop + clientHeight);
+      const shouldBeVisible = distanceFromBottom > threshold && scrollHeight > clientHeight;
       
-      // Вызываем сразу для начальной проверки
-      handleScroll();
-      
-      // Также проверяем через небольшую задержку когда DOM стабилизируется
-      const timeoutId = setTimeout(handleScroll, 200);
-      
-      return () => {
-        scrollArea.removeEventListener('scroll', handleScroll);
-        clearTimeout(timeoutId);
-      };
+      setIsVisible(shouldBeVisible);
     };
 
-    const cleanup = findElementAndSetupScroll();
+    // Добавляем обработчик скролла напрямую к элементу из ref
+    scrollArea.addEventListener('scroll', handleScroll, { passive: true });
     
-    return cleanup;
-  }, [threshold]);
+    // Начальная проверка
+    handleScroll();
+    
+    // Убираем обработчик при размонтировании
+    return () => {
+      scrollArea.removeEventListener('scroll', handleScroll);
+    };
+  }, [scrollContainerRef, threshold]);
 
   const scrollToBottom = () => {
-    const scrollArea = document.getElementById('messages-scroll-area');
+    const scrollArea = scrollContainerRef.current;
     if (!scrollArea) return;
     
     scrollArea.scrollTo({
