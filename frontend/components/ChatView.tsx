@@ -565,19 +565,21 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCrea
           </main>
         </div>
 
+        {/* Scroll to bottom button - теперь независимое позиционирование */}
+        {mergedMessages.length > 0 && (
+          <div className="fixed bottom-20 right-8 z-50 pointer-events-none">
+            <div className="pointer-events-auto">
+              <ScrollToBottomButton />
+            </div>
+          </div>
+        )}
+
         <div
           className={cn(
             'fixed left-1/2 -translate-x-1/2 w-full max-w-3xl px-4 transition-all duration-300 z-30',
             isMobile ? 'bottom-0' : (mergedMessages.length > 0 ? 'bottom-0' : 'top-1/2 -translate-y-1/2'),
           )}
         >
-          {/* Scroll to bottom button */}
-          {mergedMessages.length > 0 && (
-            <div className="absolute right-8 -top-16 z-50">
-              <ScrollToBottomButton />
-            </div>
-          )}
-          
           <ChatInput
             threadId={currentThreadId}
             thread={thread}

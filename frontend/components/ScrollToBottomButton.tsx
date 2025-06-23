@@ -12,37 +12,55 @@ export type ScrollToBottomButtonProps = {
 
 export default function ScrollToBottomButton({
   className,
-  threshold = 50, // Уменьшаю threshold для более раннего появления
+  threshold = 100, // Увеличиваю threshold для более раннего появления
   ...props
 }: ScrollToBottomButtonProps) {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    const scrollArea = document.getElementById('messages-scroll-area');
-    if (!scrollArea) {
-      return;
-    }
+    let retryCount = 0;
+    const maxRetries = 10; // Попытки найти элемент
+    
+    const findElementAndSetupScroll = () => {
+      const scrollArea = document.getElementById('messages-scroll-area');
+      
+      if (!scrollArea) {
+        // Retry через небольшой интервал если элемент не найден
+        if (retryCount < maxRetries) {
+          retryCount++;
+          setTimeout(findElementAndSetupScroll, 100);
+        }
+        return;
+      }
 
-    const handleScroll = () => {
-      const { scrollTop, clientHeight, scrollHeight } = scrollArea;
-      const isAtBottom = scrollTop + clientHeight >= scrollHeight - threshold;
+      const handleScroll = () => {
+        const { scrollTop, clientHeight, scrollHeight } = scrollArea;
+        
+        // Более надежное определение что пользователь не в самом низу
+        const distanceFromBottom = scrollHeight - (scrollTop + clientHeight);
+        const shouldBeVisible = distanceFromBottom > threshold && scrollHeight > clientHeight;
+        
+        setIsVisible(shouldBeVisible);
+      };
+
+      // Добавляем обработчик скролла
+      scrollArea.addEventListener('scroll', handleScroll, { passive: true });
       
-      // Показываем кнопку если НЕ в самом низу и есть что прокручивать
-      const shouldBeVisible = !isAtBottom && scrollHeight > clientHeight;
+      // Вызываем сразу для начальной проверки
+      handleScroll();
       
-      setIsVisible(shouldBeVisible);
+      // Также проверяем через небольшую задержку когда DOM стабилизируется
+      const timeoutId = setTimeout(handleScroll, 200);
+      
+      return () => {
+        scrollArea.removeEventListener('scroll', handleScroll);
+        clearTimeout(timeoutId);
+      };
     };
 
-    // Добавляем обработчик и вызываем сразу
-    scrollArea.addEventListener('scroll', handleScroll, { passive: true });
+    const cleanup = findElementAndSetupScroll();
     
-    // Задержка для правильного вычисления размеров после рендера
-    const timeoutId = setTimeout(handleScroll, 100);
-    
-    return () => {
-      scrollArea.removeEventListener('scroll', handleScroll);
-      clearTimeout(timeoutId);
-    };
+    return cleanup;
   }, [threshold]);
 
   const scrollToBottom = () => {
@@ -56,7 +74,7 @@ export default function ScrollToBottomButton({
   };
 
   if (!isVisible) {
-    return null; // Не рендерим вообще если не видим
+    return null;
   }
 
   return (
@@ -69,7 +87,7 @@ export default function ScrollToBottomButton({
         'flex items-center justify-center',
         'bg-white/70 hover:bg-white/80 border-gray-200/60',
         'dark:bg-background/90 dark:hover:bg-background',
-        'translate-y-0 scale-100 opacity-100', // Всегда видима если рендерится
+        'translate-y-0 scale-100 opacity-100',
         className
       )}
       onClick={scrollToBottom}
