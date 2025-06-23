@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { X, FileText, File, Image as ImageIcon, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
+import ImageModal from './ImageModal';
 
 interface FilePreviewProps {
   file: {
@@ -23,6 +24,7 @@ interface FilePreviewProps {
 
 export default function FilePreview({ file, onRemove, showPreview = true }: FilePreviewProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
 
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 B';
@@ -53,134 +55,139 @@ export default function FilePreview({ file, onRemove, showPreview = true }: File
     return 'text-gray-600 dark:text-gray-400';
   };
 
+  // Получаем корректный preview URL без мутации исходного объекта
+  const getPreviewUrl = (): string => {
+    if (file.preview && file.preview !== '' && file.preview.length > 5) {
+      const isValidUrl = file.preview.startsWith('blob:') || 
+                        file.preview.startsWith('http') || 
+                        file.preview.startsWith('/api/');
+      if (isValidUrl) {
+        return file.preview;
+      }
+    }
+    
+    // Fallback для remote файлов - используем storageId
+    if (file.remote && file.storageId) {
+      return `/api/files/${file.storageId}`;
+    }
+    
+    return '';
+  };
+
   // Get the best quality image URL
   const getImageUrl = (preferOriginal = false) => {
-    if (!file.preview) return '';
+    const previewUrl = getPreviewUrl();
     
     // For remote files, prefer original when requesting high quality
     if (file.remote && file.storageId && preferOriginal) {
       return `/api/files/${file.storageId}`;
     }
     
-    return file.preview;
+    return previewUrl;
   };
 
   const handleImageClick = () => {
-    if (file.storageId) {
-      // Open original file for the best quality
-      window.open(`/api/files/${file.storageId}`, '_blank');
-    } else if (file.preview && file.preview.startsWith('blob:')) {
-      window.open(file.preview, '_blank');
-    }
+    // Открываем в модальном окне вместо новой вкладки
+    setShowImageModal(true);
   };
 
   // Для изображений с превью при наведении
   if (file.type.startsWith('image/')) {
-    // Улучшенная валидация preview URL с fallback механизмами
-    const hasValidPreview = (() => {
-      if (!file.preview || file.preview === '') {
-        // Для remote файлов пытаемся использовать storageId как fallback
-        if (file.remote && file.storageId) {
-          // Обновляем preview URL на лету
-          file.preview = `/api/files/${file.storageId}`;
-          return true;
-        }
-        return false;
-      }
-      
-      if (file.preview.length <= 5) return false;
-      
-      const isValidUrl = file.preview.startsWith('blob:') || 
-                        file.preview.startsWith('http') || 
-                        file.preview.startsWith('/api/');
-      
-      // Дополнительная проверка для remote файлов
-      if (!isValidUrl && file.remote && file.storageId) {
-        file.preview = `/api/files/${file.storageId}`;
-        return true;
-      }
-      
-      return isValidUrl;
-    })();
+    // Улучшенная валидация preview URL без мутации объекта
+    const hasValidPreview = getPreviewUrl() !== '';
     
     return (
-      <div 
-        className="relative flex-shrink-0 group"
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      >
-        <div className="relative">
-          {hasValidPreview ? (
-            <Image
-              src={getImageUrl(false)} // Use preview for small thumbnails
-              className={cn(
-                "h-16 w-16 object-cover rounded-lg border-2 border-blue-200 dark:border-blue-800 shadow-sm cursor-pointer hover:shadow-md transition-shadow",
-                file.isUploading && "opacity-50"
-              )}
-              alt={file.name}
-              width={64}
-              height={64}
-              onClick={handleImageClick}
-              onError={() => {
-                console.warn('Failed to load image preview:', file.preview, 'for file:', file.name);
-              }}
-            />
-          ) : (
-            <div 
-              className={cn(
-                "h-16 w-16 bg-blue-50 border-2 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800 rounded-lg flex items-center justify-center",
-                file.isUploading && "opacity-50"
-              )}
-              title={`Preview not available for ${file.name}`}
-            >
-              <ImageIcon className="w-8 h-8 text-blue-600 dark:text-blue-400" />
-            </div>
-          )}
-          
-          {/* Индикатор загрузки */}
-          {file.isUploading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-lg">
-              <Loader2 className="w-6 h-6 text-white animate-spin" />
-            </div>
-          )}
-          
-          {/* Увеличенный превью при наведении - показываем под файлом */}
-          {showPreview && isHovered && hasValidPreview && (
-            <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 z-[200] pointer-events-none">
-              <div className="bg-background border border-border rounded-lg shadow-xl p-3">
-                <Image
-                  src={getImageUrl(true)} // Use high quality original for hover preview
-                  alt={file.name}
-                  className="w-80 h-80 object-contain rounded-lg cursor-pointer"
-                  width={320}
-                  height={320}
-                  onError={() => {
-                    console.warn('Failed to load hover preview:', getImageUrl(true), 'for file:', file.name);
-                  }}
-                />
-                <div className="mt-2 text-sm text-muted-foreground text-center">
-                  <div className="font-medium truncate max-w-80">{file.name}</div>
-                  <div>{formatFileSize(file.size)}</div>
-                  <div className="text-xs text-muted-foreground/70 mt-1">Click to view full size</div>
+      <>
+        <div 
+          className="relative flex-shrink-0 group"
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
+          <div className="relative">
+            {hasValidPreview ? (
+              <Image
+                src={getImageUrl(false)} // Use preview for small thumbnails
+                className={cn(
+                  "h-16 w-16 object-cover rounded-lg border-2 border-blue-200 dark:border-blue-800 shadow-sm cursor-pointer hover:shadow-md transition-shadow",
+                  file.isUploading && "opacity-50"
+                )}
+                alt={file.name}
+                width={64}
+                height={64}
+                onClick={handleImageClick}
+                onError={() => {
+                  console.warn('Failed to load image preview:', getPreviewUrl(), 'for file:', file.name);
+                }}
+              />
+            ) : (
+              <div 
+                className={cn(
+                  "h-16 w-16 bg-blue-50 border-2 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800 rounded-lg flex items-center justify-center",
+                  file.isUploading && "opacity-50"
+                )}
+                title={`Preview not available for ${file.name}`}
+              >
+                <ImageIcon className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+              </div>
+            )}
+            
+            {/* Индикатор загрузки */}
+            {file.isUploading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-lg">
+                <Loader2 className="w-6 h-6 text-white animate-spin" />
+              </div>
+            )}
+            
+            {/* Увеличенный превью при наведении - показываем под файлом */}
+            {showPreview && isHovered && hasValidPreview && (
+              <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 z-[200] pointer-events-none">
+                <div className="bg-background border border-border rounded-lg shadow-xl p-3">
+                  <Image
+                    src={getImageUrl(true)} // Use high quality original for hover preview
+                    alt={file.name}
+                    className="w-80 h-80 object-contain rounded-lg cursor-pointer"
+                    width={320}
+                    height={320}
+                    onError={() => {
+                      console.warn('Failed to load hover preview:', getImageUrl(true), 'for file:', file.name);
+                    }}
+                  />
+                  <div className="mt-2 text-sm text-muted-foreground text-center">
+                    <div className="font-medium truncate max-w-80">{file.name}</div>
+                    <div>{formatFileSize(file.size)}</div>
+                    <div className="text-xs text-muted-foreground/70 mt-1">Click to view full size</div>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
+          
+          {/* Крестик всегда виден при наведении на группу */}
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onRemove(file.id);
+            }}
+            className="absolute -right-1 -top-1 bg-background border border-border rounded-full p-1 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors shadow-sm opacity-0 group-hover:opacity-100 z-10"
+            aria-label="Remove file"
+          >
+            <X className="w-3 h-3" />
+          </button>
         </div>
-        
-        {/* Крестик всегда виден при наведении на группу */}
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onRemove(file.id);
-          }}
-          className="absolute -right-1 -top-1 bg-background border border-border rounded-full p-1 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors shadow-sm opacity-0 group-hover:opacity-100 z-10"
-          aria-label="Remove file"
-        >
-          <X className="w-3 h-3" />
-        </button>
-      </div>
+
+        {/* Модальное окно для просмотра изображения */}
+        {showImageModal && hasValidPreview && (
+          <ImageModal
+            isOpen={showImageModal}
+            onClose={() => setShowImageModal(false)}
+            imageUrl={getImageUrl(true)} // Use high quality for modal
+            fileName={file.name}
+            fileType={file.type}
+            fileSize={file.size}
+          />
+        )}
+      </>
     );
   }
 
