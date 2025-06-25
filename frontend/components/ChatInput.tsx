@@ -1578,8 +1578,8 @@ function PureChatInput({
             messageCount === 0 
               ? 'rounded-[20px] sm:rounded-[28px]' 
               : 'rounded-t-[20px] sm:rounded-t-[28px] border-t border-border/50',
-            messageCount === 0 && !isDragOver && 'border border-border/50',
-            'border border-gray-200 dark:border-border/50'
+            messageCount === 0 && !isDragOver && 'border border-gray-200 dark:border-white/15',
+            'border border-gray-200 dark:border-white/15'
           )}
           onDragEnter={handleDragEnter}
           onDragLeave={handleDragLeave}
