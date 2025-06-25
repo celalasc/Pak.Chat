@@ -2,7 +2,7 @@
 
 import { useChat } from '@ai-sdk/react';
 import Messages from './Messages';
-import ChatInput from './ChatInput';
+import ChatInput from './chat-input';
 import ChatNavigationBars from './ChatNavigationBars';
 import ScrollToBottomButton from './ScrollToBottomButton';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
