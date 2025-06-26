@@ -139,12 +139,6 @@ export const ChatModelDropdown = memo<ChatModelDropdownProps>(({ messageCount = 
           onOpenChange={(open: boolean) => {
             setIsOpen(open);
           }}
-          shouldScaleBackground={false}
-          dismissible={true}
-          modal={true}
-          snapPoints={[1]}
-          fadeFromIndex={0}
-          closeThreshold={0.5}
         >
           <DrawerTrigger asChild>
             <Button
@@ -159,17 +153,10 @@ export const ChatModelDropdown = memo<ChatModelDropdownProps>(({ messageCount = 
             </Button>
           </DrawerTrigger>
           <DrawerContent className="max-h-[80vh] flex flex-col">
-            {/* Pull handle */}
-            <div className="flex justify-center pt-2 pb-1 flex-shrink-0">
-              <div className="w-12 h-1 bg-muted-foreground/30 rounded-full" />
-            </div>
-            
-            {/* Hidden title for accessibility */}
             <DrawerHeader className="sr-only">
               <DrawerTitle>Select Model</DrawerTitle>
             </DrawerHeader>
             
-            {/* Content */}
             <div className="flex-1 min-h-0 overflow-y-auto scrollbar-none">
               {renderModelsContent()}
             </div>

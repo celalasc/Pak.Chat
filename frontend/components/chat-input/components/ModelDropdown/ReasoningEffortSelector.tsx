@@ -19,21 +19,18 @@ interface ReasoningEffortSelectorProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const reasoningEfforts: { value: ReasoningEffort; label: string; description: string }[] = [
+const reasoningEfforts: { value: ReasoningEffort; label: string }[] = [
   { 
     value: 'high', 
-    label: 'High', 
-    description: 'Maximum reasoning depth and accuracy' 
+    label: 'High'
   },
   { 
     value: 'medium', 
-    label: 'Medium', 
-    description: 'Balanced reasoning and speed' 
+    label: 'Medium'
   },
   { 
     value: 'low', 
-    label: 'Low', 
-    description: 'Faster responses with basic reasoning' 
+    label: 'Low'
   },
 ];
 
@@ -60,28 +57,26 @@ export const ReasoningEffortSelector = memo<ReasoningEffortSelectorProps>(({
       
       <DropdownMenuContent
         className={cn(
-          'w-48',
+          'w-32',
           'border border-border/50 bg-popover/95 backdrop-blur-sm shadow-xl rounded-xl overflow-hidden'
         )}
         align="center"
         side="top"
         sideOffset={12}
-        avoidCollisions
+        avoidCollisions={false}
+        alignOffset={0}
       >
         <div className="p-1">
-          {reasoningEfforts.map(({ value, label, description }) => (
+          {reasoningEfforts.map(({ value, label }) => (
             <DropdownMenuItem
               key={value}
               onSelect={() => onEffortChange(value)}
-              className="flex flex-col items-start gap-1 p-3 rounded-lg cursor-pointer hover:bg-accent hover:text-accent-foreground"
+              className="flex items-center justify-between p-3 rounded-lg cursor-pointer hover:bg-accent hover:text-accent-foreground"
             >
-              <div className="flex items-center justify-between w-full">
-                <span className="font-medium text-sm">{label}</span>
-                {currentEffort === value && (
-                  <Check className="w-4 h-4 text-primary" />
-                )}
-              </div>
-              <span className="text-xs text-muted-foreground">{description}</span>
+              <span className="font-medium text-sm">{label}</span>
+              {currentEffort === value && (
+                <Check className="w-4 h-4 text-primary" />
+              )}
             </DropdownMenuItem>
           ))}
         </div>
