@@ -1,8 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback, memo, useRef, useMemo } from 'react';
-// use-debounce provides a debounced callback hook to prevent rapid state changes
-import { useDebouncedCallback } from 'use-debounce';
 import { Drawer, DrawerContent, DrawerTrigger, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, DialogDescription } from '@/frontend/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -56,6 +54,7 @@ import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { Switch } from '@/frontend/components/ui/switch';
 import { CustomSwitch } from '@/frontend/components/ui/custom-switch';
 import { copyText } from '@/lib/copyText';
+// @ts-ignore - Convex module issue
 import { useConvexAuth, useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 
@@ -280,7 +279,7 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
           snapPoints={[1]}
           fadeFromIndex={0}
           closeThreshold={0.5}
-          onDrag={(event, percentageDragged) => {
+          onDrag={(event: any, percentageDragged: number) => {
             // Унифицированная анимация для всех мобильных устройств
             if (isMobile && percentageDragged > 0) {
               const mainContent = document.querySelector('.main-content') as HTMLElement;
@@ -1029,18 +1028,22 @@ const ModelsTab = memo(() => {
   const handleToggleProvider = useCallback((provider: Provider) => {
     try {
       toggleProvider(provider);
+      // Принудительно сохраняем в Convex
+      saveToConvex();
     } catch (error) {
       console.error('Failed to toggle provider:', error);
     }
-  }, [toggleProvider]);
+  }, [toggleProvider, saveToConvex]);
 
   const handleToggleFavoriteModel = useCallback((model: AIModel) => {
     try {
       toggleFavoriteModel(model);
+      // Принудительно сохраняем в Convex
+      saveToConvex();
     } catch (error) {
       console.error('Failed to toggle favorite model:', error);
     }
-  }, [toggleFavoriteModel]);
+  }, [toggleFavoriteModel, saveToConvex]);
 
   const toggleCustomInstructionsExpanded = useCallback(() => {
     setCustomInstructionsExpanded(prev => !prev);
@@ -1597,12 +1600,7 @@ const ProviderSection = memo(({
   return (
     <div className="space-y-3">
       {/* Закрепленный заголовок провайдера */}
-      <div
-        className={cn(
-          "bg-background/95 backdrop-blur-sm z-10 pb-2",
-          !providerHasKey && "opacity-60"
-        )}
-      >
+      <div className="bg-background/95 backdrop-blur-sm z-10 pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <ProviderIcon provider={provider} className="h-4 w-4" />
@@ -1610,13 +1608,18 @@ const ProviderSection = memo(({
             <Badge variant="secondary" className="text-xs">
               {models.length} models
             </Badge>
+            {!providerHasKey && (
+              <Badge variant="outline" className="text-xs text-muted-foreground">
+                No API key
+              </Badge>
+            )}
           </div>
-          <div className={cn('flex items-center gap-2', !providerHasKey && 'pointer-events-none')}>
+          <div className="flex items-center gap-2">
             <CustomSwitch
               checked={isEnabled}
               onCheckedChange={onToggleProvider}
               id={`provider-${provider}`}
-              disabled={!providerHasKey}
+              disabled={false}
             />
             <Button
               variant="ghost"
@@ -1641,7 +1644,8 @@ const ProviderSection = memo(({
             <ModelRow
               key={model}
               model={model}
-              isProviderEnabled={isEnabled && providerHasKey}
+              isProviderEnabled={isEnabled}
+              providerHasKey={providerHasKey}
               isFavoriteModel={isFavoriteModel(model)}
               onToggleFavoriteModel={() => onToggleFavoriteModel(model)}
             />
@@ -1657,6 +1661,7 @@ ProviderSection.displayName = 'ProviderSection';
 interface ModelRowProps {
   model: AIModel;
   isProviderEnabled: boolean;
+  providerHasKey: boolean;
   isFavoriteModel: boolean;
   onToggleFavoriteModel: () => void;
 }
@@ -1664,6 +1669,7 @@ interface ModelRowProps {
 const ModelRow = memo(({
   model,
   isProviderEnabled,
+  providerHasKey,
   isFavoriteModel,
   onToggleFavoriteModel,
 }: ModelRowProps) => {
@@ -1682,7 +1688,7 @@ const ModelRow = memo(({
       className={cn(
         "flex items-center justify-between p-2 rounded-md border cursor-pointer transition-colors",
         isFavoriteModel && "bg-primary/10 border-primary/20",
-        !isProviderEnabled && "opacity-60"
+        (!isProviderEnabled || !providerHasKey) && "opacity-60"
       )}
       onClick={handleClick}
       onKeyDown={(e) => {
@@ -1693,9 +1699,14 @@ const ModelRow = memo(({
     >
       <div className="flex items-center gap-2">
         <span className="text-sm font-medium">{model}</span>
-        {!isProviderEnabled && (
+        {!providerHasKey && (
           <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
             No API key
+          </span>
+        )}
+        {!isProviderEnabled && providerHasKey && (
+          <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+            Provider disabled
           </span>
         )}
       </div>
