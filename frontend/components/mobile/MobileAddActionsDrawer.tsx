@@ -288,11 +288,6 @@ export default function MobileAddActionsDrawer({
         {children}
       </DrawerTrigger>
       <DrawerContent className="max-h-[70vh] flex flex-col">
-        {/* Pull handle */}
-        <div className="flex justify-center pt-2 pb-1 flex-shrink-0">
-          <div className="w-12 h-1 bg-muted-foreground/30 rounded-full" />
-        </div>
-        
         {/* Hidden title for accessibility */}
         <DrawerHeader className="sr-only">
           <DrawerTitle>
