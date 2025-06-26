@@ -7,41 +7,66 @@ import { cn } from '@/lib/utils';
 import { AIModel, getModelConfig, getModelsByProvider } from '@/lib/models';
 import { getCompanyIcon } from '@/frontend/components/ui/provider-icons';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
+import { useModelVisibilityStore } from '@/frontend/stores/ModelVisibilityStore';
 
 interface ModelSelectorProps {
   models: AIModel[];
   selectedModel: AIModel;
   onModelSelect: (model: AIModel) => void;
-  onToggleFavorite: (model: AIModel, e: React.MouseEvent) => void;
   isModelEnabled: (model: AIModel) => boolean;
-  isFavoriteModel: (model: AIModel) => boolean;
-  showFavoriteButton?: boolean;
-  layout?: 'list' | 'grid';
 }
 
 export const ModelSelector = memo<ModelSelectorProps>(({
   models,
   selectedModel,
   onModelSelect,
-  onToggleFavorite,
   isModelEnabled,
-  isFavoriteModel,
-  showFavoriteButton = true,
-  layout = 'list'
 }) => {
   const { isMobile } = useIsMobile();
   const [searchQuery, setSearchQuery] = useState('');
+  const { getVisibleGeneralModels } = useModelVisibilityStore();
 
-  // Get ALL models for search when needed
-  const allModels = Object.values(getModelsByProvider()).flat();
+  // Function to calculate search relevance score
+  const getRelevanceScore = useCallback((model: AIModel, query: string) => {
+    const modelLower = model.toLowerCase();
+    const queryLower = query.toLowerCase();
+    
+    // Exact match - highest priority
+    if (modelLower === queryLower) return 1000;
+    
+    // Starts with query - high priority  
+    if (modelLower.startsWith(queryLower)) return 800 + (queryLower.length / modelLower.length) * 100;
+    
+    // Contains query at word boundary - medium priority
+    const words = modelLower.split(/[\s\-._]/);
+    for (const word of words) {
+      if (word.startsWith(queryLower)) {
+        return 600 + (queryLower.length / word.length) * 100;
+      }
+    }
+    
+    // Contains query anywhere - low priority
+    if (modelLower.includes(queryLower)) {
+      const index = modelLower.indexOf(queryLower);
+      return 400 + (queryLower.length / modelLower.length) * 100 - index;
+    }
+    
+    return 0;
+  }, []);
 
-  // Filter models based on search
+  // Filter and sort models based on search
   const filteredModels = searchQuery 
-    ? allModels.filter(model =>
-        model.toLowerCase().includes(searchQuery.toLowerCase()) &&
-        isModelEnabled(model) // Only show enabled models in search
-      )
-    : models; // Use provided models when no search
+    ? getVisibleGeneralModels() // Search across ALL available models
+        .filter(model => {
+          const score = getRelevanceScore(model, searchQuery);
+          return score > 0 && isModelEnabled(model);
+        })
+        .sort((a, b) => {
+          const scoreA = getRelevanceScore(a, searchQuery);
+          const scoreB = getRelevanceScore(b, searchQuery);
+          return scoreB - scoreA; // Higher score first
+        })
+    : models; // Use provided models (favorites) when no search
 
   const getProviderIcon = useCallback((model: AIModel) => {
     const config = getModelConfig(model);
@@ -101,7 +126,7 @@ export const ModelSelector = memo<ModelSelectorProps>(({
       </div>
 
       {/* Models list */}
-      <div className="space-y-1 max-h-[300px] overflow-y-auto">
+      <div className="space-y-1 max-h-[180px] overflow-y-auto">
         {filteredModels.length > 0 ? (
           filteredModels.map((model) => {
             const enabled = isModelEnabled(model);
@@ -114,7 +139,6 @@ export const ModelSelector = memo<ModelSelectorProps>(({
                 className={cn(
                   'flex items-center justify-between px-3 py-2.5 rounded-lg cursor-pointer transition-colors',
                   'hover:bg-gray-50 dark:hover:bg-gray-200/10',
-                  isSelected && 'bg-primary/10 border border-primary/20',
                   !enabled && 'opacity-50 cursor-not-allowed text-muted-foreground',
                   isMobile && "py-3 mobile-touch-item"
                 )}
@@ -127,14 +151,6 @@ export const ModelSelector = memo<ModelSelectorProps>(({
                   )}>
                     {highlightMatch(model, searchQuery)}
                   </span>
-                  {!enabled && (
-                    <div className={cn(
-                      "text-muted-foreground bg-muted px-1.5 py-0.5 rounded",
-                      isMobile ? "text-sm" : "text-xs"
-                    )}>
-                      No API key
-                    </div>
-                  )}
                 </div>
                 
                 {isSelected && (

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { AIModel, getModelsByProvider } from '@/lib/models';
+import { AIModel, getModelsByProvider, getModelConfig } from '@/lib/models';
 import { Provider } from '@/frontend/stores/APIKeyStore';
 
 type ModelVisibilityStore = {
@@ -60,7 +60,12 @@ export const useModelVisibilityStore = create<ModelVisibilityStore>()(
       },
 
       getVisibleFavoriteModels: () => {
-        return get().favoriteModels;
+        const { favoriteModels, enabledProviders } = get();
+        // Фильтруем избранные модели только от включенных провайдеров
+        return favoriteModels.filter(model => {
+          const config = getModelConfig(model);
+          return enabledProviders.includes(config.provider as Provider);
+        });
       },
 
       getVisibleGeneralModels: () => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useCallback, useState } from 'react';
-import { ChevronDown, ChevronLeft, ChevronUp, Star, Globe, X } from 'lucide-react';
+import { ChevronDown, Globe, X } from 'lucide-react';
 import { Button } from '@/frontend/components/ui/button';
 import {
   DropdownMenu,
@@ -20,10 +20,9 @@ import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 import { useModelStore } from '@/frontend/stores/ModelStore';
 import { useChatStore } from '@/frontend/stores/ChatStore';
 import { useModelVisibilityStore } from '@/frontend/stores/ModelVisibilityStore';
-import { useModelVisibilitySync } from '@/frontend/hooks/useModelVisibilitySync';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { AIModel, getModelConfig } from '@/lib/models';
-import { ModelSelector } from './ModelSelector';
+import { ModelSelector } from '@/frontend/features/chat-input/ui/components/ModelDropdown/ModelSelector';
 import { ReasoningEffortSelector } from './ReasoningEffortSelector';
 
 interface ChatModelDropdownProps {
@@ -45,12 +44,8 @@ export const ChatModelDropdown = memo<ChatModelDropdownProps>(({ messageCount = 
   const {
     getVisibleFavoriteModels,
     getVisibleGeneralModels,
-    isFavoriteModel,
-    toggleFavoriteModel,
     isProviderEnabled,
   } = useModelVisibilityStore();
-  const { saveToConvex } = useModelVisibilitySync();
-  const [isExpanded, setIsExpanded] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [isReasoningEffortOpen, setIsReasoningEffortOpen] = useState(false);
   const { isMobile } = useIsMobile();
@@ -68,41 +63,16 @@ export const ChatModelDropdown = memo<ChatModelDropdownProps>(({ messageCount = 
     [getKey, isProviderEnabled]
   );
 
-  const visibleFavoriteModels = getVisibleFavoriteModels();
-  const visibleGeneralModels = getVisibleGeneralModels().filter((m) => !isFavoriteModel(m));
-  const enabledFavorites = visibleFavoriteModels;
-  const disabledModels = visibleGeneralModels.filter((m) => !isModelEnabled(m));
-  const enabledNonFavorites = visibleGeneralModels.filter(isModelEnabled);
-  const allOtherModelsSorted = [...enabledNonFavorites, ...disabledModels];
-
   const handleModelSelect = useCallback(
     (model: AIModel) => {
       if (isModelEnabled(model)) {
         setModel(model);
-        setIsOpen(false);
-        setIsExpanded(false);
+        // Закрываем с небольшой задержкой чтобы избежать смещения
+        setTimeout(() => setIsOpen(false), 50);
       }
     },
     [isModelEnabled, setModel]
   );
-
-  const handleToggleFavorite = useCallback(
-    (model: AIModel, e: React.MouseEvent) => {
-      e.stopPropagation();
-      if (isModelEnabled(model)) {
-        toggleFavoriteModel(model);
-      }
-    },
-    [toggleFavoriteModel, isModelEnabled]
-  );
-
-  const handleShowAll = useCallback(() => {
-    setIsExpanded(true);
-  }, []);
-
-  const handleBackToFavorites = useCallback(() => {
-    setIsExpanded(false);
-  }, []);
 
   const handleReasoningEffortChange = useCallback(
     (effort: any) => {
@@ -113,99 +83,34 @@ export const ChatModelDropdown = memo<ChatModelDropdownProps>(({ messageCount = 
   );
 
   const renderModelsContent = () => {
-    if (!isExpanded) {
-      // Show only favorites
-      return (
-        <div className={cn("p-3", isMobile && "p-4")}>
-          <div className="flex items-center justify-between mb-3">
-            <div className={cn(
-              "px-2 py-1 text-xs font-semibold text-muted-foreground/80 uppercase tracking-wide flex items-center gap-2",
-              isMobile && "text-sm"
-            )}>
-              <Star className={cn("w-3 h-3", isMobile && "w-4 h-4")} />
-              Favorites
+    // Show only favorite models (those with checkmark in settings)
+    const favoriteModels = getVisibleFavoriteModels();
+    
+    // If no favorites selected, show NO models - force user to configure favorites
+    const modelsToShow = favoriteModels;
+    
+    return (
+      <div className={cn("p-3", isMobile && "p-4")}>
+        {favoriteModels.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="text-sm text-muted-foreground mb-4">
+              No favorite models selected
             </div>
-            <button
-              onClick={handleShowAll}
-              className={cn(
-                "inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg",
-                isMobile && "text-sm px-4 py-2"
-              )}
-            >
-              Show all
-              <ChevronUp className={cn("w-3 h-3", isMobile && "w-4 h-4")} />
-            </button>
+            <div className="text-xs text-muted-foreground px-4 py-3 bg-muted/20 rounded-lg">
+              💡 Go to <strong>Settings → Models</strong> to select your favorite models.<br/>
+              Click the checkmark next to models you want to see here.
+            </div>
           </div>
-          
+        ) : (
           <ModelSelector
-            models={enabledFavorites}
+            models={modelsToShow}
             selectedModel={selectedModel}
             onModelSelect={handleModelSelect}
-            onToggleFavorite={handleToggleFavorite}
             isModelEnabled={isModelEnabled}
-            isFavoriteModel={isFavoriteModel}
-            layout="list"
           />
-        </div>
-      );
-    } else {
-      // Show all models
-      return (
-        <div className={cn("p-3", isMobile && "p-4")}>
-          <div className="flex items-center justify-between mb-3">
-            <div className={cn(
-              "px-2 py-1 text-xs font-semibold text-muted-foreground/80 uppercase tracking-wide flex items-center gap-2",
-              isMobile && "text-sm"
-            )}>
-              <Star className={cn("w-3 h-3", isMobile && "w-4 h-4")} />
-              Favorites
-            </div>
-            <button
-              onClick={handleBackToFavorites}
-              className={cn(
-                "inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg",
-                isMobile && "text-sm px-4 py-2"
-              )}
-            >
-              <ChevronLeft className={cn("w-3 h-3", isMobile && "w-4 h-4")} />
-              Back to Favorites
-            </button>
-          </div>
-          
-          <div className="mb-6">
-            <ModelSelector
-              models={enabledFavorites}
-              selectedModel={selectedModel}
-              onModelSelect={handleModelSelect}
-              onToggleFavorite={handleToggleFavorite}
-              isModelEnabled={isModelEnabled}
-              isFavoriteModel={isFavoriteModel}
-              layout="grid"
-            />
-          </div>
-          
-          {allOtherModelsSorted.length > 0 && (
-            <div className="mb-4">
-              <div className={cn(
-                "px-2 py-1 text-xs font-semibold text-muted-foreground/80 mb-3 uppercase tracking-wide",
-                isMobile && "text-sm"
-              )}>
-                Others
-              </div>
-              <ModelSelector
-                models={allOtherModelsSorted}
-                selectedModel={selectedModel}
-                onModelSelect={handleModelSelect}
-                onToggleFavorite={handleToggleFavorite}
-                isModelEnabled={isModelEnabled}
-                isFavoriteModel={isFavoriteModel}
-                layout="grid"
-              />
-            </div>
-          )}
-        </div>
-      );
-    }
+        )}
+      </div>
+    );
   };
 
   return (
@@ -231,11 +136,8 @@ export const ChatModelDropdown = memo<ChatModelDropdownProps>(({ messageCount = 
         // Mobile version with Drawer
         <Drawer 
           open={isOpen} 
-          onOpenChange={(open) => {
+          onOpenChange={(open: boolean) => {
             setIsOpen(open);
-            if (!open) {
-              setIsExpanded(false);
-            }
           }}
           shouldScaleBackground={false}
           dismissible={true}
@@ -247,7 +149,7 @@ export const ChatModelDropdown = memo<ChatModelDropdownProps>(({ messageCount = 
           <DrawerTrigger asChild>
             <Button
               variant="ghost"
-              className="flex items-center gap-1 h-8 pl-3 pr-2 text-xs rounded-lg text-foreground hover:bg-accent/50 focus-visible:ring-1 focus-visible:ring-offset-0 focus-visible:ring-blue-500 transition-colors"
+              className="flex items-center gap-1 h-8 pl-3 pr-2 text-xs rounded-lg text-foreground hover:bg-accent/50 focus-visible:ring-0 focus-visible:ring-offset-0 transition-colors"
               aria-label={`Selected model: ${selectedModel}`}
             >
               <div className="flex items-center gap-1">
@@ -277,17 +179,14 @@ export const ChatModelDropdown = memo<ChatModelDropdownProps>(({ messageCount = 
         // Desktop version with DropdownMenu
         <DropdownMenu
           open={isOpen}
-          onOpenChange={(open) => {
+          onOpenChange={(open: boolean) => {
             setIsOpen(open);
-            if (!open) {
-              setIsExpanded(false);
-            }
           }}
         >
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="flex items-center gap-1 h-8 pl-3 pr-2 text-xs rounded-lg text-foreground hover:bg-accent/50 focus-visible:ring-1 focus-visible:ring-offset-0 focus-visible:ring-blue-500 transition-colors"
+              className="flex items-center gap-1 h-8 pl-3 pr-2 text-xs rounded-lg text-foreground hover:bg-accent/50 focus-visible:ring-0 focus-visible:ring-offset-0 transition-colors"
               aria-label={`Selected model: ${selectedModel}`}
             >
               <div className="flex items-center gap-1">
@@ -298,7 +197,7 @@ export const ChatModelDropdown = memo<ChatModelDropdownProps>(({ messageCount = 
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className={cn(
-              !isExpanded ? 'w-64' : 'w-80',
+              'w-64',
               'border border-border/50 bg-popover/95 backdrop-blur-sm shadow-xl rounded-xl overflow-hidden max-h-[50vh]'
             )}
             align="center"
