@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/frontend/stores/AuthStore';
 import { Button } from '@/frontend/components/ui/button';
 import { getLastPath, isReload } from '@/frontend/lib/lastChat';
-import AppShellSkeleton from '@/frontend/components/AppShellSkeleton';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 
 export default function Page() {
