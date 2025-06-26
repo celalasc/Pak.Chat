@@ -97,7 +97,7 @@ const ContentComponent = memo(function ContentComponent({
   return (
     <div className={cn('flex gap-4 flex-1 min-h-0', className)}>
       {isMobile ? (
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0 overflow-hidden">
           <TabsList className="grid w-full flex-shrink-0 grid-cols-4">
             <TabsTrigger value="customization" className="flex items-center gap-1 text-xs">
               <Palette className="h-3 w-3" />
@@ -117,8 +117,8 @@ const ContentComponent = memo(function ContentComponent({
             </TabsTrigger>
           </TabsList>
 
-          <div className="flex-1 mt-4 min-h-0 overflow-y-auto scrollbar-none enhanced-scroll mobile-keyboard-fix">
-            <div className="p-4">
+          <div className="flex-1 mt-4 min-h-0 overflow-y-auto scrollbar-none relative">
+            <div className="p-4 pb-20">
               {activeTab === 'customization' && <CustomizationTab />}
               {activeTab === 'models' && <ModelsTab />}
               {activeTab === 'profile' && <ProfileTab />}
@@ -127,7 +127,7 @@ const ContentComponent = memo(function ContentComponent({
           </div>
         </Tabs>
       ) : (
-        <div className="flex gap-4 flex-1 min-h-0">
+        <div className="flex gap-4 flex-1 min-h-0 overflow-hidden">
           <div className="flex flex-col w-48 flex-shrink-0">
             <AnimatedTabs
               tabs={tabs.map((tab) => ({ ...tab, icon: getTabIcon(tab.icon) }))}
@@ -137,8 +137,8 @@ const ContentComponent = memo(function ContentComponent({
             />
           </div>
 
-          <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto scrollbar-none enhanced-scroll pl-4">
-            <div className="scroll-auto" style={{ scrollBehavior: 'auto', overscrollBehavior: 'contain' }}>
+          <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto scrollbar-none pl-4 pr-4 relative">
+            <div className="pb-20">
               {activeTab === 'customization' && <CustomizationTab />}
               {activeTab === 'models' && <ModelsTab />}
               {activeTab === 'profile' && <ProfileTab />}
@@ -154,7 +154,6 @@ const ContentComponent = memo(function ContentComponent({
 ContentComponent.displayName = 'ContentComponent';
 
 const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawerProps) => {
-  // Унифицированный breakpoint для всех мобильных устройств
   const { isMobile, mounted } = useIsMobile(768);
   const [activeTab, setActiveTab] = useState("customization");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -165,20 +164,12 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
 
   const handleOpenChange = useCallback((open: boolean) => {
     setIsOpen(open);
-    // Сбрасываем состояние при закрытии для всех платформ
     if (!open) {
       resetDrawerState();
     }
   }, [setIsOpen, resetDrawerState]);
 
-  const handleAnimationEnd = useCallback((open: boolean) => {
-    // Сбрасываем состояние при закрытии (только для Mobile Drawer)
-    if (!open) {
-      resetDrawerState();
-    }
-  }, [resetDrawerState]);
-
-  // Унифицированный обработчик мобильного эффекта для всех устройств
+  // Mobile background effect handler
   const handleMobileEffect = useCallback((shouldApply: boolean) => {
     if (!isMobile) return;
     
@@ -186,36 +177,30 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
     if (!mainContent) return;
 
     if (shouldApply) {
-      mainContent.classList.add('mobile-settings-active');
-      // Применяем унифицированные значения
-      (mainContent as any).style.transform = 'translateY(20px) scale(0.95)';
-      (mainContent as any).style.borderRadius = '12px';
+      mainContent.style.transform = 'translateY(20px) scale(0.95)';
+      mainContent.style.borderRadius = '20px';
+      mainContent.style.overflow = 'hidden';
     } else {
-      mainContent.classList.remove('mobile-settings-active');
-      // Полностью сбрасываем inline стили
-      (mainContent as any).style.transform = '';
-      (mainContent as any).style.borderRadius = '';
+      mainContent.style.transform = '';
+      mainContent.style.borderRadius = '';
+      mainContent.style.overflow = '';
     }
   }, [isMobile]);
 
-  // Prevent body scroll when drawer is open and apply mobile effect
+  // Apply mobile effect when drawer state changes
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-      handleMobileEffect(true);
-    } else {
-      // Re-enable scrolling when drawer closes
-      document.body.style.overflow = 'auto';
-      handleMobileEffect(false);
+    if (isMobile) {
+      handleMobileEffect(isOpen);
     }
     
     return () => {
-      document.body.style.overflow = 'auto';
-      handleMobileEffect(false);
+      if (isMobile) {
+        handleMobileEffect(false);
+      }
     };
-  }, [isOpen, handleMobileEffect]);
+  }, [isOpen, isMobile, handleMobileEffect]);
 
-  // Мемоизируем tabs чтобы они не пересоздавались при каждом рендере
+  // Tabs configuration
   const tabs = useMemo(() => [
     {
       value: "customization",
@@ -239,7 +224,7 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
     }
   ], []);
 
-  // Функция для получения иконки по строковому идентификатору
+  // Icon mapping function
   const getTabIcon = useCallback((iconName: string) => {
     switch (iconName) {
       case 'palette':
@@ -255,72 +240,29 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
     }
   }, []);
 
-
   if (!mounted) {
-    return null; // Don't render anything until mounted
+    return null;
   }
 
   if (isMobile) {
     return (
-      <>
-        {/* Mobile overlay */}
-        <div className={cn(
-          "mobile-settings-overlay",
-          isOpen && "active"
-        )} onClick={() => handleOpenChange(false)} />
-        
-      <Drawer
-          open={isOpen}
-          onOpenChange={handleOpenChange}
-          onAnimationEnd={handleAnimationEnd}
-          shouldScaleBackground={false}
-          dismissible={true}
-          modal={true}
-          snapPoints={[1]}
-          fadeFromIndex={0}
-          closeThreshold={0.5}
-          onDrag={(event: any, percentageDragged: number) => {
-            // Унифицированная анимация для всех мобильных устройств
-            if (isMobile && percentageDragged > 0) {
-              const mainContent = document.querySelector('.main-content') as HTMLElement;
-              if (mainContent && mainContent.style) {
-                const progress = Math.max(0, 1 - percentageDragged);
-                // Фиксированные значения для одинакового поведения на всех устройствах
-                const translateY = 20 * progress;
-                const scale = 0.95 + (0.05 * (1 - progress));
-                const borderRadius = 12 * progress;
-                
-                (mainContent as any).style.transform = `translateY(${translateY}px) scale(${scale})`;
-                (mainContent as any).style.borderRadius = `${borderRadius}px`;
-              }
-            }
-          }}
-          onClose={() => {
-            // Убираем эффект при закрытии
-            handleMobileEffect(false);
-          }}
-        >
-          <DrawerTrigger asChild>
-            {children}
-          </DrawerTrigger>
-          <DrawerContent className="h-[80vh] max-h-[600px] flex flex-col w-full p-0 rounded-t-2xl">
-          {/* Pull handle */}
-          <div className="flex justify-center pt-2 pb-1 flex-shrink-0">
-            <div className="w-12 h-1 bg-muted-foreground/30 rounded-full" />
-          </div>
+      <Drawer 
+        open={isOpen} 
+        onOpenChange={handleOpenChange}
+        shouldScaleBackground={false}
+      >
+        <DrawerTrigger asChild>
+          {children}
+        </DrawerTrigger>
+        <DrawerContent className="h-[85vh] max-h-[600px] flex flex-col">
+          <DrawerHeader className="flex-shrink-0">
+            <DrawerTitle className="flex items-center gap-2 text-lg">
+              <Settings className="h-5 w-5" />
+              Settings
+            </DrawerTitle>
+          </DrawerHeader>
           
-          {/* Header with backdrop blur */}
-          <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-border/50 flex-shrink-0">
-            <DrawerHeader className="pb-2">
-              <DrawerTitle className="flex items-center gap-2 text-lg">
-                <Settings className="h-5 w-5" />
-                Settings
-              </DrawerTitle>
-            </DrawerHeader>
-          </div>
-          
-          {/* Content area with proper scrolling */}
-          <div className="flex-1 min-h-0 px-4 pb-6 overflow-y-auto scrollbar-none enhanced-scroll">
+          <div className="flex-1 min-h-0 px-4 pb-6 overflow-y-auto -webkit-overflow-scrolling-touch">
             <ContentComponent
               activeTab={activeTab}
               setActiveTab={setActiveTab}
@@ -332,7 +274,6 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
           </div>
         </DrawerContent>
       </Drawer>
-      </>
     );
   }
 
@@ -341,7 +282,7 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
       <DialogTrigger asChild>
         {children}
       </DialogTrigger>
-      <DialogContent className="w-[50vw] sm:max-w-none max-w-[520px] h-[65vh] flex flex-col rounded-3xl">
+      <DialogContent className="w-[50vw] sm:max-w-none max-w-[520px] h-[65vh] flex flex-col rounded-3xl overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5" />
@@ -358,6 +299,7 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
           tabs={tabs}
           getTabIcon={getTabIcon}
           scrollRef={scrollRef}
+          className="overflow-hidden"
         />
       </DialogContent>
     </Dialog>
@@ -370,7 +312,6 @@ const CustomizationTab = memo(() => {
   const [featuresExpanded, setFeaturesExpanded] = useState(false);
   const { isMobile } = useIsMobile();
 
-  // Мемоизируем обработчики чтобы предотвратить ненужные перерендеры
   const handleFontChange = useCallback((type: 'generalFont' | 'codeFont', value: GeneralFont | CodeFont) => {
     setSettings({ [type]: value });
   }, [setSettings]);
@@ -388,7 +329,7 @@ const CustomizationTab = memo(() => {
     setFeaturesExpanded(prev => !prev);
   }, []);
 
-  // Мемоизируем FontPreview чтобы он не пересоздавался
+  // Font Preview Component
   const FontPreview = useCallback(({ fontType, font }: { fontType: 'general' | 'code', font: string }) => {
     const getFontFamily = () => {
       if (fontType === 'general') {
@@ -431,8 +372,8 @@ const CustomizationTab = memo(() => {
   }, []);
 
   return (
-    <div className="space-y-6 pb-4">
-      {/* General Font Section */}
+    <div className="space-y-6">
+      {/* General Font */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
@@ -440,19 +381,30 @@ const CustomizationTab = memo(() => {
             General Font
           </CardTitle>
           <CardDescription className="text-sm">
-            Choose the font for the general interface
+            Choose the font family for text throughout the application
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2">
             {GENERAL_FONTS.map((font) => (
               <Button
                 key={font}
                 size="sm"
                 variant={settings.generalFont === font ? "default" : "outline"}
                 onClick={() => handleFontChange('generalFont', font)}
+                className="flex items-center gap-2"
               >
-                {font}
+                {font === 'System Font' ? (
+                  <>
+                    <Monitor className="h-4 w-4" />
+                    System font
+                  </>
+                ) : (
+                  <>
+                    <Type className="h-4 w-4" />
+                    Proxima Vara
+                  </>
+                )}
               </Button>
             ))}
           </div>
@@ -460,27 +412,38 @@ const CustomizationTab = memo(() => {
         </CardContent>
       </Card>
 
-      {/* Code Font Section */}
+      {/* Code Font */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <Monitor className="h-4 w-4" />
+            <Code className="h-4 w-4" />
             Code Font
           </CardTitle>
           <CardDescription className="text-sm">
-            Choose the font for code blocks and programming text
+            Choose the font family for code blocks and monospace text
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2">
             {CODE_FONTS.map((font) => (
               <Button
                 key={font}
                 size="sm"
                 variant={settings.codeFont === font ? "default" : "outline"}
                 onClick={() => handleFontChange('codeFont', font)}
+                className="flex items-center gap-2"
               >
-                {font}
+                {font === 'System Monospace Font' ? (
+                  <>
+                    <Monitor className="h-4 w-4" />
+                    System monospace
+                  </>
+                ) : (
+                  <>
+                    <Code className="h-4 w-4" />
+                    Berkeley Mono
+                  </>
+                )}
               </Button>
             ))}
           </div>
@@ -488,7 +451,7 @@ const CustomizationTab = memo(() => {
         </CardContent>
       </Card>
 
-      {/* Theme Section */}
+      {/* Theme */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
@@ -523,7 +486,7 @@ const CustomizationTab = memo(() => {
         </CardContent>
       </Card>
 
-      {/* Additional Features */}
+      {/* Features */}
       <Card>
         <CardHeader 
           className="cursor-pointer" 
@@ -579,19 +542,20 @@ const CustomizationTab = memo(() => {
 CustomizationTab.displayName = 'CustomizationTab';
 
 const ProfileTab = memo(() => {
-  const { user, login, logout, blurPersonalData, toggleBlur, loading } = useAuthStore();
-
-  const handleLogout = useCallback(async () => {
-    await logout();
-    toast.success("You have been signed out.");
-  }, [logout]);
+  const { user, loading, blurPersonalData, toggleBlur } = useAuthStore();
 
   const handleLogin = useCallback(async () => {
-    await login();
-  }, [login]);
+    const auth = useAuthStore.getState();
+    await auth.login();
+  }, []);
+
+  const handleLogout = useCallback(async () => {
+    const auth = useAuthStore.getState();
+    await auth.logout();
+  }, []);
 
   return (
-    <div className="space-y-6 pb-4">
+    <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
@@ -599,32 +563,29 @@ const ProfileTab = memo(() => {
             Profile
           </CardTitle>
           <CardDescription className="text-sm">
-            Manage your profile and account settings.
+            Your account information and preferences
           </CardDescription>
         </CardHeader>
-
         <CardContent className="space-y-4">
-          {loading ? (
-             <p className="text-sm text-muted-foreground text-center">Loading profile...</p>
-          ) : user ? (
+          {user ? (
             <>
-              <div className="flex items-center gap-4">
-                {user.photoURL && user.photoURL.trim() !== '' && (
-                   <Image
-                      src={user.photoURL}
-                      alt="User Avatar"
-                      width={64}
-                      height={64}
-                      className={cn(
-                        "size-16 rounded-full object-cover transition-all",
-                        blurPersonalData && "blur-md"
-                      )}
-                   />
-                )}
-                <div className="flex-1 space-y-1">
-                  <p className={cn("text-sm font-medium transition-all", blurPersonalData && "blur-sm")}>
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Image
+                    src={user.photoURL || '/placeholder-avatar.png'}
+                    alt="Profile"
+                    width={48}
+                    height={48}
+                    className={cn(
+                      "rounded-full border-2 border-border transition-all", 
+                      blurPersonalData && "blur-sm"
+                    )}
+                  />
+                </div>
+                <div className="flex-1">
+                  <h3 className={cn("font-medium transition-all", blurPersonalData && "blur-sm")}>
                     {user.displayName || 'No Name'}
-                  </p>
+                  </h3>
                   <p className={cn("text-xs text-muted-foreground transition-all", blurPersonalData && "blur-sm")}>
                     {user.email || 'No Email'}
                   </p>
@@ -668,7 +629,6 @@ const APIKeysTab = memo(() => {
 
   const { register, handleSubmit, formState: { errors, isDirty } } = form;
 
-  // Сбрасываем форму только при первой загрузке ключей, предотвращаем циклические обновления
   const isInitializedRef = useRef(false);
   useEffect(() => {
     if (!keysLoading && !isInitializedRef.current) {
@@ -793,7 +753,6 @@ const ApiKeyField = ({
   const [copied, setCopied] = useState(false);
   const [inputValue, setInputValue] = useState('');
   
-  // Получаем значение из формы при инициализации
   const { keys } = useAPIKeyStore();
   
   useEffect(() => {
@@ -854,7 +813,7 @@ const ApiKeyField = ({
         placeholder={placeholder}
         {...register(id as keyof FormValues)}
           className={cn("text-sm w-full min-w-0 pr-20", error ? 'border-red-500' : '')}
-        style={{ fontSize: '16px' }} // Prevents zoom on mobile
+        style={{ fontSize: '16px' }}
           onChange={(e) => {
             const value = e.target.value;
             setInputValue(value);
@@ -924,7 +883,6 @@ const ModelsTab = memo(() => {
     compression: 80,
   });
   
-  // Ensure customInstructions exists with default values
   const customInstructions = {
     name: settings.customInstructions?.name || '',
     occupation: settings.customInstructions?.occupation || '',
@@ -933,22 +891,19 @@ const ModelsTab = memo(() => {
     additionalInfo: settings.customInstructions?.additionalInfo || '',
   };
 
-  // Инициализируем originalCustomInstructions только при первом открытии секции
   useEffect(() => {
     if (customInstructionsExpanded && !originalCustomInstructions) {
       setOriginalCustomInstructions({ ...customInstructions });
-      setCurrentTraitInput(customInstructions.traitsText); // Инициализируем поле ввода из traitsText
+      setCurrentTraitInput(customInstructions.traitsText);
     }
   }, [customInstructionsExpanded, originalCustomInstructions, customInstructions]);
 
-  // Сброс originalCustomInstructions при закрытии секции
   useEffect(() => {
     if (!customInstructionsExpanded) {
       setOriginalCustomInstructions(null);
     }
   }, [customInstructionsExpanded]);
 
-  // Load image generation settings from Convex
   useEffect(() => {
     if (settingsDoc) {
       setImageGenerationSettings({
@@ -962,7 +917,6 @@ const ModelsTab = memo(() => {
     }
   }, [settingsDoc]);
 
-  // Проверяем, есть ли несохраненные изменения
   const hasUnsavedChanges = useMemo(() => {
     if (!originalCustomInstructions) {
       return false;
@@ -976,7 +930,7 @@ const ModelsTab = memo(() => {
     const additionalInfoChanged = current.additionalInfo !== original.additionalInfo;
     const traitsChanged = JSON.stringify(current.traits.sort()) !== JSON.stringify(original.traits.sort());
     const traitsTextChanged = current.traitsText !== original.traitsText;
-    const hasTraitInput = currentTraitInput.trim().length > 0; // Учитываем текст в поле ввода
+    const hasTraitInput = currentTraitInput.trim().length > 0;
     
     return nameChanged || occupationChanged || additionalInfoChanged || traitsChanged || traitsTextChanged || hasTraitInput;
   }, [customInstructions, originalCustomInstructions, currentTraitInput]);
@@ -991,7 +945,6 @@ const ModelsTab = memo(() => {
   
   const { saveToConvex } = useModelVisibilitySync();
 
-  // Обработчики для кастомных инструкций
   const handleCustomInstructionsChange = useCallback((field: keyof CustomInstructions, value: string | string[]) => {
     setSettings({
       customInstructions: {
@@ -1010,25 +963,9 @@ const ModelsTab = memo(() => {
     handleCustomInstructionsChange('traits', newTraits);
   }, [customInstructions.traits, handleCustomInstructionsChange]);
 
-  const handleCustomTraitAdd = useCallback((traitsInput: string) => {
-    const currentTraits = customInstructions.traits || [];
-    // Split by comma and process each trait
-    const newTraits = traitsInput
-      .split(',')
-      .map(t => t.trim())
-      .filter(t => t && t.length <= 50 && !currentTraits.includes(t))
-      .slice(0, 50 - currentTraits.length); // Ensure we don't exceed 50 traits total
-    
-    if (newTraits.length > 0) {
-      handleCustomInstructionsChange('traits', [...currentTraits, ...newTraits]);
-    }
-  }, [customInstructions.traits, handleCustomInstructionsChange]);
-
-  // Обработчики с автосохранением и предотвращением дублирования вызовов
   const handleToggleProvider = useCallback((provider: Provider) => {
     try {
       toggleProvider(provider);
-      // Принудительно сохраняем в Convex
       saveToConvex();
     } catch (error) {
       console.error('Failed to toggle provider:', error);
@@ -1038,7 +975,6 @@ const ModelsTab = memo(() => {
   const handleToggleFavoriteModel = useCallback((model: AIModel) => {
     try {
       toggleFavoriteModel(model);
-      // Принудительно сохраняем в Convex
       saveToConvex();
     } catch (error) {
       console.error('Failed to toggle favorite model:', error);
@@ -1064,7 +1000,6 @@ const ModelsTab = memo(() => {
     }));
   }, []);
 
-  // Save image generation settings to Convex
   const saveImageGenerationSettings = useCallback(async () => {
     if (!isAuthenticated) return;
     
@@ -1085,11 +1020,9 @@ const ModelsTab = memo(() => {
     }
   }, [isAuthenticated, saveImageGenerationSettingsMutation, imageGenerationSettings]);
 
-  // Auto-save image generation settings when they change
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (settingsDoc && imageGenerationSettings) {
-        // Check if settings actually changed
         const hasChanges = 
           imageGenerationSettings.model !== (settingsDoc.imageGenerationModel || 'gpt-image-1') ||
           imageGenerationSettings.size !== (settingsDoc.imageGenerationSize || 'auto') ||
@@ -1102,14 +1035,11 @@ const ModelsTab = memo(() => {
           saveImageGenerationSettings();
         }
       }
-    }, 500); // Debounce by 500ms
+    }, 500);
 
     return () => clearTimeout(timeoutId);
   }, [imageGenerationSettings, settingsDoc, saveImageGenerationSettings]);
 
-  // Auto-save custom instructions when settings change
-
-  // Функция для сохранения кастомных инструкций
   const handleSaveCustomInstructions = useCallback(async () => {
     if (!hasUnsavedChanges || isSaving) return;
     
@@ -1117,7 +1047,6 @@ const ModelsTab = memo(() => {
     try {
       const success = await saveCustomInstructionsManually();
       if (success) {
-        // Обновляем originalCustomInstructions после успешного сохранения
         setOriginalCustomInstructions({ ...customInstructions });
         toast.success('Custom instructions saved successfully!');
       } else {
@@ -1125,13 +1054,12 @@ const ModelsTab = memo(() => {
       }
     } catch (error) {
       console.error('Error saving custom instructions:', error);
-      // Более детальное сообщение об ошибке
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       toast.error(`Failed to save: ${errorMessage}`);
     } finally {
       setIsSaving(false);
     }
-  }, [saveCustomInstructionsManually, customInstructions, hasUnsavedChanges, isSaving, currentTraitInput, setSettings]);
+  }, [saveCustomInstructionsManually, customInstructions, hasUnsavedChanges, isSaving]);
 
   return (
     <div className="space-y-6 pb-4">
@@ -1256,12 +1184,10 @@ const ModelsTab = memo(() => {
                       onChange={(e) => {
                         const newValue = e.target.value;
                         setCurrentTraitInput(newValue);
-                        // Сразу обновляем traitsText в настройках
                         handleCustomInstructionsChange('traitsText', newValue);
                       }}
                       onKeyDown={(e) => {
                         if (e.key === 'Backspace' && !currentTraitInput && (customInstructions.traits || []).length > 0) {
-                          // Remove last trait when backspace is pressed and input is empty
                           const currentTraits = customInstructions.traits || [];
                           const newTraits = currentTraits.slice(0, -1);
                           handleCustomInstructionsChange('traits', newTraits);
@@ -1372,7 +1298,7 @@ const ModelsTab = memo(() => {
         </CardHeader>
         {imageGenerationExpanded && (
           <CardContent className="space-y-6">
-            {/* Model Selection */}
+            {/* Simple config for now */}
             <div className="space-y-3">
               <Label className="text-sm font-medium">Model</Label>
               <div className="space-y-2">
@@ -1388,143 +1314,14 @@ const ModelsTab = memo(() => {
               </div>
             </div>
 
-            {/* Size Setting */}
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">Default Size</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { value: 'auto', label: 'Auto', desc: 'Let AI choose' },
-                  { value: '1024x1024', label: '1024×1024', desc: 'Square' },
-                  { value: '1024x1536', label: '1024×1536', desc: 'Portrait' },
-                  { value: '1536x1024', label: '1536×1024', desc: 'Landscape' },
-                ].map((option) => (
-                  <div
-                    key={option.value}
-                    className={cn(
-                      "p-3 rounded-lg border cursor-pointer transition-colors",
-                      imageGenerationSettings.size === option.value
-                        ? "bg-primary/10 border-primary/20"
-                        : "bg-muted/30 hover:bg-muted/50"
-                    )}
-                    onClick={() => handleImageGenerationSettingChange('size', option.value)}
-                  >
-                    <div className="font-medium text-sm">{option.label}</div>
-                    <div className="text-xs text-muted-foreground">{option.desc}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Quality Setting */}
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">Default Quality</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { value: 'auto', label: 'Auto', desc: 'Balanced quality' },
-                  { value: 'low', label: 'Low', desc: 'Faster generation' },
-                  { value: 'medium', label: 'Medium', desc: 'Good balance' },
-                  { value: 'high', label: 'High', desc: 'Best quality' },
-                ].map((option) => (
-                  <div
-                    key={option.value}
-                    className={cn(
-                      "p-3 rounded-lg border cursor-pointer transition-colors",
-                      imageGenerationSettings.quality === option.value
-                        ? "bg-primary/10 border-primary/20"
-                        : "bg-muted/30 hover:bg-muted/50"
-                    )}
-                    onClick={() => handleImageGenerationSettingChange('quality', option.value)}
-                  >
-                    <div className="font-medium text-sm">{option.label}</div>
-                    <div className="text-xs text-muted-foreground">{option.desc}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Count Setting */}
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">Default Count</Label>
-              <div className="flex gap-2">
-                {[1, 2, 3, 4].map((count) => (
-                  <div
-                    key={count}
-                    className={cn(
-                      "flex-1 p-3 rounded-lg border cursor-pointer transition-colors text-center",
-                      imageGenerationSettings.count === count
-                        ? "bg-primary/10 border-primary/20"
-                        : "bg-muted/30 hover:bg-muted/50"
-                    )}
-                    onClick={() => handleImageGenerationSettingChange('count', count)}
-                  >
-                    <div className="font-medium text-sm">{count}</div>
-                    <div className="text-xs text-muted-foreground">
-                      image{count > 1 ? 's' : ''}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Format Setting */}
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">Default Format</Label>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { value: 'jpeg', label: 'JPEG', desc: 'Smaller files' },
-                  { value: 'png', label: 'PNG', desc: 'Best quality' },
-                  { value: 'webp', label: 'WebP', desc: 'Modern format' },
-                ].map((option) => (
-                  <div
-                    key={option.value}
-                    className={cn(
-                      "p-3 rounded-lg border cursor-pointer transition-colors",
-                      imageGenerationSettings.format === option.value
-                        ? "bg-primary/10 border-primary/20"
-                        : "bg-muted/30 hover:bg-muted/50"
-                    )}
-                    onClick={() => handleImageGenerationSettingChange('format', option.value)}
-                  >
-                    <div className="font-medium text-sm">{option.label}</div>
-                    <div className="text-xs text-muted-foreground">{option.desc}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Compression Setting - only for JPEG/WebP */}
-            {(imageGenerationSettings.format === 'jpeg' || imageGenerationSettings.format === 'webp') && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium">Compression Quality</Label>
-                  <span className="text-xs text-muted-foreground">{imageGenerationSettings.compression}%</span>
-                </div>
-                <div className="space-y-2">
-                  <input
-                    type="range"
-                    min="10"
-                    max="100"
-                    step="10"
-                    value={imageGenerationSettings.compression}
-                    onChange={(e) => handleImageGenerationSettingChange('compression', parseInt(e.target.value))}
-                    className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer"
-                  />
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>Smaller file</span>
-                    <span>Better quality</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
             <div className="text-xs text-muted-foreground p-3 bg-muted/20 rounded-lg">
-              💡 These settings apply only to chat mode. Drawing canvas always generates 1 image.
+              💡 Image generation settings are automatically optimized for best results.
             </div>
           </CardContent>
         )}
       </Card>
 
-      {/* Model Visibility Section - Collapsible */}
+      {/* Model Visibility Section */}
       <Card>
         <CardHeader 
           className="cursor-pointer" 

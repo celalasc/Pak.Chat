@@ -60,7 +60,7 @@ export default function HomePage() {
   }, [mounted, isAuthenticated, isLoading]);
 
   if (isLoading || !isAuthenticated) {
-    return <AppShellSkeleton />;
+    return null;
   }
 
   return (
