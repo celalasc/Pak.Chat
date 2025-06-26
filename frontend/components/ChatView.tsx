@@ -343,6 +343,14 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCrea
     },
   });
 
+  // Ensure streaming assistant messages have timestamps for correct ordering
+  useEffect(() => {
+    if (!messages.some((m) => !m.createdAt)) return;
+    setMessages((prev) =>
+      prev.map((m) => (m.createdAt ? m : { ...m, createdAt: new Date() }))
+    );
+  }, [messages, setMessages]);
+
   // Сбрасываем флаг регенерации когда начинается стриминг
   useEffect(() => {
     if (status === 'streaming' || status === 'submitted') {
