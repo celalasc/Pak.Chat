@@ -2,10 +2,10 @@
 
 import { memo, useCallback, useState } from 'react';
 import { Check, Search } from 'lucide-react';
-import { Input } from '@/frontend/shared/ui';
+import { Input } from '@/frontend/components/ui/input';
 import { cn } from '@/lib/utils';
 import { AIModel, getModelConfig, getModelsByProvider } from '@/lib/models';
-import { getCompanyIcon } from '@/frontend/shared/ui';
+import { getCompanyIcon } from '@/frontend/components/ui/provider-icons';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 
 interface ModelSelectorProps {
