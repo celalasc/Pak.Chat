@@ -9,7 +9,6 @@ import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { ChatHistoryList } from '@/frontend/components/chat-history';
 import SettingsDrawer from '@/frontend/components/SettingsDrawer';
 import MobileSearch from '@/frontend/components/mobile/MobileSearch';
-import AppShellSkeleton from '@/frontend/components/AppShellSkeleton';
 import { WithTooltip } from '@/frontend/components/WithTooltip';
 import type { Id } from '@/convex/_generated/dataModel';
 import { saveLastPath } from '@/frontend/lib/lastChat';
