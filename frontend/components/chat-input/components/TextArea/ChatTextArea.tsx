@@ -63,6 +63,11 @@ export const ChatTextArea = memo(forwardRef<HTMLTextAreaElement, ChatTextAreaPro
         'min-h-[72px]',
         className
       )}
+      /* Prevent mobile keyboards from auto-correcting or capitalizing */
+      autoComplete="off"
+      autoCorrect="off"
+      autoCapitalize="off"
+      spellCheck={false}
       onKeyDown={onKeyDown}
       onChange={onChange}
       onFocus={handleFocus}
