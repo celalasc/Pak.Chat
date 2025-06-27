@@ -411,8 +411,9 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCrea
     // Объединяем и сортируем
     const allMessages = [...enrichedConvexMessages, ...temporaryMessages];
     
+    const fallbackTime = Date.now();
     const getTime = (value: any) => {
-      if (!value) return 0;
+      if (!value) return fallbackTime;
       return value instanceof Date ? value.getTime() : new Date(value).getTime();
     };
 
