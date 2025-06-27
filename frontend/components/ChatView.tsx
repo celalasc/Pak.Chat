@@ -439,7 +439,25 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCrea
       return tempCreatedAtMap.current.get(m.id)!;
     };
 
-    allMessages.sort((a, b) => getTime(a) - getTime(b));
+    // Deterministic ordering:
+    // 1. Primary key  – creation time (older first)
+    // 2. Secondary key – role (user above assistant if timestamps match)
+    // 3. Fallback      – lexical compare of IDs for complete stability
+    allMessages.sort((a, b) => {
+      const ta = getTime(a);
+      const tb = getTime(b);
+
+      // Primary: by time
+      if (ta !== tb) return ta - tb;
+
+      // Secondary: user messages should appear before assistant messages
+      if (a.role !== b.role) {
+        return a.role === 'user' ? -1 : 1;
+      }
+
+      // Tertiary: stable order by id to avoid flaky re-renders
+      return a.id.localeCompare(b.id);
+    });
 
     return allMessages;
   }, [messages, convexMessages]);
