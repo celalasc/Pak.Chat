@@ -82,6 +82,9 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCrea
   const generateUploadUrl = useMutation(api.attachments.generateUploadUrl);
   const saveAttachments = useMutation(api.attachments.save);
 
+  // Map to hold temporary timestamps for messages that haven't been persisted yet
+  const tempCreatedAtMap = useRef(new Map<string, number>());
+
   const scrollToMessage = (messageId: string) => {
     const element = document.getElementById(`message-${messageId}`);
     if (element) {
@@ -343,11 +346,24 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCrea
     },
   });
 
-  // Ensure streaming assistant messages have timestamps for correct ordering
+  // Ensure streaming assistant messages have stable timestamps for ordering
   useEffect(() => {
     if (!messages.some((m) => !m.createdAt)) return;
     setMessages((prev) =>
-      prev.map((m) => (m.createdAt ? m : { ...m, createdAt: new Date() }))
+      prev.map((m) => {
+        if (m.createdAt) {
+          tempCreatedAtMap.current.delete(m.id);
+          return m;
+        }
+
+        let ts = tempCreatedAtMap.current.get(m.id);
+        if (!ts) {
+          ts = Date.now();
+          tempCreatedAtMap.current.set(m.id, ts);
+        }
+
+        return { ...m, createdAt: new Date(ts) };
+      })
     );
   }, [messages, setMessages]);
 
@@ -411,13 +427,19 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCrea
     // Объединяем и сортируем
     const allMessages = [...enrichedConvexMessages, ...temporaryMessages];
     
-    const fallbackTime = Date.now();
-    const getTime = (value: any) => {
-      if (!value) return fallbackTime;
-      return value instanceof Date ? value.getTime() : new Date(value).getTime();
+    const getTime = (m: { id: string; createdAt?: Date | string }) => {
+      if (m.createdAt) {
+        return m.createdAt instanceof Date
+          ? m.createdAt.getTime()
+          : new Date(m.createdAt).getTime();
+      }
+      if (!tempCreatedAtMap.current.has(m.id)) {
+        tempCreatedAtMap.current.set(m.id, Date.now());
+      }
+      return tempCreatedAtMap.current.get(m.id)!;
     };
 
-    allMessages.sort((a, b) => getTime(a.createdAt) - getTime(b.createdAt));
+    allMessages.sort((a, b) => getTime(a) - getTime(b));
 
     return allMessages;
   }, [messages, convexMessages]);
