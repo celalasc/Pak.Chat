@@ -199,11 +199,12 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCrea
       }
       
       const response = await fetch(url, init);
-      
-      // Check if response is JSON (image generation)
+
+      // Check if response is JSON (e.g. image generation results)
       const contentType = response.headers.get('content-type');
       if (contentType?.includes('application/json')) {
-        const data = await response.json();
+        // Clone the response so the original stream remains untouched
+        const data = await response.clone().json();
         
         // Handle image generation response
         if (data.type === 'image_generation') {
