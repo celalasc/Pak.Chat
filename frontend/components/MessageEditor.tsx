@@ -171,7 +171,8 @@ export default function MessageEditor({
     }),
     onResponse: async (response) => {
       try {
-        const payload = await response.json();
+        // Clone the response to avoid consuming the body used by the hook
+        const payload = await response.clone().json();
 
         if (response.ok) {
           const { title } = payload;
