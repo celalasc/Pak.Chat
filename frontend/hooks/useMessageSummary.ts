@@ -24,7 +24,10 @@ export const useMessageSummary = () => {
     headers: googleApiKey ? { 'X-Google-API-Key': googleApiKey } : undefined,
     onResponse: async (response) => {
       try {
-        const payload: MessageSummaryPayload = await response.json();
+        // Clone response so AI SDK can continue streaming without errors
+        const payload: MessageSummaryPayload = await response
+          .clone()
+          .json();
 
         if (response.ok) {
           const { title, isTitle, threadId } = payload;
