@@ -79,14 +79,15 @@ function PureChatInput({
     }
   }, [threadId]);
 
-  // Initialize input from server-side draft only when switching threads
-  // We avoid using `thread` in the deps array so that incoming updates to the
-  // thread object (e.g. new messages) don't clobber the user's current typing.
+  // Initialize input from server-side draft only when switching threads.
+  // Track the draft specifically so incoming updates to the thread (e.g. new
+  // messages) don't clobber the user's current input while still loading a saved
+  // draft once it becomes available.
   useEffect(() => {
     const initialText = thread?.draft ?? '';
     setInput(initialText);
     adjustHeight();
-  }, [threadId]);
+  }, [threadId, thread?.draft]);
 
   // Initialize image generation parameters from user settings
   useEffect(() => {
