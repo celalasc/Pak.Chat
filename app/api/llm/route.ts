@@ -298,12 +298,15 @@ export async function POST(req: NextRequest) {
       }
 
       try {
-        // Use absolute URL for internal API call
-        const baseUrl = process.env.VERCEL_URL 
-          ? `https://${process.env.VERCEL_URL}` 
-          : process.env.NODE_ENV === 'development' 
-            ? 'http://localhost:3000' 
-            : 'https://pak-chat.vercel.app';
+        // Resolve base URL dynamically so internal calls work in any deployment
+        // environment (Vercel, Railway, local, etc.)
+        const baseUrl = process.env.VERCEL_URL
+          ? `https://${process.env.VERCEL_URL}`
+          : process.env.NEXT_PUBLIC_BASE_URL
+            ? process.env.NEXT_PUBLIC_BASE_URL
+            : process.env.NODE_ENV === 'development'
+              ? 'http://localhost:3000'
+              : req.nextUrl.origin;
 
         // Generate image using OpenAI API - always use OpenAI regardless of selected model
         const response = await fetch(`${baseUrl}/api/image-generation`, {
