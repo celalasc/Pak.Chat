@@ -82,12 +82,23 @@ function PureChatInput({
   // Initialize input from server-side draft only when switching threads.
   // Track the draft specifically so incoming updates to the thread (e.g. new
   // messages) don't clobber the user's current input while still loading a saved
-  // draft once it becomes available.
+  // draft once it becomes available. Also re-evaluate when the user's input
+  // changes so clearing the input can restore a saved draft.
+  const lastThreadIdRef = useRef<string | null>(null);
   useEffect(() => {
     const initialText = thread?.draft ?? '';
-    setInput(initialText);
-    adjustHeight();
-  }, [threadId, thread?.draft]);
+    const switchedThreads = threadId !== lastThreadIdRef.current;
+    const shouldApplyDraft = switchedThreads || (!input && initialText);
+
+    if (shouldApplyDraft) {
+      setInput(initialText);
+      adjustHeight();
+    }
+
+    if (switchedThreads) {
+      lastThreadIdRef.current = threadId;
+    }
+  }, [threadId, thread?.draft, input, adjustHeight, setInput]);
 
   // Initialize image generation parameters from user settings
   useEffect(() => {
