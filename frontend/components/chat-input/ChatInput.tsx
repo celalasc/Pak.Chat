@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { UseChatHelpers } from '@ai-sdk/react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
@@ -79,17 +79,25 @@ function PureChatInput({
     }
   }, [threadId]);
 
-  // Initialize input from server-side draft only when switching threads.
-  // Track the draft specifically so incoming updates to the thread (e.g. new
-  // messages) don't clobber the user's current input while still loading a saved
-  // draft once it becomes available.
-  // Initialize input only when switching threads to avoid
-  // overwriting the user's current text while typing.
+  // Initialize input from a saved draft when switching threads.
+  // Also apply the draft if it loads asynchronously and the user hasn't started
+  // typing yet. This avoids clobbering current input on routine thread updates
+  // while still restoring saved drafts when available.
+  const lastThreadIdRef = useRef<string | null>(null);
   useEffect(() => {
     const initialText = thread?.draft ?? '';
-    setInput(initialText);
-    adjustHeight();
-  }, [threadId]);
+    const switchedThreads = threadId !== lastThreadIdRef.current;
+    const shouldApplyDraft = switchedThreads || (!input && initialText);
+
+    if (shouldApplyDraft) {
+      setInput(initialText);
+      adjustHeight();
+    }
+
+    if (switchedThreads) {
+      lastThreadIdRef.current = threadId;
+    }
+  }, [threadId, thread?.draft]);
 
   // Initialize image generation parameters from user settings
   useEffect(() => {
