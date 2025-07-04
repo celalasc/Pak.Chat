@@ -83,11 +83,13 @@ function PureChatInput({
   // Track the draft specifically so incoming updates to the thread (e.g. new
   // messages) don't clobber the user's current input while still loading a saved
   // draft once it becomes available.
+  // Initialize input only when switching threads to avoid
+  // overwriting the user's current text while typing.
   useEffect(() => {
     const initialText = thread?.draft ?? '';
     setInput(initialText);
     adjustHeight();
-  }, [threadId, thread?.draft]);
+  }, [threadId]);
 
   // Initialize image generation parameters from user settings
   useEffect(() => {
