@@ -52,7 +52,7 @@ import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import ChatPreview from "./components/ChatPreview";
 import { useSettingsStore } from '@/frontend/stores/SettingsStore';
-import { useDebounce } from "use-debounce";
+import { useDebouncedCallback } from "use-debounce";
 import { filterByTitle } from "@/lib/searchUtils";
 import EmptyState from "@/frontend/components/ui/EmptyState";
 
@@ -102,7 +102,11 @@ const ChatHistoryDesktopComponent: React.FC<ChatHistoryDesktopProps> = ({
   const createShareLink = useMutation(api.threads.createShareLink);
 
   // Debounced hover for preview - minimal delay for better responsiveness
-  const [debouncedHoverId] = useDebounce(hoveredThreadId, 50);
+  // Delay hover updates to avoid excessive re-renders when quickly moving the mouse
+  const debouncedSetHoverId = useDebouncedCallback(
+    (id: Id<"threads"> | null) => setHoveredThreadId(id),
+    200,
+  );
   
   // Track keyboard navigation for preview - simplified version
   useEffect(() => {
@@ -329,7 +333,7 @@ const ChatHistoryDesktopComponent: React.FC<ChatHistoryDesktopProps> = ({
       key={thread._id}
       value={thread._id}
       onSelect={() => handleThreadClick(thread._id)}
-      onMouseEnter={() => setHoveredThreadId(thread._id)}
+      onMouseEnter={() => debouncedSetHoverId(thread._id)}
       className="group flex items-center justify-between p-2 cursor-pointer hover:bg-accent/50 data-[selected=true]:bg-accent text-foreground min-h-[40px]"
       data-thread-id={thread._id}
     >
@@ -592,7 +596,7 @@ const ChatHistoryDesktopComponent: React.FC<ChatHistoryDesktopProps> = ({
                       setTimeout(() => setHoveredThreadId(null), 200);
                     }}
                   >
-                    <ChatPreview threadId={debouncedHoverId} onClose={() => handleOpenChange(false)} />
+                    <ChatPreview threadId={hoveredThreadId} onClose={() => handleOpenChange(false)} />
                   </div>
                 </>
               )}
