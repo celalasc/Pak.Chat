@@ -185,7 +185,12 @@ function PureChatInput({
   }, [isImageGenerationMode, setImageGenerationMode, textareaRef]);
 
   const canChat = keysLoading || readyToChat;
-  const isDisabled = !input.trim() || status === 'streaming' || status === 'submitted' || isSubmitting || !readyToChat;
+  const isDisabled =
+    !input.trim() ||
+    status === 'streaming' ||
+    status === 'submitted' ||
+    isSubmitting ||
+    !canChat;
 
   return (
     <div className="w-full flex justify-center pb-safe mobile-keyboard-fix">
