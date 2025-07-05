@@ -55,22 +55,33 @@ export const useAttachmentsStore = create<AttachmentState>((set) => ({
       ],
     })),
   addRemote: (info) =>
-    set((state) => ({
-      attachments: [
-        ...state.attachments,
-        {
-          id: uuid(),
-          preview: info.preview || '', // Пустая строка для не-изображений
-          name: info.name.length > 24 ? info.name.slice(0, 21) + '...' : info.name,
-          ext: info.name.split('.').pop() ?? '',
-          type: info.type,
-          size: info.size,
-          storageId: info.storageId,
-          previewId: info.previewId,
-          remote: true,
-        } as RemoteAttachment,
-      ],
-    })),
+    set((state) => {
+      // Use provided preview or fall back to API path when available
+      const previewUrl =
+        info.preview ||
+        (info.previewId
+          ? `/api/files/${info.previewId}`
+          : info.storageId
+            ? `/api/files/${info.storageId}`
+            : '');
+
+      return {
+        attachments: [
+          ...state.attachments,
+          {
+            id: uuid(),
+            preview: previewUrl,
+            name: info.name.length > 24 ? info.name.slice(0, 21) + '...' : info.name,
+            ext: info.name.split('.').pop() ?? '',
+            type: info.type,
+            size: info.size,
+            storageId: info.storageId,
+            previewId: info.previewId,
+            remote: true,
+          } as RemoteAttachment,
+        ],
+      };
+    }),
   remove: (id) => set((state) => {
     const attachment = state.attachments.find(a => a.id === id);
     if (attachment) {

@@ -144,8 +144,7 @@ export default function RecentFilesDropdown({ children, onFileSelect, messageCou
           name: recentFile.name,
           type: recentFile.type,
           size: recentFile.size,
-          preview: previewUrl,
-          remote: true,
+          preview: previewUrl || recentFile.preview || '',
         });
         
         // Обновляем время последнего использования
