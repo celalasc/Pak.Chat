@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useState, RefObject } from 'react';
+import { memo, useCallback, useEffect, useState, RefObject, useRef } from 'react';
 import { UseChatHelpers } from '@ai-sdk/react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
