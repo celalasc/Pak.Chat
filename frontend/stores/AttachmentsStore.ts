@@ -56,16 +56,16 @@ export const useAttachmentsStore = create<AttachmentState>((set) => ({
     })),
   addRemote: (info) =>
     set((state) => {
-      // Use provided preview or fall back to API path when available
-      // Prefer explicitly provided preview. Fallback to API file URLs only when
-      // preview is undefined or null.
+      // Use provided preview when it's a non-empty string, otherwise
+      // construct a preview URL from previewId or storageId.
       const previewUrl =
-        info.preview ??
-        (info.previewId
-          ? `/api/files/${info.previewId}`
-          : info.storageId
-            ? `/api/files/${info.storageId}`
-            : '');
+        (typeof info.preview === 'string' && info.preview.trim() !== '')
+          ? info.preview
+          : info.previewId
+            ? `/api/files/${info.previewId}`
+            : info.storageId
+              ? `/api/files/${info.storageId}`
+              : '';
 
       return {
         attachments: [

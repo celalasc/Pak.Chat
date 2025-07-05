@@ -144,7 +144,9 @@ export default function RecentFilesDropdown({ children, onFileSelect, messageCou
           name: recentFile.name,
           type: recentFile.type,
           size: recentFile.size,
-          preview: previewUrl || recentFile.preview || '',
+          // Pass undefined when no preview is available so the store can
+          // generate a fallback URL from previewId or storageId.
+          preview: previewUrl || recentFile.preview,
         });
         
         // Обновляем время последнего использования

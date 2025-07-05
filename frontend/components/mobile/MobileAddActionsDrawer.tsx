@@ -173,7 +173,9 @@ export default function MobileAddActionsDrawer({
           name: file.name,
           type: file.type,
           size: file.size,
-          preview: previewUrl || file.preview || '',
+          // Pass undefined when no preview is available so store can
+          // generate a fallback URL from previewId or storageId.
+          preview: previewUrl || file.preview,
         });
         
         const updated = recentFiles.map(f => 
