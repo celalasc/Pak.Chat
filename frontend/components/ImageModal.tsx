@@ -2,6 +2,7 @@
 
 import { X } from 'lucide-react';
 import { useEffect, useState, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import Image from 'next/image';
 
 interface ImageModalProps {
@@ -156,12 +157,12 @@ export default function ImageModal({
     return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
   };
 
-  return (
-    <div 
+  const modalContent = (
+    <div
       className="fixed inset-0 z-50 bg-background/20 backdrop-blur-md flex items-center justify-center p-4"
       onClick={onClose}
     >
-      <div 
+      <div
         className="relative bg-background/95 backdrop-blur-sm rounded-xl shadow-2xl w-full h-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col border border-border/50"
         onClick={(e) => e.stopPropagation()}
       >
@@ -218,4 +219,9 @@ export default function ImageModal({
       </div>
     </div>
   );
-} 
+
+  return typeof window !== 'undefined'
+    ? createPortal(modalContent, document.body)
+    : null;
+}
+
