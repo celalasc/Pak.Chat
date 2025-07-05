@@ -1,7 +1,6 @@
 "use client"
 
-import type React from "react"
-import { useState, useRef, useEffect } from "react"
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react"
 import { cn } from "@/lib/utils"
 import { UIMessage } from 'ai'
 
@@ -11,7 +10,76 @@ interface ChatNavigationBarsProps {
   currentMessageId?: string // Не используется, но оставляем для совместимости
 }
 
-export default function ChatNavigationBars({ messages, scrollToMessage }: ChatNavigationBarsProps) {
+interface TileMessageProps {
+  message: UIMessage
+  title: string
+  isHovered: boolean
+  isLast: boolean
+  onClick: () => void
+  onMouseEnter: () => void
+}
+
+const TileMessage = React.memo(function TileMessage({
+  message,
+  title,
+  isHovered,
+  isLast,
+  onClick,
+  onMouseEnter,
+}: TileMessageProps) {
+  return (
+    <div
+      className={cn(
+        'py-1.5 px-2 rounded-md cursor-pointer transition-colors duration-150 text-sm mb-1',
+        isHovered ? 'bg-gray-100 dark:bg-gray-700' : 'hover:bg-gray-50 dark:hover:bg-gray-750',
+        isLast && 'bg-gray-200 dark:bg-gray-600',
+      )}
+      onClick={onClick}
+      onMouseEnter={onMouseEnter}
+    >
+      <div
+        className={cn(
+          'leading-tight transition-colors duration-150',
+          isLast ? 'text-gray-900 dark:text-white font-medium' : 'text-gray-700 dark:text-gray-200',
+        )}
+      >
+        {title}
+      </div>
+    </div>
+  )
+})
+
+interface BarItemProps {
+  message: UIMessage
+  length: number
+  isLast: boolean
+  onMouseEnter: () => void
+  onClick: () => void
+}
+
+const BarItem = React.memo(function BarItem({
+  message,
+  length,
+  isLast,
+  onMouseEnter,
+  onClick,
+}: BarItemProps) {
+  return (
+    <div
+      className={cn(
+        'transition-all duration-200 rounded-sm cursor-pointer flex-shrink-0',
+        'bg-gray-300/70 dark:bg-gray-600/60 hover:bg-gray-400/80 dark:hover:bg-gray-500/70',
+        isLast && 'bg-primary dark:bg-primary scale-105',
+      )}
+      style={{ width: `${length}px`, height: '3px' }}
+      onMouseEnter={onMouseEnter}
+      onClick={onClick}
+      title={message.content.slice(0, 50) + '...'}
+    />
+  )
+})
+
+function ChatNavigationBars({ messages, scrollToMessage }: ChatNavigationBarsProps) {
   const [isHovered, setIsHovered] = useState(false)
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(false)
@@ -52,13 +120,16 @@ export default function ChatNavigationBars({ messages, scrollToMessage }: ChatNa
   }, [isMobile, isHovered])
 
   // Фильтруем только пользовательские сообщения для навигации
-  const userMessages = messages.filter(message => message.role === 'user')
-  
+  const userMessages = useMemo(() => messages.filter(m => m.role === 'user'), [messages])
+
   // Последнее сообщение пользователя
-  const lastUserMessage = userMessages[userMessages.length - 1]
+  const lastUserMessage = useMemo(() => userMessages[userMessages.length - 1], [userMessages])
 
   // Для мобильных ограничиваем количество точек до 10
-  const visibleUserMessages = isMobile ? userMessages.slice(-10) : userMessages
+  const visibleUserMessages = useMemo(
+    () => (isMobile ? userMessages.slice(-10) : userMessages),
+    [isMobile, userMessages],
+  )
 
   // Автоскролл в плитке к последнему сообщению при открытии
   useEffect(() => {
@@ -100,27 +171,27 @@ export default function ChatNavigationBars({ messages, scrollToMessage }: ChatNa
     return words.slice(0, maxWords).join(' ') + '...'
   }
 
-  const handleMouseEnter = (messageId: string) => {
+  const handleMouseEnter = useCallback((messageId: string) => {
     if (!isMobile) {
       setIsHovered(true)
-      setHoveredMessageId(messageId)
+      setHoveredMessageId(prev => (prev === messageId ? prev : messageId))
     }
-  }
+  }, [isMobile])
 
-  const handleDotClick = (messageId: string) => {
+  const handleDotClick = useCallback((messageId: string) => {
     // Для мобильных - показываем окошко при клике на точку
     setIsHovered(true)
     setHoveredMessageId(messageId)
-  }
+  }, [])
 
-  const handleMouseLeave = () => {
+  const handleMouseLeave = useCallback(() => {
     if (!isMobile) {
       setIsHovered(false)
       setHoveredMessageId(null)
     }
-  }
+  }, [isMobile])
 
-  const handleBarClick = (messageId: string) => {
+  const handleBarClick = useCallback((messageId: string) => {
     // Простой скроллинг для всех устройств
     const element = document.getElementById(`message-${messageId}`)
     if (element) {
@@ -136,7 +207,7 @@ export default function ChatNavigationBars({ messages, scrollToMessage }: ChatNa
       setIsHovered(false)
       setHoveredMessageId(null)
     }
-  }
+  }, [isMobile])
 
   // Если нет пользовательских сообщений, не отображаем навигацию
   if (userMessages.length === 0) {
@@ -169,29 +240,17 @@ export default function ChatNavigationBars({ messages, scrollToMessage }: ChatNa
                 const messageTitle = getMessageTitle(message.content)
                 const isCurrentHovered = hoveredMessageId === message.id
                 const isLastMessage = lastUserMessage && message.id === lastUserMessage.id
-                
+
                 return (
-                  <div
+                  <TileMessage
                     key={message.id}
-                    className={cn(
-                      "py-1.5 px-2 rounded-md cursor-pointer transition-colors duration-150 text-sm mb-1",
-                      isCurrentHovered 
-                        ? "bg-gray-100 dark:bg-gray-700" 
-                        : "hover:bg-gray-50 dark:hover:bg-gray-750",
-                      isLastMessage && "bg-gray-200 dark:bg-gray-600"
-                    )}
+                    message={message}
+                    title={messageTitle}
+                    isHovered={isCurrentHovered}
+                    isLast={!!isLastMessage}
                     onClick={() => handleBarClick(message.id)}
                     onMouseEnter={() => setHoveredMessageId(message.id)}
-                  >
-                    <div className={cn(
-                      "leading-tight transition-colors duration-150",
-                      isLastMessage 
-                        ? "text-gray-900 dark:text-white font-medium" 
-                        : "text-gray-700 dark:text-gray-200"
-                    )}>
-                      {messageTitle}
-                    </div>
-                  </div>
+                  />
                 )
               })}
             </div>
@@ -243,29 +302,17 @@ export default function ChatNavigationBars({ messages, scrollToMessage }: ChatNa
               const messageTitle = getMessageTitle(message.content)
               const isCurrentHovered = hoveredMessageId === message.id
               const isLastMessage = lastUserMessage && message.id === lastUserMessage.id
-              
+
               return (
-                <div
+                <TileMessage
                   key={message.id}
-                  className={cn(
-                    "py-1.5 px-2 rounded-md cursor-pointer transition-colors duration-150 text-sm mb-1",
-                    isCurrentHovered 
-                      ? "bg-gray-100 dark:bg-gray-700" 
-                      : "hover:bg-gray-50 dark:hover:bg-gray-750",
-                    isLastMessage && "bg-gray-200 dark:bg-gray-600"
-                  )}
+                  message={message}
+                  title={messageTitle}
+                  isHovered={isCurrentHovered}
+                  isLast={!!isLastMessage}
                   onClick={() => handleBarClick(message.id)}
                   onMouseEnter={() => setHoveredMessageId(message.id)}
-                >
-                  <div className={cn(
-                    "leading-tight transition-colors duration-150",
-                    isLastMessage 
-                      ? "text-gray-900 dark:text-white font-medium" 
-                      : "text-gray-700 dark:text-gray-200"
-                  )}>
-                    {messageTitle}
-                  </div>
-                </div>
+                />
               )
             })}
           </div>
@@ -278,20 +325,13 @@ export default function ChatNavigationBars({ messages, scrollToMessage }: ChatNa
             const isLastMessage = lastUserMessage && message.id === lastUserMessage.id
 
             return (
-              <div
+              <BarItem
                 key={message.id}
-                className={cn(
-                  "transition-all duration-200 rounded-sm cursor-pointer flex-shrink-0",
-                  "bg-gray-300/70 dark:bg-gray-600/60 hover:bg-gray-400/80 dark:hover:bg-gray-500/70",
-                  isLastMessage && "bg-primary dark:bg-primary scale-105"
-                )}
-                style={{
-                  width: `${barLength}px`,
-                  height: "3px",
-                }}
+                message={message}
+                length={barLength}
+                isLast={!!isLastMessage}
                 onMouseEnter={() => handleMouseEnter(message.id)}
                 onClick={() => handleBarClick(message.id)}
-                title={message.content.slice(0, 50) + '...'}
               />
             )
           })}
@@ -299,4 +339,6 @@ export default function ChatNavigationBars({ messages, scrollToMessage }: ChatNa
       )}
     </div>
   )
-} 
+}
+
+export default React.memo(ChatNavigationBars)
