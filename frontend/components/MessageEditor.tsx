@@ -1,3 +1,4 @@
+"use client";
 // Dexie imports removed; operations will be handled via Convex
 import { UseChatHelpers, useCompletion } from '@ai-sdk/react';
 import { useState, useEffect, useRef } from 'react';
@@ -106,6 +107,11 @@ export default function MessageEditor({
 
   // Локальный стейт для файлов при редактировании (изолированный от основного поля ввода)
   const [editAttachments, setEditAttachments] = useState<Attachment[]>([]);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    textareaRef.current?.focus();
+  }, []);
 
   // Загружаем существующие вложения сообщения при инициализации
   const messageAttachments = useQuery(
@@ -378,6 +384,8 @@ export default function MessageEditor({
         {/* Text input */}
         <div className="p-4">
           <Textarea
+            ref={textareaRef}
+            autoFocus
             value={draftContent}
             onChange={(e) => setDraftContent(e.target.value)}
             onKeyDown={(e) => {
