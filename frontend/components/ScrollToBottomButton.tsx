@@ -43,7 +43,9 @@ export default function ScrollToBottomButton({
     return () => {
       scrollArea.removeEventListener('scroll', handleScroll);
     };
-  }, [scrollContainerRef, threshold]);
+  // Отслеживаем изменение текущего DOM-элемента, чтобы корректно
+  // перевесить обработчик при появлении контейнера
+  }, [scrollContainerRef.current, threshold]);
 
   const scrollToBottom = () => {
     const scrollArea = scrollContainerRef.current;
