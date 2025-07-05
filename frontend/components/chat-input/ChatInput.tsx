@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useState, RefObject } from 'react';
 import { UseChatHelpers } from '@ai-sdk/react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
@@ -24,6 +24,7 @@ import { SendButton, StopButton } from './components/ActionButtons';
 import { useChatSubmit } from './hooks/useChatSubmit';
 import AttachmentsBar from '../AttachmentsBar';
 import QuoteDisplay from '../QuoteDisplay';
+import ScrollToBottomButton from '../ScrollToBottomButton';
 
 interface ChatInputProps {
   threadId: string;
@@ -37,6 +38,7 @@ interface ChatInputProps {
   append: UseChatHelpers['append'];
   stop: UseChatHelpers['stop'];
   messageCount: number;
+  scrollContainerRef: RefObject<HTMLElement | null>;
   onThreadCreated?: (id: Id<'threads'>) => void;
 }
 
@@ -52,6 +54,7 @@ function PureChatInput({
   append,
   stop,
   messageCount,
+  scrollContainerRef,
   onThreadCreated,
 }: ChatInputProps) {
   const { isImageGenerationMode, imageGenerationParams, setImageGenerationMode, initializeImageGenerationParams } = useChatStore();
@@ -186,10 +189,15 @@ function PureChatInput({
   const isDisabled = !input.trim() || status === 'streaming' || status === 'submitted' || isSubmitting || !canChat;
 
   return (
-    <div className="w-full flex justify-center pb-safe mobile-keyboard-fix">
-      <DragDropArea messageCount={messageCount}>
-        <div className="relative rounded-[16px] sm:rounded-[24px] overflow-hidden bg-white dark:bg-transparent">
-          <div className="flex flex-col">
+      <div className="w-full flex justify-center pb-safe mobile-keyboard-fix">
+        <DragDropArea messageCount={messageCount}>
+          <div className="relative rounded-[16px] sm:rounded-[24px] overflow-hidden bg-white dark:bg-transparent">
+            {messageCount > 0 && (
+              <div className="absolute right-2 -top-12 z-20">
+                <ScrollToBottomButton scrollContainerRef={scrollContainerRef} />
+              </div>
+            )}
+            <div className="flex flex-col">
             {/* Attachments at the top */}
             {attachments.length > 0 && (
               <div className="bg-white dark:bg-secondary px-4 pt-3">
@@ -253,7 +261,8 @@ const ChatInput = memo(PureChatInput, (prevProps, nextProps) => {
   return (
     prevProps.input === nextProps.input &&
     prevProps.status === nextProps.status &&
-    prevProps.messageCount === nextProps.messageCount
+    prevProps.messageCount === nextProps.messageCount &&
+    prevProps.scrollContainerRef === nextProps.scrollContainerRef
   );
 });
 ChatInput.displayName = 'ChatInput';

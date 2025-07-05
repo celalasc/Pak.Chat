@@ -4,7 +4,6 @@ import { useChat } from '@ai-sdk/react';
 import Messages from './Messages';
 import ChatInput from './chat-input';
 import ChatNavigationBars from './ChatNavigationBars';
-import ScrollToBottomButton from './ScrollToBottomButton';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 import { useModelStore } from '@/frontend/stores/ModelStore';
 import { useQuoteStore } from '@/frontend/stores/QuoteStore';
@@ -621,14 +620,6 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCrea
             isMobile ? 'bottom-0' : (mergedMessages.length > 0 ? 'bottom-0' : 'top-1/2 -translate-y-1/2'),
           )}
         >
-          {/* Scroll to bottom button - позиционируем ВНУТРИ контейнера поля ввода */}
-          {mergedMessages.length > 0 && (
-            <div className="absolute right-8 bottom-[88px] z-40">
-              <ScrollToBottomButton 
-                scrollContainerRef={scrollContainerRef} 
-              />
-            </div>
-          )}
           
           <ChatInput
             threadId={currentThreadId}
@@ -642,6 +633,7 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCrea
             stop={stopWithCleanup}
             error={error}
             messageCount={mergedMessages.length}
+            scrollContainerRef={scrollContainerRef}
             onThreadCreated={handleThreadCreated}
           />
         </div>
