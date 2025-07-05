@@ -157,17 +157,42 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
   const { isMobile, mounted } = useIsMobile(768);
   const [activeTab, setActiveTab] = useState("customization");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const resetDrawerState = useCallback(() => {
     setActiveTab('customization');
   }, []);
 
-  const handleOpenChange = useCallback((open: boolean) => {
-    setIsOpen(open);
-    if (!open) {
-      resetDrawerState();
-    }
-  }, [setIsOpen, resetDrawerState]);
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      setIsOpen(open);
+
+      if (!open) {
+        if (closeTimeoutRef.current) {
+          clearTimeout(closeTimeoutRef.current);
+        }
+
+        // Delay reset to avoid flicker before close animation completes
+        closeTimeoutRef.current = setTimeout(() => {
+          resetDrawerState();
+          closeTimeoutRef.current = null;
+        }, 200);
+      } else if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
+        closeTimeoutRef.current = null;
+      }
+    },
+    [setIsOpen, resetDrawerState]
+  );
+
+  // Clear pending timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Mobile background effect handler
   const handleMobileEffect = useCallback((shouldApply: boolean) => {
