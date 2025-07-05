@@ -55,7 +55,6 @@ function PureChatInput({
   onThreadCreated,
 }: ChatInputProps) {
   const { isImageGenerationMode, imageGenerationParams, setImageGenerationMode, initializeImageGenerationParams } = useChatStore();
-  const { hasRequiredKeys } = useAPIKeyStore();
   const { user } = useAuthStore();
   const { currentQuote, clearQuote } = useQuoteStore();
   const { attachments } = useAttachmentsStore();
@@ -112,7 +111,9 @@ function PureChatInput({
   }, 500);
 
   // Chat submit hook with all the complex logic
-  const { handleSubmit, isSubmitting, canChat, textareaRef: submitTextareaRef } = useChatSubmit({
+  const { keysLoading } = useAPIKeyStore();
+
+  const { handleSubmit, isSubmitting, canChat: readyToChat, textareaRef: submitTextareaRef } = useChatSubmit({
     threadId,
     sessionThreadId,
     setSessionThreadId,
@@ -183,7 +184,8 @@ function PureChatInput({
     };
   }, [isImageGenerationMode, setImageGenerationMode, textareaRef]);
 
-  const isDisabled = !input.trim() || status === 'streaming' || status === 'submitted' || isSubmitting || !canChat;
+  const canChat = keysLoading || readyToChat;
+  const isDisabled = !input.trim() || status === 'streaming' || status === 'submitted' || isSubmitting || !readyToChat;
 
   return (
     <div className="w-full flex justify-center pb-safe mobile-keyboard-fix">
