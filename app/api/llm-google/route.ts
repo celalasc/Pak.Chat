@@ -231,16 +231,14 @@ export async function POST(req: NextRequest) {
       config: {
         ...generationConfig,
         ...thinkingConfig,
-        // Включаем search grounding если запрошено
+        // Включаем Search Grounding для моделей Gemini 2.5
         ...(search && {
-          tools: [{
-            googleSearchRetrieval: {
-              dynamicRetrievalConfig: {
-                mode: "MODE_DYNAMIC",
-                dynamicThreshold: 0.3,
-              }
+          tools: [
+            {
+              // новое API вместо устаревшего googleSearchRetrieval
+              googleSearch: {}
             }
-          }]
+          ]
         })
       },
       contents,
