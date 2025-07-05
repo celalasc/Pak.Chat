@@ -174,6 +174,7 @@ export default function MobileAddActionsDrawer({
           type: file.type,
           size: file.size,
           preview: previewUrl || file.preview || '',
+          remote: true,
         });
         
         const updated = recentFiles.map(f => 
