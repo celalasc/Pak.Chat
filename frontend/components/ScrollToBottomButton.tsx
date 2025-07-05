@@ -20,12 +20,13 @@ export default function ScrollToBottomButton({
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    // Получаем скролл-контейнер напрямую через ref
-    const scrollArea = scrollContainerRef.current;
-    if (!scrollArea) return;
+    // Контейнер прокрутки, если он не предоставлен — используем window
+    const scrollArea = scrollContainerRef.current ?? window;
 
     const handleScroll = () => {
-      const { scrollTop, clientHeight, scrollHeight } = scrollArea;
+      const scrollTop = scrollArea instanceof HTMLElement ? scrollArea.scrollTop : window.scrollY;
+      const clientHeight = scrollArea instanceof HTMLElement ? scrollArea.clientHeight : document.documentElement.clientHeight;
+      const scrollHeight = scrollArea instanceof HTMLElement ? scrollArea.scrollHeight : document.documentElement.scrollHeight;
       const distanceFromBottom = scrollHeight - (scrollTop + clientHeight);
       const shouldBeVisible = distanceFromBottom > threshold && scrollHeight > clientHeight;
       
@@ -46,10 +47,16 @@ export default function ScrollToBottomButton({
 
   const scrollToBottom = () => {
     const scrollArea = scrollContainerRef.current;
-    if (!scrollArea) return;
-    
-    scrollArea.scrollTo({
-      top: scrollArea.scrollHeight,
+    if (scrollArea) {
+      scrollArea.scrollTo({
+        top: scrollArea.scrollHeight,
+        behavior: 'smooth',
+      });
+      return;
+    }
+
+    window.scrollTo({
+      top: document.documentElement.scrollHeight,
       behavior: 'smooth',
     });
   };
