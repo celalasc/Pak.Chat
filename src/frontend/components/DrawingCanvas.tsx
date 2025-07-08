@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { createPortal } from 'react-dom';
+import Portal from './Portal';
 import { Button } from './ui/button';
 import { 
   Brush, 
@@ -1811,7 +1811,5 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
   );
 
   // Используем портал для рендера поверх всего приложения
-  return typeof window !== 'undefined' 
-    ? createPortal(drawingCanvasContent, document.body)
-    : null;
-} 
+  return <Portal>{drawingCanvasContent}</Portal>;
+}
