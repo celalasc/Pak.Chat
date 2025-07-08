@@ -41,7 +41,8 @@ function Codebar({ lang, codeString }: { lang: string; codeString: string }) {
     document.body.appendChild(a);
     a.click();
     if (a.parentNode) {
-      a.parentNode.removeChild(a);
+      // Безопасно удаляем созданную ссылку
+      a.remove();
     }
     URL.revokeObjectURL(url);
   }, [codeString, lang]);
