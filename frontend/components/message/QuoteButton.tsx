@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { Quote as QuoteIcon } from 'lucide-react';
-import { Button } from './ui/button';
+import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 
