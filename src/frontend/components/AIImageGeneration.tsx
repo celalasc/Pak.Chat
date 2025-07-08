@@ -114,7 +114,9 @@ export default function AIImageGeneration({
       link.download = `generated-image-${Date.now()}-${index + 1}.${extension}`;
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
+      if (link.parentNode) {
+        link.parentNode.removeChild(link);
+      }
       // Убираем всплывашку при успешном скачивании
     } catch (error) {
       console.error('Failed to download image:', error);
