@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { X } from 'lucide-react';
-import { Button } from './ui/button';
+import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { Quote } from '@/frontend/stores/QuoteStore';
 

@@ -3,8 +3,8 @@ import PreviewMessage from './Message';
 import { UIMessage } from 'ai';
 import { UseChatHelpers } from '@ai-sdk/react';
 import equal from 'fast-deep-equal';
-import MessageLoading from './ui/MessageLoading';
-import Error from './Error';
+import MessageLoading from '../ui/MessageLoading';
+import Error from '../Error';
 
 // Убираем виртуализацию - всегда используем обычные сообщения
 function PureMessages({

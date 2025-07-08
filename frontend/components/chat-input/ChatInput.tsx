@@ -23,7 +23,7 @@ import { ImageGenerationControls } from './components/ImageGenerationControls';
 import { SendButton, StopButton } from './components/ActionButtons';
 import { useChatSubmit } from './hooks/useChatSubmit';
 import AttachmentsBar from '../AttachmentsBar';
-import QuoteDisplay from '../QuoteDisplay';
+import QuoteDisplay from '../message/QuoteDisplay';
 import ScrollToBottomButton from '../ScrollToBottomButton';
 
 interface ChatInputProps {

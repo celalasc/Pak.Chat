@@ -1,7 +1,7 @@
 import { memo, useCallback, useRef } from 'react';
 import { useTextSelection } from '@/frontend/hooks/useTextSelection';
 import { useQuoteStore } from '@/frontend/stores/QuoteStore';
-import QuoteButton from './QuoteButton';
+import QuoteButton from './message/QuoteButton';
 import { v4 as uuidv4 } from 'uuid';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 

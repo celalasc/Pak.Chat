@@ -4,8 +4,8 @@ import { UseChatHelpers, useCompletion } from '@ai-sdk/react';
 import { useState, useEffect, useRef } from 'react';
 import { UIMessage } from 'ai';
 import { Dispatch, SetStateAction } from 'react';
-import { Textarea } from './ui/textarea';
-import { Button } from './ui/button';
+import { Textarea } from '../ui/textarea';
+import { Button } from '../ui/button';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 import { useModelStore } from '@/frontend/stores/ModelStore';
 import { toast } from 'sonner';
@@ -19,8 +19,8 @@ import QuoteDisplay from './QuoteDisplay';
 import { cn } from '@/lib/utils';
 import { PlusIcon, X } from 'lucide-react';
 import { createImagePreview } from '@/frontend/lib/image';
-import { convertToSupportedImage } from '../lib/fileHelpers';
-import FilePreview from './FilePreview';
+import { convertToSupportedImage } from '../../lib/fileHelpers';
+import FilePreview from '../FilePreview';
 import type { Attachment, LocalAttachment, RemoteAttachment } from '@/frontend/stores/AttachmentsStore';
 
 // Локальный компонент для файлового ввода при редактировании

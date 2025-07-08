@@ -1,7 +1,8 @@
 "use client";
 
 import { useChat } from '@ai-sdk/react';
-import Messages from './Messages';
+// Chat message list component
+import Messages from './message/Messages';
 import ChatInput from './chat-input';
 import ChatNavigationBars from './ChatNavigationBars';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
