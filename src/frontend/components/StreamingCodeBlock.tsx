@@ -40,7 +40,9 @@ function Codebar({ lang, codeString }: { lang: string; codeString: string }) {
     a.download = `code_snippet.${ext}`;
     document.body.appendChild(a);
     a.click();
-    document.body.removeChild(a);
+    if (a.parentNode) {
+      a.parentNode.removeChild(a);
+    }
     URL.revokeObjectURL(url);
   }, [codeString, lang]);
 

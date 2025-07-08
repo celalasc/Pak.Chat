@@ -13,7 +13,9 @@ export async function copyText(text: string) {
     try {
       document.execCommand('copy');
     } finally {
-      document.body.removeChild(textarea);
+      if (textarea.parentNode) {
+        textarea.parentNode.removeChild(textarea);
+      }
     }
   }
 }
