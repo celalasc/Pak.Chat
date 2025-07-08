@@ -14,7 +14,8 @@ export async function copyText(text: string) {
       document.execCommand('copy');
     } finally {
       if (textarea.parentNode) {
-        textarea.parentNode.removeChild(textarea);
+        // Удаляем временный textarea безопасно
+        (textarea as HTMLTextAreaElement).remove();
       }
     }
   }
