@@ -1,4 +1,5 @@
 import { createRequire } from 'node:module'
+import { resolve } from 'path'
 
 const require = createRequire(import.meta.url)
 
@@ -97,6 +98,7 @@ const nextConfig = {
     // Optimize for better module resolution
     resolveAlias: {
       '@': './src',
+      '@frontend': './src/frontend',
     },
   },
   images: {
@@ -110,6 +112,11 @@ const nextConfig = {
   },
   eslint: {
     dirs: ['src/app', 'src/components'],
+  },
+  webpack(config) {
+    config.resolve.alias['@'] = resolve(__dirname, 'src');
+    config.resolve.alias['@frontend'] = resolve(__dirname, 'src/frontend');
+    return config;
   },
 };
 
