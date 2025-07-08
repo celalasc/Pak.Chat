@@ -96,7 +96,7 @@ const nextConfig = {
     resolveExtensions: ['.ts', '.tsx', '.js', '.jsx', '.json', '.css'],
     // Optimize for better module resolution
     resolveAlias: {
-      '@': './frontend',
+      '@': './src',
     },
   },
   images: {
@@ -107,6 +107,9 @@ const nextConfig = {
         hostname: '**.convex.cloud',
       },
     ],
+  },
+  eslint: {
+    dirs: ['src/app', 'src/components'],
   },
 };
 

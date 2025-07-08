@@ -11,7 +11,7 @@ import { MessageSquare, ArrowRight, Copy, Check } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import SelectableText from '@/frontend/components/SelectableText';
-import QuotedMessage from '@/frontend/components/QuotedMessage';
+import QuotedMessage from '@/frontend/components/message/QuotedMessage';
 
 export default function SharePage({ params }: { params: Promise<{ shareId: string }> }) {
   const { shareId } = use(params);
