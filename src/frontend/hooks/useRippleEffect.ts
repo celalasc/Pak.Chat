@@ -88,7 +88,8 @@ export const useRippleEffect = (options: RippleEffectOptions = {}) => {
     // Удаляем ripple после анимации
     setTimeout(() => {
       if (ripple.parentNode) {
-        ripple.parentNode.removeChild(ripple);
+        // Используем remove() для избежания NotFoundError
+        ripple.remove();
       }
     }, duration);
   }, [color, duration, disabled, forceEnable]);

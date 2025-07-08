@@ -115,7 +115,8 @@ export default function AIImageGeneration({
       document.body.appendChild(link);
       link.click();
       if (link.parentNode) {
-        link.parentNode.removeChild(link);
+        // Избегаем ошибки NotFound при повторном удалении
+        link.remove();
       }
       // Убираем всплывашку при успешном скачивании
     } catch (error) {
