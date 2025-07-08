@@ -2,8 +2,8 @@
 
 import { X } from 'lucide-react';
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { createPortal } from 'react-dom';
 import Image from 'next/image';
+import Portal from './Portal';
 
 interface ImageModalProps {
   isOpen: boolean;
@@ -220,8 +220,6 @@ export default function ImageModal({
     </div>
   );
 
-  return typeof window !== 'undefined'
-    ? createPortal(modalContent, document.body)
-    : null;
+  return <Portal>{modalContent}</Portal>;
 }
 
