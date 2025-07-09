@@ -251,8 +251,8 @@ function PureChatInput({
               {/* Left side: Add file button and model selection */}
               <div className="flex items-center gap-2">
                 <AttachmentsBar mode="compact" messageCount={messageCount} />
-                <ChatModelDropdown messageCount={messageCount} />
                 {isImageGenerationMode && <ImageGenerationControls />}
+                <ChatModelDropdown messageCount={messageCount} />
               </div>
               
               {/* Right side: Send/Stop button */}
