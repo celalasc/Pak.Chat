@@ -116,22 +116,24 @@ export const ChatModelDropdown = memo<ChatModelDropdownProps>(({ messageCount = 
   return (
     <div className="flex items-center gap-2">
       {isImageGenerationMode ? (
-        // Image generation mode - no dropdown, just display with close button
-        <div className="flex items-center gap-1 h-8 pl-3 pr-2 text-xs rounded-lg bg-accent/20 border border-border/30">
-          <span 
-            className="font-medium cursor-pointer hover:text-muted-foreground transition-colors"
-            onClick={() => setImageGenerationMode(false)}
-          >
-            GPT Image 1
-          </span>
-          <button
-            onClick={() => setImageGenerationMode(false)}
-            className="ml-1 p-0.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded text-red-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-            aria-label="Exit image generation mode"
-          >
-            <X className="w-3 h-3" />
-          </button>
-        </div>
+        // Image generation mode - show settings button first, then close button
+        <>
+          <div className="flex items-center gap-1 h-8 pl-3 pr-2 text-xs rounded-lg bg-accent/20 border border-border/30">
+            <span 
+              className="font-medium cursor-pointer hover:text-muted-foreground transition-colors"
+              onClick={() => setImageGenerationMode(false)}
+            >
+              GPT Image 1
+            </span>
+            <button
+              onClick={() => setImageGenerationMode(false)}
+              className="ml-1 p-0.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded text-red-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+              aria-label="Exit image generation mode"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        </>
       ) : isMobile ? (
         // Mobile version with Drawer
         <Drawer 

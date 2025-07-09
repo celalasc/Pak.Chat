@@ -34,7 +34,7 @@ import {
   Languages,
   Code,
   FileText,
-  Sparkles
+  ArrowLeft
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSettingsStore, useSettingsSync, GENERAL_FONTS, CODE_FONTS, THEMES, GeneralFont, CodeFont, Theme, CustomInstructions } from '@/frontend/stores/SettingsStore';
@@ -83,6 +83,11 @@ interface ContentComponentProps {
   tabs: { value: string; label: string; icon: string }[];
   getTabIcon: (iconName: string) => React.ReactNode;
   scrollRef: React.RefObject<HTMLDivElement | null>;
+  onDrawerClose?: () => void;
+  mobileView?: 'main' | 'tab';
+  onMobileBackToMain?: () => void;
+  onMobileTabSelect?: (tab: string) => void;
+  setMobileView?: (view: 'main' | 'tab') => void;
 }
 
 const ContentComponent = memo(function ContentComponent({
@@ -93,39 +98,41 @@ const ContentComponent = memo(function ContentComponent({
   tabs,
   getTabIcon,
   scrollRef,
+  onDrawerClose,
+  mobileView = 'main',
+  onMobileBackToMain,
+  onMobileTabSelect,
+  setMobileView,
 }: ContentComponentProps) {
   return (
     <div className={cn('flex gap-4 flex-1 min-h-0', className)}>
       {isMobile ? (
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          <TabsList className="grid w-full flex-shrink-0 grid-cols-4">
-            <TabsTrigger value="customization" className="flex items-center gap-1 text-xs">
-              <Palette className="h-3 w-3" />
-              <span className="hidden xs:inline">Style</span>
-            </TabsTrigger>
-            <TabsTrigger value="models" className="flex items-center gap-1 text-xs">
-              <Bot className="h-3 w-3" />
-              <span className="hidden xs:inline">Models</span>
-            </TabsTrigger>
-            <TabsTrigger value="profile" className="flex items-center gap-1 text-xs">
-              <User className="h-3 w-3" />
-              <span className="hidden xs:inline">User</span>
-            </TabsTrigger>
-            <TabsTrigger value="api-keys" className="flex items-center gap-1 text-xs">
-              <Key className="h-3 w-3" />
-              <span className="hidden xs:inline">Keys</span>
-            </TabsTrigger>
-          </TabsList>
-
-          <div className="flex-1 mt-4 min-h-0 overflow-y-auto scrollbar-none relative">
-            <div className="p-4 pb-20">
-              {activeTab === 'customization' && <CustomizationTab />}
-              {activeTab === 'models' && <ModelsTab />}
-              {activeTab === 'profile' && <ProfileTab />}
-              {activeTab === 'api-keys' && <APIKeysTab />}
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          {mobileView === 'main' ? (
+            // Show main menu with tab tiles
+            <div className="flex-1 min-h-0 overflow-y-auto scrollbar-none">
+              <MobileMainMenu 
+                tabs={tabs} 
+                getTabIcon={getTabIcon} 
+                onTabSelect={onMobileTabSelect || setActiveTab} 
+              />
             </div>
-          </div>
-        </Tabs>
+          ) : (
+            // Show specific tab content with back button
+            <>
+
+              
+              <div className="flex-1 min-h-0 overflow-y-auto scrollbar-none">
+                <div className="p-4 pb-20">
+                  {activeTab === 'customization' && <CustomizationTab />}
+                  {activeTab === 'models' && <ModelsTab onDrawerClose={onDrawerClose} />}
+                  {activeTab === 'profile' && <ProfileTab />}
+                  {activeTab === 'api-keys' && <APIKeysTab />}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       ) : (
         <div className="flex gap-4 flex-1 min-h-0 overflow-hidden">
           <div className="flex flex-col w-48 flex-shrink-0">
@@ -153,14 +160,57 @@ const ContentComponent = memo(function ContentComponent({
 
 ContentComponent.displayName = 'ContentComponent';
 
+const MobileMainMenu = memo(function MobileMainMenu({ 
+  onTabSelect, 
+  tabs, 
+  getTabIcon 
+}: { 
+  onTabSelect: (tab: string) => void; 
+  tabs: { value: string; label: string; icon: string }[];
+  getTabIcon: (iconName: string, size?: 'sm' | 'lg') => React.ReactNode;
+}) {
+  return (
+    <div className="px-4 py-6 space-y-4">
+      {/* Title removed as requested */}
+      <div className="space-y-3">
+        {tabs.map((tab) => (
+          <button
+            key={tab.value}
+            onClick={() => onTabSelect(tab.value)}
+            className="flex items-center gap-4 p-4 rounded-xl hover:bg-accent/50 transition-all duration-200 active:scale-95 w-full"
+          >
+            <div className="text-primary">
+              {getTabIcon(tab.icon, 'lg')}
+            </div>
+            <span className="text-sm font-medium">{tab.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+});
+
+MobileMainMenu.displayName = 'MobileMainMenu';
+
 const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawerProps) => {
   const { isMobile, mounted } = useIsMobile(768);
   const [activeTab, setActiveTab] = useState("customization");
+  const [mobileView, setMobileView] = useState<'main' | 'tab'>('main'); // For mobile navigation
   const scrollRef = useRef<HTMLDivElement>(null);
   const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const resetDrawerState = useCallback(() => {
     setActiveTab('customization');
+    setMobileView('main');
+    // Reset custom instructions changes when drawer closes
+    if ((window as any).__resetCustomInstructions) {
+      (window as any).__resetCustomInstructions();
+    }
+  }, []);
+
+  const handleMobileTabSelect = useCallback((tab: string) => {
+    setActiveTab(tab);
+    setMobileView('tab');
   }, []);
 
   const handleOpenChange = useCallback(
@@ -250,16 +300,17 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
   ], []);
 
   // Icon mapping function
-  const getTabIcon = useCallback((iconName: string) => {
+  const getTabIcon = useCallback((iconName: string, size: 'sm' | 'lg' = 'sm') => {
+    const className = size === 'lg' ? "h-8 w-8" : "h-4 w-4";
     switch (iconName) {
       case 'palette':
-        return <Palette className="h-4 w-4" />;
+        return <Palette className={className} />;
       case 'bot':
-        return <Bot className="h-4 w-4" />;
+        return <Bot className={className} />;
       case 'user':
-        return <User className="h-4 w-4" />;
+        return <User className={className} />;
       case 'key':
-        return <Key className="h-4 w-4" />;
+        return <Key className={className} />;
       default:
         return null;
     }
@@ -280,8 +331,18 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
           {children}
         </DrawerTrigger>
         <DrawerContent className="h-[85vh] max-h-[600px] flex flex-col">
-          <DrawerHeader className="flex-shrink-0">
-            <DrawerTitle className="flex items-center gap-2 text-lg">
+          <DrawerHeader className="flex-shrink-0 relative">
+            {mobileView === 'tab' && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setMobileView('main')}
+                className="h-8 w-8 absolute left-4 top-1/2 -translate-y-1/2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            )}
+            <DrawerTitle className="flex items-center justify-center gap-2 text-lg">
               <Settings className="h-5 w-5" />
               Settings
             </DrawerTitle>
@@ -295,6 +356,11 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
               tabs={tabs}
               getTabIcon={getTabIcon}
               scrollRef={scrollRef}
+              onDrawerClose={resetDrawerState}
+              mobileView={mobileView}
+              onMobileBackToMain={() => setMobileView('main')}
+              onMobileTabSelect={handleMobileTabSelect}
+              setMobileView={setMobileView}
             />
           </div>
         </DrawerContent>
@@ -324,7 +390,12 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
           tabs={tabs}
           getTabIcon={getTabIcon}
           scrollRef={scrollRef}
+          onDrawerClose={resetDrawerState}
           className="overflow-hidden"
+          mobileView={mobileView}
+          onMobileBackToMain={() => setMobileView('main')}
+          onMobileTabSelect={handleMobileTabSelect}
+          setMobileView={setMobileView}
         />
       </DialogContent>
     </Dialog>
@@ -370,7 +441,7 @@ const CustomizationTab = memo(() => {
 
     return (
       <div 
-        className="p-3 bg-muted rounded-md border text-sm"
+        className="p-3 bg-muted/30 rounded-md border text-sm"
         style={{ fontFamily: getFontFamily() }}
       >
         {fontType === 'code' ? (
@@ -398,18 +469,26 @@ const CustomizationTab = memo(() => {
 
   return (
     <div className="space-y-6">
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Palette className="h-4 w-4" />
+          <span className="text-lg font-semibold">Customization</span>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Personalize the appearance and behavior of the application
+        </p>
+      </div>
+
       {/* General Font */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Type className="h-4 w-4" />
-            General Font
-          </CardTitle>
-          <CardDescription className="text-sm">
-            Choose the font family for text throughout the application
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Type className="h-4 w-4" />
+          <span className="text-sm font-medium">General Font</span>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Choose the font family for text throughout the application
+        </p>
+        <div className="space-y-3">
           <div className="flex gap-2">
             {GENERAL_FONTS.map((font) => (
               <Button
@@ -434,21 +513,19 @@ const CustomizationTab = memo(() => {
             ))}
           </div>
           <FontPreview fontType="general" font={settings.generalFont} />
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Code Font */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Code className="h-4 w-4" />
-            Code Font
-          </CardTitle>
-          <CardDescription className="text-sm">
-            Choose the font family for code blocks and monospace text
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Code className="h-4 w-4" />
+          <span className="text-sm font-medium">Code Font</span>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Choose the font family for code blocks and monospace text
+        </p>
+        <div className="space-y-3">
           <div className="flex gap-2">
             {CODE_FONTS.map((font) => (
               <Button
@@ -473,43 +550,39 @@ const CustomizationTab = memo(() => {
             ))}
           </div>
           <FontPreview fontType="code" font={settings.codeFont} />
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Theme */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Palette className="h-4 w-4" />
-            Theme
-          </CardTitle>
-          <CardDescription className="text-sm">
-            Choose between light and dark theme
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant={settings.theme === 'light' ? "default" : "outline"}
-              onClick={() => handleThemeChange('light')}
-              className="flex items-center gap-2"
-            >
-              <Sun className="h-4 w-4" />
-              Light
-            </Button>
-            <Button
-              size="sm"
-              variant={settings.theme === 'dark' ? "default" : "outline"}
-              onClick={() => handleThemeChange('dark')}
-              className="flex items-center gap-2"
-            >
-              <Moon className="h-4 w-4" />
-              Dark
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Palette className="h-4 w-4" />
+          <span className="text-sm font-medium">Theme</span>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Choose between light and dark theme
+        </p>
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant={settings.theme === 'light' ? "default" : "outline"}
+            onClick={() => handleThemeChange('light')}
+            className="flex items-center gap-2"
+          >
+            <Sun className="h-4 w-4" />
+            Light
+          </Button>
+          <Button
+            size="sm"
+            variant={settings.theme === 'dark' ? "default" : "outline"}
+            onClick={() => handleThemeChange('dark')}
+            className="flex items-center gap-2"
+          >
+            <Moon className="h-4 w-4" />
+            Dark
+          </Button>
+        </div>
+      </div>
 
       {/* Features */}
       <Card>
@@ -581,62 +654,62 @@ const ProfileTab = memo(() => {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <User className="h-4 w-4" />
-            Profile
-          </CardTitle>
-          <CardDescription className="text-sm">
-            Your account information and preferences
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {user ? (
-            <>
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <Image
-                    src={user.photoURL || '/placeholder-avatar.png'}
-                    alt="Profile"
-                    width={48}
-                    height={48}
-                    className={cn(
-                      "rounded-full border-2 border-border transition-all", 
-                      blurPersonalData && "blur-sm"
-                    )}
-                  />
-                </div>
-                <div className="flex-1">
-                  <h3 className={cn("font-medium transition-all", blurPersonalData && "blur-sm")}>
-                    {user.displayName || 'No Name'}
-                  </h3>
-                  <p className={cn("text-xs text-muted-foreground transition-all", blurPersonalData && "blur-sm")}>
-                    {user.email || 'No Email'}
-                  </p>
-                </div>
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <User className="h-4 w-4" />
+          <span className="text-lg font-semibold">Profile</span>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Your account information and preferences
+        </p>
+      </div>
+      
+      <div className="space-y-4">
+        {user ? (
+          <>
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Image
+                  src={user.photoURL || '/placeholder-avatar.png'}
+                  alt="Profile"
+                  width={48}
+                  height={48}
+                  priority={true}
+                  className={cn(
+                    "rounded-full border-2 border-border transition-all", 
+                    blurPersonalData && "blur-sm"
+                  )}
+                />
               </div>
+              <div className="flex-1">
+                <h3 className={cn("font-medium transition-all", blurPersonalData && "blur-sm")}>
+                  {user.displayName || 'No Name'}
+                </h3>
+                <p className={cn("text-xs text-muted-foreground transition-all", blurPersonalData && "blur-sm")}>
+                  {user.email || 'No Email'}
+                </p>
+              </div>
+            </div>
 
-              <Button size="sm" variant="outline" className="w-full" onClick={toggleBlur}>
-                {blurPersonalData ? 'Show Personal Data' : 'Hide Personal Data'}
-              </Button>
-              <Button size="sm" variant="destructive" className="w-full" onClick={handleLogout}>
-                Sign Out
-              </Button>
-            </>
-          ) : (
-            <Button
-              size="sm"
-              variant="outline"
-              className="w-full"
-              onClick={handleLogin}
-              disabled={loading}
-            >
-              Sign In with Google
+            <Button size="sm" variant="outline" className="w-full" onClick={toggleBlur}>
+              {blurPersonalData ? 'Show Personal Data' : 'Hide Personal Data'}
             </Button>
-          )}
-        </CardContent>
-      </Card>
+            <Button size="sm" variant="destructive" className="w-full" onClick={handleLogout}>
+              Sign Out
+            </Button>
+          </>
+        ) : (
+          <Button
+            size="sm"
+            variant="outline"
+            className="w-full"
+            onClick={handleLogin}
+            disabled={loading}
+          >
+            Sign In with Google
+          </Button>
+        )}
+      </div>
     </div>
   );
 });
@@ -645,7 +718,8 @@ ProfileTab.displayName = 'ProfileTab';
 
 const APIKeysTab = memo(() => {
   const { keys, setKeys, keysLoading } = useAPIKeyStore();
-  const [apiKeysExpanded, setApiKeysExpanded] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isHoveringSave, setIsHoveringSave] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -663,90 +737,109 @@ const APIKeysTab = memo(() => {
   }, [keysLoading, keys, form]);
 
   const onSubmit = useCallback(
-    (values: FormValues) => {
-      setKeys(values);
-      toast.success('API keys saved successfully');
+    async (values: FormValues) => {
+      setIsSaving(true);
+      try {
+        await setKeys(values);
+        form.reset(values); // Reset form to mark as not dirty
+      } finally {
+        setIsSaving(false);
+      }
     },
-    [setKeys]
+    [setKeys, form]
   );
-
-  const toggleApiKeysExpanded = useCallback(() => {
-    setApiKeysExpanded(prev => !prev);
-  }, []);
 
   return (
     <div className="space-y-6 pb-4">
-      <Card>
-        <CardHeader 
-          className="cursor-pointer" 
-          onClick={toggleApiKeysExpanded}
-        >
-          <CardTitle className="flex items-center justify-between text-base">
+      <div className="space-y-6">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-            <Key className="h-4 w-4" />
-            API Keys
+              <Key className="h-4 w-4" />
+              <span className="text-lg font-semibold">API Keys</span>
             </div>
-            {apiKeysExpanded ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <ChevronUp className="h-4 w-4" />
+            {isDirty && (
+              <Badge
+                variant="secondary"
+                className="relative text-xs cursor-pointer select-none overflow-hidden flex items-center justify-center transition-colors duration-300 hover:bg-primary hover:text-primary-foreground h-6 w-16"
+                onClick={handleSubmit(onSubmit)}
+                onMouseEnter={() => setIsHoveringSave(true)}
+                onMouseLeave={() => setIsHoveringSave(false)}
+                title="Click to save changes"
+              >
+                {/* Original text */}
+                <span
+                  className={cn(
+                    "transition-opacity duration-300",
+                    isHoveringSave ? "opacity-0" : "opacity-100"
+                  )}
+                >
+                  Unsaved
+                </span>
+                {/* Hover text */}
+                <span
+                  className={cn(
+                    "absolute inset-0 flex items-center justify-center transition-opacity duration-300",
+                    isHoveringSave ? "opacity-100" : "opacity-0"
+                  )}
+                >
+                  Save
+                </span>
+              </Badge>
             )}
-          </CardTitle>
-          <CardDescription className="text-sm">
+          </div>
+          <p className="text-sm text-muted-foreground">
             API keys are securely stored and encrypted in the cloud
-          </CardDescription>
-        </CardHeader>
-        {apiKeysExpanded && (
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            <ApiKeyField
-              id="google"
-              label="Google API Key"
-              models={['Gemini 2.5 Flash', 'Gemini 2.5 Pro']}
-              linkUrl="https://aistudio.google.com/apikey"
-              placeholder="AIza..."
-              register={register}
-              error={errors.google}
-              required
-            />
+          </p>
+        </div>
+        
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <ApiKeyField
+            id="google"
+            label="Google API Key"
+            models={['Gemini 2.5 Flash', 'Gemini 2.5 Pro']}
+            linkUrl="https://aistudio.google.com/apikey"
+            placeholder="AIza..."
+            register={register}
+            error={errors.google}
+            required
+          />
 
-            <ApiKeyField
-              id="openrouter"
-              label="OpenRouter API Key"
-              models={['DeepSeek R1 0538', 'DeepSeek-V3']}
-              linkUrl="https://openrouter.ai/settings/keys"
-              placeholder="sk-or-..."
-              register={register}
-              error={errors.openrouter}
-            />
+          <ApiKeyField
+            id="openrouter"
+            label="OpenRouter API Key"
+            models={['DeepSeek R1 0538', 'DeepSeek-V3']}
+            linkUrl="https://openrouter.ai/settings/keys"
+            placeholder="sk-or-..."
+            register={register}
+            error={errors.openrouter}
+          />
 
-            <ApiKeyField
-              id="openai"
-              label="OpenAI API Key"
-              models={['GPT-4o', 'GPT-4.1-mini', 'GPT-4.1', 'GPT-4.1-nano', 'o4-mini', 'o3']}
-              linkUrl="https://platform.openai.com/settings/organization/api-keys"
-              placeholder="sk-..."
-              register={register}
-              error={errors.openai}
-            />
+          <ApiKeyField
+            id="openai"
+            label="OpenAI API Key"
+            models={['GPT-4o', 'GPT-4.1-mini', 'GPT-4.1', 'GPT-4.1-nano', 'o4-mini', 'o3']}
+            linkUrl="https://platform.openai.com/settings/organization/api-keys"
+            placeholder="sk-..."
+            register={register}
+            error={errors.openai}
+          />
 
-            <ApiKeyField
-              id="groq"
-              label="Groq API Key"
-              models={['Meta Llama 4 Scout 17B', 'Meta Llama 4 Maverick 17B', 'DeepSeek R1 Distill Llama 70B', 'Qwen QwQ 32B', 'Qwen 3 32B']}
-              linkUrl="https://console.groq.com/keys"
-              placeholder="gsk_..."
-              register={register}
-              error={errors.groq}
-            />
+          <ApiKeyField
+            id="groq"
+            label="Groq API Key"
+            models={['Meta Llama 4 Scout 17B', 'Meta Llama 4 Maverick 17B', 'DeepSeek R1 Distill Llama 70B', 'Qwen QwQ 32B', 'Qwen 3 32B']}
+            linkUrl="https://console.groq.com/keys"
+            placeholder="gsk_..."
+            register={register}
+            error={errors.groq}
+          />
 
-            <Button type="submit" className="w-full" disabled={!isDirty || keysLoading} size="sm">
-              Save API Keys
-            </Button>
-          </form>
-        </CardContent>
-        )}
-      </Card>
+          <Button type="submit" className="w-full" disabled={!isDirty || keysLoading || isSaving} size="sm">
+            {isSaving ? 'Saving...' : 'Save'}
+          </Button>
+        </form>
+      </div>
     </div>
   );
 });
@@ -886,27 +979,20 @@ const ApiKeyField = ({
   );
 }; 
 
-const ModelsTab = memo(() => {
+interface ModelsTabProps {
+  onDrawerClose?: () => void;
+}
+
+const ModelsTab = memo(({ onDrawerClose }: ModelsTabProps) => {
   const { settings, setSettings } = useSettingsStore();
   const { saveCustomInstructionsManually } = useSettingsSync();
   const { isAuthenticated } = useConvexAuth();
   const settingsDoc = useQuery(api.userSettings.get, isAuthenticated ? {} : 'skip');
-  const saveImageGenerationSettingsMutation = useMutation(api.userSettings.saveImageGenerationSettings);
-  const [customInstructionsExpanded, setCustomInstructionsExpanded] = useState(false);
-  const [modelVisibilityExpanded, setModelVisibilityExpanded] = useState(false);
-  const [imageGenerationExpanded, setImageGenerationExpanded] = useState(false);
+
   const [currentTraitInput, setCurrentTraitInput] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  const [isImageGenerationSaving, setIsImageGenerationSaving] = useState(false);
   const [originalCustomInstructions, setOriginalCustomInstructions] = useState<CustomInstructions | null>(null);
-  const [imageGenerationSettings, setImageGenerationSettings] = useState({
-    model: 'gpt-image-1',
-    size: 'auto',
-    quality: 'auto',
-    count: 1,
-    format: 'jpeg',
-    compression: 80,
-  });
+  const [isHoveringSave, setIsHoveringSave] = useState(false);
   
   const customInstructions = {
     name: settings.customInstructions?.name || '',
@@ -917,30 +1003,33 @@ const ModelsTab = memo(() => {
   };
 
   useEffect(() => {
-    if (customInstructionsExpanded && !originalCustomInstructions) {
+    if (!originalCustomInstructions) {
       setOriginalCustomInstructions({ ...customInstructions });
       setCurrentTraitInput(customInstructions.traitsText);
     }
-  }, [customInstructionsExpanded, originalCustomInstructions, customInstructions]);
+  }, [originalCustomInstructions, customInstructions]);
 
+  // Reset changes when drawer closes
   useEffect(() => {
-    if (!customInstructionsExpanded) {
-      setOriginalCustomInstructions(null);
+    if (onDrawerClose && originalCustomInstructions) {
+      const resetChanges = () => {
+        setSettings({
+          customInstructions: { ...originalCustomInstructions }
+        });
+        setCurrentTraitInput(originalCustomInstructions.traitsText || '');
+        setIsHoveringSave(false);
+      };
+      
+      // Store the reset function to be called when drawer closes
+      (window as any).__resetCustomInstructions = resetChanges;
+      
+      return () => {
+        delete (window as any).__resetCustomInstructions;
+      };
     }
-  }, [customInstructionsExpanded]);
+  }, [onDrawerClose, originalCustomInstructions, setSettings]);
 
-  useEffect(() => {
-    if (settingsDoc) {
-      setImageGenerationSettings({
-        model: settingsDoc.imageGenerationModel || 'gpt-image-1',
-        size: settingsDoc.imageGenerationSize || 'auto',
-        quality: settingsDoc.imageGenerationQuality || 'auto',
-        count: settingsDoc.imageGenerationCount || 1,
-        format: settingsDoc.imageGenerationFormat || 'jpeg',
-        compression: settingsDoc.imageGenerationCompression || 80,
-      });
-    }
-  }, [settingsDoc]);
+
 
   const hasUnsavedChanges = useMemo(() => {
     if (!originalCustomInstructions) {
@@ -977,6 +1066,8 @@ const ModelsTab = memo(() => {
         [field]: value
       }
     });
+    // Reset hover state when data changes
+    setIsHoveringSave(false);
   }, [customInstructions, setSettings]);
 
   const handleTraitToggle = useCallback((trait: string) => {
@@ -986,6 +1077,7 @@ const ModelsTab = memo(() => {
       : [...currentTraits, trait];
     
     handleCustomInstructionsChange('traits', newTraits);
+    setIsHoveringSave(false);
   }, [customInstructions.traits, handleCustomInstructionsChange]);
 
   const handleToggleProvider = useCallback((provider: Provider) => {
@@ -1006,64 +1098,9 @@ const ModelsTab = memo(() => {
     }
   }, [toggleFavoriteModel, saveToConvex]);
 
-  const toggleCustomInstructionsExpanded = useCallback(() => {
-    setCustomInstructionsExpanded(prev => !prev);
-  }, []);
 
-  const toggleModelVisibilityExpanded = useCallback(() => {
-    setModelVisibilityExpanded(prev => !prev);
-  }, []);
 
-  const toggleImageGenerationExpanded = useCallback(() => {
-    setImageGenerationExpanded(prev => !prev);
-  }, []);
 
-  const handleImageGenerationSettingChange = useCallback((setting: string, value: any) => {
-    setImageGenerationSettings(prev => ({
-      ...prev,
-      [setting]: value,
-    }));
-  }, []);
-
-  const saveImageGenerationSettings = useCallback(async () => {
-    if (!isAuthenticated) return;
-    
-    setIsImageGenerationSaving(true);
-    try {
-      await saveImageGenerationSettingsMutation({
-        imageGenerationModel: imageGenerationSettings.model,
-        imageGenerationSize: imageGenerationSettings.size,
-        imageGenerationQuality: imageGenerationSettings.quality,
-        imageGenerationCount: imageGenerationSettings.count,
-        imageGenerationFormat: imageGenerationSettings.format,
-        imageGenerationCompression: imageGenerationSettings.compression,
-      });
-    } catch (error) {
-      console.error('Failed to save image generation settings:', error);
-    } finally {
-      setIsImageGenerationSaving(false);
-    }
-  }, [isAuthenticated, saveImageGenerationSettingsMutation, imageGenerationSettings]);
-
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (settingsDoc && imageGenerationSettings) {
-        const hasChanges = 
-          imageGenerationSettings.model !== (settingsDoc.imageGenerationModel || 'gpt-image-1') ||
-          imageGenerationSettings.size !== (settingsDoc.imageGenerationSize || 'auto') ||
-          imageGenerationSettings.quality !== (settingsDoc.imageGenerationQuality || 'auto') ||
-          imageGenerationSettings.count !== (settingsDoc.imageGenerationCount || 1) ||
-          imageGenerationSettings.format !== (settingsDoc.imageGenerationFormat || 'jpeg') ||
-          imageGenerationSettings.compression !== (settingsDoc.imageGenerationCompression || 80);
-        
-        if (hasChanges) {
-          saveImageGenerationSettings();
-        }
-      }
-    }, 500);
-
-    return () => clearTimeout(timeoutId);
-  }, [imageGenerationSettings, settingsDoc, saveImageGenerationSettings]);
 
   const handleSaveCustomInstructions = useCallback(async () => {
     if (!hasUnsavedChanges || isSaving) return;
@@ -1073,7 +1110,6 @@ const ModelsTab = memo(() => {
       const success = await saveCustomInstructionsManually();
       if (success) {
         setOriginalCustomInstructions({ ...customInstructions });
-        toast.success('Custom instructions saved successfully!');
       } else {
         toast.error('Failed to save custom instructions. User not authenticated.');
       }
@@ -1088,34 +1124,77 @@ const ModelsTab = memo(() => {
 
   return (
     <div className="space-y-6 pb-4">
+      {/* Model Visibility Section */}
+      <div className="space-y-6">
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Bot className="h-4 w-4" />
+            <span className="text-lg font-semibold">Model Visibility</span>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Select which models appear in your favorites and which providers are enabled
+          </p>
+        </div>
+        
+        <div className="space-y-6">
+          {Object.entries(modelsByProvider).map(([provider, models]) => (
+            <ProviderSection
+              key={provider}
+              provider={provider as any}
+              models={models}
+              isEnabled={isProviderEnabled(provider as any)}
+              onToggleProvider={() => handleToggleProvider(provider as any)}
+              onToggleFavoriteModel={handleToggleFavoriteModel}
+              isFavoriteModel={isFavoriteModel}
+            />
+          ))}
+        </div>
+      </div>
+
       {/* Custom Instructions Section */}
-      <Card>
-        <CardHeader 
-          className="cursor-pointer" 
-          onClick={toggleCustomInstructionsExpanded}
-        >
-          <CardTitle className="flex items-center justify-between text-base">
+      <div className="space-y-6">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <MessageSquare className="h-4 w-4" />
-              Custom Instructions
-              {hasUnsavedChanges && (
-                <Badge variant="secondary" className="text-xs">
-                  Unsaved
-                </Badge>
-              )}
+              <span className="text-lg font-semibold">Custom Instructions</span>
             </div>
-            {customInstructionsExpanded ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <ChevronUp className="h-4 w-4" />
+            {hasUnsavedChanges && (
+              <Badge
+                variant="secondary"
+                className="relative text-xs cursor-pointer select-none overflow-hidden flex items-center justify-center transition-colors duration-300 hover:bg-primary hover:text-primary-foreground h-6 w-16"
+                onClick={handleSaveCustomInstructions}
+                onMouseEnter={() => setIsHoveringSave(true)}
+                onMouseLeave={() => setIsHoveringSave(false)}
+                title="Click to save changes"
+              >
+                {/* Original text */}
+                <span
+                  className={cn(
+                    "transition-opacity duration-300",
+                    isHoveringSave ? "opacity-0" : "opacity-100"
+                  )}
+                >
+                  Unsaved
+                </span>
+                {/* Hover text */}
+                <span
+                  className={cn(
+                    "absolute inset-0 flex items-center justify-center transition-opacity duration-300",
+                    isHoveringSave ? "opacity-100" : "opacity-0"
+                  )}
+                >
+                  Save
+                </span>
+              </Badge>
             )}
-          </CardTitle>
-          <CardDescription className="text-sm">
+          </div>
+          <p className="text-sm text-muted-foreground">
             Customize how AI interacts with you and what it remembers about your preferences
-          </CardDescription>
-        </CardHeader>
-        {customInstructionsExpanded && (
-          <CardContent className="space-y-6">
+          </p>
+        </div>
+        
+        <div className="space-y-6">
           {/* What should Pak.Chat call you? */}
           <div className="space-y-3">
             <Label htmlFor="name" className="text-sm font-medium">
@@ -1210,6 +1289,7 @@ const ModelsTab = memo(() => {
                         const newValue = e.target.value;
                         setCurrentTraitInput(newValue);
                         handleCustomInstructionsChange('traitsText', newValue);
+                        setIsHoveringSave(false);
                       }}
                       onKeyDown={(e) => {
                         if (e.key === 'Backspace' && !currentTraitInput && (customInstructions.traits || []).length > 0) {
@@ -1278,111 +1358,16 @@ const ModelsTab = memo(() => {
           </div>
 
           {/* Save Button */}
-          <div className="flex items-center justify-between pt-4 border-t border-border/50">
-            <div className="text-xs text-muted-foreground">
-              {hasUnsavedChanges ? 'You have unsaved changes' : 'All changes saved'}
-            </div>
-            <Button
-              onClick={handleSaveCustomInstructions}
-              disabled={!hasUnsavedChanges || isSaving}
-              size="sm"
-              className="min-w-[80px]"
-            >
-              {isSaving ? 'Saving...' : 'Save'}
-            </Button>
-          </div>
-        </CardContent>
-        )}
-      </Card>
-
-      {/* Image Generation Section */}
-      <Card>
-        <CardHeader 
-          className="cursor-pointer" 
-          onClick={toggleImageGenerationExpanded}
-        >
-          <CardTitle className="flex items-center justify-between text-base">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4" />
-              Image Generation
-              {isImageGenerationSaving && (
-                <Badge variant="secondary" className="text-xs">
-                  Saving...
-                </Badge>
-              )}
-            </div>
-            {imageGenerationExpanded ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <ChevronUp className="h-4 w-4" />
-            )}
-          </CardTitle>
-          <CardDescription className="text-sm">
-            Configure default settings for AI image generation
-          </CardDescription>
-        </CardHeader>
-        {imageGenerationExpanded && (
-          <CardContent className="space-y-6">
-            {/* Simple config for now */}
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">Model</Label>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
-                  <div className="flex items-center gap-3">
-                    <div>
-                      <div className="font-medium text-sm">GPT Image 1</div>
-                      <div className="text-xs text-muted-foreground">Latest AI image generation model</div>
-                    </div>
-                  </div>
-                  <Badge variant="secondary" className="text-xs">Recommended</Badge>
-                </div>
-              </div>
-            </div>
-
-            <div className="text-xs text-muted-foreground p-3 bg-muted/20 rounded-lg">
-              💡 Image generation settings are automatically optimized for best results.
-            </div>
-          </CardContent>
-        )}
-      </Card>
-
-      {/* Model Visibility Section */}
-      <Card>
-        <CardHeader 
-          className="cursor-pointer" 
-          onClick={toggleModelVisibilityExpanded}
-        >
-          <CardTitle className="flex items-center justify-between text-base">
-            <div className="flex items-center gap-2">
-            <Bot className="h-4 w-4" />
-            Model Visibility
-            </div>
-            {modelVisibilityExpanded ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <ChevronUp className="h-4 w-4" />
-            )}
-          </CardTitle>
-          <CardDescription className="text-sm">
-            Select which models appear in your favorites and which providers are enabled
-          </CardDescription>
-        </CardHeader>
-        {modelVisibilityExpanded && (
-        <CardContent className="space-y-6">
-          {Object.entries(modelsByProvider).map(([provider, models]) => (
-            <ProviderSection
-              key={provider}
-              provider={provider as any}
-              models={models}
-              isEnabled={isProviderEnabled(provider as any)}
-              onToggleProvider={() => handleToggleProvider(provider as any)}
-              onToggleFavoriteModel={handleToggleFavoriteModel}
-              isFavoriteModel={isFavoriteModel}
-            />
-          ))}
-        </CardContent>
-        )}
-      </Card>
+          <Button 
+            onClick={handleSaveCustomInstructions}
+            disabled={!hasUnsavedChanges || isSaving}
+            className="w-full" 
+            size="sm"
+          >
+            {isSaving ? 'Saving...' : 'Save'}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 });
@@ -1423,40 +1408,37 @@ const ProviderSection = memo(({
     <div className="space-y-3">
       {/* Закрепленный заголовок провайдера */}
       <div className="bg-background/95 backdrop-blur-sm z-10 pb-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <ProviderIcon provider={provider} className="h-4 w-4" />
-            <span className="font-medium text-sm">{providerNames[provider]}</span>
-            <Badge variant="secondary" className="text-xs">
-              {models.length} models
+              <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <ProviderIcon provider={provider} className={cn("h-4 w-4", !providerHasKey && "text-muted-foreground")} />
+          <span className={cn("font-medium text-sm", !providerHasKey && "text-muted-foreground")}>{providerNames[provider]}</span>
+          {!providerHasKey && (
+            <Badge variant="outline" className="text-xs text-muted-foreground">
+              No API key
             </Badge>
-            {!providerHasKey && (
-              <Badge variant="outline" className="text-xs text-muted-foreground">
-                No API key
-              </Badge>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <CustomSwitch
-              checked={isEnabled}
-              onCheckedChange={onToggleProvider}
-              id={`provider-${provider}`}
-              disabled={false}
-            />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="h-6 w-6 p-0"
-            >
-              {isExpanded ? (
-                <ChevronUp className="h-3 w-3" />
-              ) : (
-                <ChevronDown className="h-3 w-3" />
-              )}
-            </Button>
-          </div>
+          )}
         </div>
+        <div className="flex items-center gap-2">
+          <CustomSwitch
+            checked={isEnabled}
+            onCheckedChange={onToggleProvider}
+            id={`provider-${provider}`}
+            disabled={!providerHasKey}
+          />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="h-6 w-6 p-0"
+          >
+            {isExpanded ? (
+              <ChevronUp className="h-3 w-3" />
+            ) : (
+              <ChevronDown className="h-3 w-3" />
+            )}
+          </Button>
+        </div>
+      </div>
       </div>
 
       {/* Скроллируемый список моделей */}
@@ -1508,29 +1490,21 @@ const ModelRow = memo(({
       role="button"
       tabIndex={0}
       className={cn(
-        "flex items-center justify-between p-2 rounded-md border cursor-pointer transition-colors",
+        "flex items-center justify-between p-2 rounded-md border transition-colors",
         isFavoriteModel && "bg-primary/10 border-primary/20",
-        (!isProviderEnabled || !providerHasKey) && "opacity-60"
+        (!isProviderEnabled || !providerHasKey) && "opacity-60",
+        (!providerHasKey || !isProviderEnabled) ? "cursor-not-allowed" : "cursor-pointer"
       )}
-      onClick={handleClick}
+      onClick={(!providerHasKey || !isProviderEnabled) ? undefined : handleClick}
       onKeyDown={(e) => {
+        if (!providerHasKey || !isProviderEnabled) return;
         if (e.key === 'Enter' || e.key === ' ') {
           handleClick(e as any);
         }
       }}
     >
       <div className="flex items-center gap-2">
-        <span className="text-sm font-medium">{model}</span>
-        {!providerHasKey && (
-          <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-            No API key
-          </span>
-        )}
-        {!isProviderEnabled && providerHasKey && (
-          <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-            Provider disabled
-          </span>
-        )}
+        <span className={cn("text-sm font-medium", (!providerHasKey || !isProviderEnabled) && "text-muted-foreground")}>{model}</span>
       </div>
       <div className="flex items-center gap-1">
         {/* Favourite toggle */}
