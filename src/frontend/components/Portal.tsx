@@ -19,13 +19,15 @@ export default function Portal({ children }: PortalProps) {
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-    if (!document.body.contains(container)) {
+
+    // Append lazily created container to the body if it's not already
+    if (!container.isConnected) {
       document.body.appendChild(container);
     }
+
+    // Cleanup by removing the container if it was inserted
     return () => {
-      if (document.body.contains(container)) {
-        document.body.removeChild(container);
-      }
+      container.remove();
     };
   }, []);
 
