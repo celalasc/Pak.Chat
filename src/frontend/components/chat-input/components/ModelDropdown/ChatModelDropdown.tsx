@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useCallback, useState } from 'react';
-import { ChevronDown, Globe, X } from 'lucide-react';
+import { ChevronDown, Globe, X, Plus } from 'lucide-react';
 import { Button } from '@/frontend/components/ui/button';
 import {
   DropdownMenu,
@@ -24,11 +24,13 @@ import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { AIModel, getModelConfig } from '@/lib/models';
 import { ModelSelector } from '@/frontend/features/chat-input/ui/components/ModelDropdown/ModelSelector';
 import { ReasoningEffortSelector } from './ReasoningEffortSelector';
+import CustomModesDialog from '@/frontend/components/CustomModesDialog';
+
+import { useCustomModesStore } from '@/frontend/stores/CustomModesStore'; // Import the custom modes store
 
 interface ChatModelDropdownProps {
   messageCount?: number;
 }
-
 export const ChatModelDropdown = memo<ChatModelDropdownProps>(({ messageCount = 0 }) => {
   const { getKey } = useAPIKeyStore();
   const {
@@ -46,8 +48,16 @@ export const ChatModelDropdown = memo<ChatModelDropdownProps>(({ messageCount = 
     getVisibleGeneralModels,
     isProviderEnabled,
   } = useModelVisibilityStore();
+  const {
+    selectedMode,
+    setSelectedMode,
+    getAllAvailableModes,
+    isCustomModesEnabled,
+  } = useCustomModesStore();
   const [isOpen, setIsOpen] = useState(false);
   const [isReasoningEffortOpen, setIsReasoningEffortOpen] = useState(false);
+  const [isModeOpen, setIsModeOpen] = useState(false);
+  const [customModesDialogOpen, setCustomModesDialogOpen] = useState(false);
   const { isMobile } = useIsMobile();
 
   const currentModelConfig = getModelConfigFromStore();
@@ -82,6 +92,59 @@ export const ChatModelDropdown = memo<ChatModelDropdownProps>(({ messageCount = 
     [setReasoningEffort, selectedModel]
   );
 
+  const handleModeSelect = useCallback(
+    (modeId: string) => {
+      setSelectedMode(modeId);
+      setIsModeOpen(false);
+    },
+    [setSelectedMode]
+  );
+
+  const renderModesContent = () => {
+    const availableModes = getAllAvailableModes();
+    
+    return (
+      <div className={cn("p-3", isMobile && "p-4")}>
+        <div className="space-y-1">
+          {availableModes.map((mode) => (
+            <button
+              key={mode.id}
+              onClick={() => handleModeSelect(mode.id)}
+              className={cn(
+                "w-full text-left px-3 py-2 text-sm rounded-lg transition-colors",
+                "hover:bg-accent/50",
+                selectedMode === mode.id
+                  ? "bg-accent text-accent-foreground"
+                  : "text-foreground"
+              )}
+            >
+              <div className="font-medium">{mode.name}</div>
+              {mode.description && (
+                <div className="text-xs text-muted-foreground mt-1">
+                  {mode.description}
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+        {/* Add Custom Mode Button */}
+        {isCustomModesEnabled && (
+          <div className="pt-4">
+            <Button 
+              onClick={() => setCustomModesDialogOpen(true)} 
+              variant="outline" 
+              className="w-full flex items-center gap-2"
+              size="sm"
+            >
+              <Plus className="h-4 w-4" />
+              Add Custom Mode
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderModelsContent = () => {
     // Show only favorite models (those with checkmark in settings)
     const favoriteModels = getVisibleFavoriteModels();
@@ -114,7 +177,8 @@ export const ChatModelDropdown = memo<ChatModelDropdownProps>(({ messageCount = 
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <> 
+<div className="flex items-center gap-2">
       {isImageGenerationMode ? (
         // Image generation mode - show settings button first, then close button
         <>
@@ -228,7 +292,90 @@ export const ChatModelDropdown = memo<ChatModelDropdownProps>(({ messageCount = 
           <Globe className="w-4 h-4" />
         </Button>
       )}
-    </div>
+      
+      {/* Custom Mode Selector */}
+      {!isImageGenerationMode && (
+        isMobile ? (
+          // Mobile version with Drawer
+          <Drawer 
+            open={isModeOpen} 
+            onOpenChange={(open: boolean) => {
+              setIsModeOpen(open);
+            }}
+          >
+            <DrawerTrigger asChild>
+              <Button
+                variant="ghost"
+                className="flex items-center gap-1 h-8 pl-3 pr-2 text-xs rounded-lg text-foreground hover:bg-accent/50 focus-visible:ring-0 focus-visible:ring-offset-0 transition-colors"
+                aria-label={`Selected mode: ${selectedMode}`}
+              >
+                <div className="flex items-center gap-1">
+                  <span className="text-xs">📋</span>
+                  <span className="max-w-20 truncate">
+                    {getAllAvailableModes().find(m => m.id === selectedMode)?.name || 'Default'}
+                  </span>
+                  <ChevronDown className="w-3 h-3 opacity-50" />
+                </div>
+              </Button>
+            </DrawerTrigger>
+            <DrawerContent className="max-h-[80vh] flex flex-col">
+              <DrawerHeader className="sr-only">
+                <DrawerTitle>Select Mode</DrawerTitle>
+              </DrawerHeader>
+              
+              <div className="flex-1 min-h-0 overflow-y-auto scrollbar-none">
+                {renderModesContent()}
+              </div>
+            </DrawerContent>
+          </Drawer>
+        ) : (
+          // Desktop version with DropdownMenu
+          <DropdownMenu
+            open={isModeOpen}
+            onOpenChange={(open: boolean) => {
+              setIsModeOpen(open);
+            }}
+          >
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="flex items-center gap-1 h-8 pl-3 pr-2 text-xs rounded-lg text-foreground hover:bg-accent/50 focus-visible:ring-0 focus-visible:ring-offset-0 transition-colors"
+                aria-label={`Selected mode: ${selectedMode}`}
+              >
+                <div className="flex items-center gap-1">
+                  <span className="text-xs">📋</span>
+                  <span className="max-w-20 truncate">
+                    {getAllAvailableModes().find(m => m.id === selectedMode)?.name || 'Default'}
+                  </span>
+                  <ChevronDown className="w-3 h-3 opacity-50" />
+                </div>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              className={cn(
+                'w-64',
+                'border border-border/50 bg-popover/95 backdrop-blur-sm shadow-xl rounded-xl overflow-hidden max-h-[50vh]'
+              )}
+              align="center"
+              side="top"
+              sideOffset={12}
+              avoidCollisions
+            >
+              <div className="overflow-y-auto max-h-[45vh] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-muted-foreground/20 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb:hover]:bg-muted-foreground/30">
+                {renderModesContent()}
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )
+      )}
+      </div>
+
+      {/* Custom Modes Dialog */}
+      <CustomModesDialog 
+      isOpen={customModesDialogOpen}
+      onOpenChange={setCustomModesDialogOpen}
+    />
+    </>
   );
 });
 

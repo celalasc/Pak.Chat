@@ -38,6 +38,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSettingsStore, useSettingsSync, GENERAL_FONTS, CODE_FONTS, THEMES, GeneralFont, CodeFont, Theme, CustomInstructions } from '@/frontend/stores/SettingsStore';
+import { useCustomModesStore } from '@/frontend/stores/CustomModesStore';
+import CustomModesDialog from '@/frontend/components/CustomModesDialog';
 import { useAPIKeyStore, Provider } from '@/frontend/stores/APIKeyStore';
 import { useAuthStore } from '@/frontend/stores/AuthStore';
 import { useModelVisibilityStore } from '@/frontend/stores/ModelVisibilityStore';
@@ -407,6 +409,11 @@ const CustomizationTab = memo(() => {
   const { setTheme } = useTheme();
   const [featuresExpanded, setFeaturesExpanded] = useState(false);
   const { isMobile } = useIsMobile();
+  const { isCustomModesEnabled, toggleCustomModes } = useCustomModesStore();
+  const [customModesDialogOpen, setCustomModesDialogOpen] = useState(false);
+  
+  // Debug log to check if dialog state changes
+  console.log('CustomModesDialog state:', { customModesDialogOpen, isCustomModesEnabled });
 
   const handleFontChange = useCallback((type: 'generalFont' | 'codeFont', value: GeneralFont | CodeFont) => {
     setSettings({ [type]: value });
@@ -630,9 +637,27 @@ const CustomizationTab = memo(() => {
                 />
               )}
             </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="custom-modes" className="text-sm">Custom modes</Label>
+                <Switch
+                  id="custom-modes"
+                  checked={isCustomModesEnabled}
+                  onCheckedChange={toggleCustomModes}
+                />
+              </div>
+              
+            </div>
           </CardContent>
         )}
       </Card>
+      
+      {/* Custom Modes Dialog */}
+      <CustomModesDialog
+        open={customModesDialogOpen}
+        onOpenChange={setCustomModesDialogOpen}
+      />
     </div>
   );
 });
@@ -1522,4 +1547,20 @@ const SettingsDrawerMemo = memo(SettingsDrawerComponent);
 SettingsDrawerMemo.displayName = 'SettingsDrawer';
 
 export default SettingsDrawerMemo;
+
+// Add CustomModesDialog at the end
+const CustomModesDialogWrapper = memo(() => {
+  const [customModesDialogOpen, setCustomModesDialogOpen] = useState(false);
+  
+  return (
+    <CustomModesDialog
+      open={customModesDialogOpen}
+      onOpenChange={setCustomModesDialogOpen}
+    />
+  );
+});
+
+CustomModesDialogWrapper.displayName = 'CustomModesDialogWrapper';
+
+export { CustomModesDialogWrapper };
 
