@@ -16,6 +16,7 @@
 **Решение:** 
 - Сохраняем тип события в переменную перед таймаутом
 - Убираем `setIsPressed(false)` из таймаута - пусть `cancel()` это сделает
+- Добавляем задержку для сброса `preventClickRef` чтобы избежать race condition
 - Анимация `isPressed` теперь активируется только после задержки (500ms)
 - Для touch событий анимация не устанавливается сразу, а только после таймаута
 
@@ -36,8 +37,14 @@ timeoutRef.current = setTimeout(() => {
     setIsPressed(true);
   }
   onLongPress();
+  preventClickRef.current = true; // Устанавливаем флаг для предотвращения клика
   // НЕ сбрасываем isPressed здесь - пусть cancel() это сделает
 }, threshold);
+
+// В cancel() добавляем задержку для сброса флага:
+setTimeout(() => {
+  preventClickRef.current = false;
+}, 100); // 100ms задержка для избежания race condition
 ```
 
 ### 2. Улучшен компонент `CustomModesDialog` (`src/frontend/components/CustomModesDialog.tsx`)

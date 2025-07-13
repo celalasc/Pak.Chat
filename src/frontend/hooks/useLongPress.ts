@@ -32,6 +32,7 @@ export function useLongPress({
     if (eventType !== 'touchstart') {
       setIsPressed(true);
     }
+    // Сбрасываем флаг только при начале нового взаимодействия
     preventClickRef.current = false;
     
     timeoutRef.current = setTimeout(() => {
@@ -55,7 +56,12 @@ export function useLongPress({
       timeoutRef.current = null;
     }
     setIsPressed(false);
-    preventClickRef.current = false;
+    
+    // Добавляем задержку для сброса флага, чтобы избежать race condition
+    // между onTouchEnd и onClick
+    setTimeout(() => {
+      preventClickRef.current = false;
+    }, 100);
     
     if (onCancel) {
       onCancel();
@@ -66,6 +72,7 @@ export function useLongPress({
     if (preventClickRef.current) {
       event.preventDefault();
       event.stopPropagation();
+      return;
     }
   }, []);
 
