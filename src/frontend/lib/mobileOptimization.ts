@@ -2,7 +2,7 @@
 export class MobileOptimizationService {
   private static instance: MobileOptimizationService;
   private isMobile: boolean = false;
-  private isLowEndDevice: boolean = false;
+  private isLowEndDeviceFlag: boolean = false;
   private connectionSpeed: 'slow' | 'fast' | 'unknown' = 'unknown';
 
   public static getInstance(): MobileOptimizationService {
@@ -37,7 +37,7 @@ export class MobileOptimizationService {
     const memory = (navigator as any).deviceMemory || 4;
     const cores = (navigator as any).hardwareConcurrency || 4;
     
-    this.isLowEndDevice = memory < 4 || cores < 4;
+    this.isLowEndDeviceFlag = memory < 4 || cores < 4;
   }
 
   private applyOptimizations(): void {
@@ -47,7 +47,7 @@ export class MobileOptimizationService {
     this.optimizeForMobile();
     
     // Дополнительные оптимизации для слабых устройств
-    if (this.isLowEndDevice) {
+    if (this.isLowEndDeviceFlag) {
       this.optimizeForLowEndDevice();
     }
   }
@@ -133,8 +133,8 @@ export class MobileOptimizationService {
     return this.isMobile;
   }
 
-  public isLowEndDeviceDevice(): boolean {
-    return this.isLowEndDevice;
+  public isLowEndDevice(): boolean {
+    return this.isLowEndDeviceFlag;
   }
 
   public getConnectionSpeed(): 'slow' | 'fast' | 'unknown' {
@@ -147,7 +147,7 @@ export class MobileOptimizationService {
     maxSize: number;
     priority: 'high' | 'low';
   } {
-    if (this.isLowEndDevice || this.connectionSpeed === 'slow') {
+    if (this.isLowEndDeviceFlag || this.connectionSpeed === 'slow') {
       return {
         duration: 5 * 60 * 1000, // 5 минут
         maxSize: 50, // 50 элементов
@@ -168,7 +168,7 @@ export class MobileOptimizationService {
     format: 'webp' | 'jpeg' | 'png';
     size: 'small' | 'medium' | 'large';
   } {
-    if (this.isLowEndDevice || this.connectionSpeed === 'slow') {
+    if (this.isLowEndDeviceFlag || this.connectionSpeed === 'slow') {
       return {
         quality: 0.6,
         format: 'jpeg',
@@ -189,7 +189,7 @@ export class MobileOptimizationService {
     easing: string;
     enabled: boolean;
   } {
-    if (this.isLowEndDevice) {
+    if (this.isLowEndDeviceFlag) {
       return {
         duration: 0,
         easing: 'linear',
@@ -217,7 +217,7 @@ export const mobileOptimization = MobileOptimizationService.getInstance();
 export const useMobileOptimization = () => {
   return {
     isMobile: mobileOptimization.isMobileDevice(),
-    isLowEndDevice: mobileOptimization.isLowEndDeviceDevice(),
+    isLowEndDevice: mobileOptimization.isLowEndDevice(),
     connectionSpeed: mobileOptimization.getConnectionSpeed(),
     getOptimalCacheSettings: mobileOptimization.getOptimalCacheSettings.bind(mobileOptimization),
     getOptimalImageSettings: mobileOptimization.getOptimalImageSettings.bind(mobileOptimization),
