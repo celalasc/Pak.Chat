@@ -9,7 +9,8 @@ export function useConvexThreads() {
   const { user } = useAuthStore();
   const [cachedThreads, setCachedThreads] = useState<Doc<"threads">[]>([]);
   const [hasInitialData, setHasInitialData] = useState(false);
-  const userId = user?.id || 'anonymous';
+  // Firebase User object uses `uid` as the identifier
+  const userId = user?.uid || 'anonymous';
   
   // Получение тредов пользователя
   const threads = useQuery(
