@@ -1,55 +1,21 @@
-import { useQuery, useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
+import { isConvexId } from '@/lib/ids';
+import { useMemo } from 'react';
 
-export function useConvexMessages(threadId: Id<"threads"> | null) {
-  // Получение сообщений треда
-  const messages = useQuery(
-    api.messages.get,
-    threadId ? { threadId } : "skip"
+export function useConvexMessages(threadId: string) {
+  // Мемоизируем условие для запроса
+  const shouldQuery = useMemo(() => 
+    isConvexId(threadId), 
+    [threadId]
   );
 
-  // Мутации
-  const addMessage = useMutation<typeof api.messages.send>(api.messages.send);
-  const updateMessage = useMutation(api.messages.edit);
-  const deleteMessage = useMutation(api.messages.remove);
-  const deleteMessagesAfter = useMutation(api.messages.removeAfter);
+  const messages = useQuery(
+    api.messages.get,
+    shouldQuery ? { threadId: threadId as Id<'threads'> } : 'skip'
+  );
 
-  // Обертки для удобства использования
-  const handleAddMessage = async (
-    role: "user" | "assistant",
-    content: string
-  ) => {
-    if (!threadId) return null;
-    return await addMessage({
-      threadId,
-      role,
-      content,
-    });
-  };
-
-  const handleUpdateMessage = async (
-    messageId: Id<"messages">,
-    content: string
-  ) => {
-    await updateMessage({ messageId, content });
-  };
-
-  const handleDeleteMessage = async (messageId: Id<"messages">) => {
-    await deleteMessage({ messageId });
-  };
-
-  const handleDeleteMessagesAfter = async (afterMessageId: Id<"messages">) => {
-    if (!threadId) return;
-    await deleteMessagesAfter({ threadId, afterMessageId });
-  };
-
-  return {
-    messages: messages || [],
-    isLoading: messages === undefined,
-    addMessage: handleAddMessage,
-    updateMessage: handleUpdateMessage,
-    deleteMessage: handleDeleteMessage,
-    deleteMessagesAfter: handleDeleteMessagesAfter,
-  };
+  // Мемоизируем результат
+  return useMemo(() => messages || [], [messages]);
 } 

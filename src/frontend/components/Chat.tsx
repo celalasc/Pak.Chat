@@ -13,7 +13,7 @@ import { useScrollHide } from '@/frontend/hooks/useScrollHide';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { useKeyboardInsets } from '../hooks/useKeyboardInsets';
 import { cn } from '@/lib/utils';
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useSettingsStore } from '@/frontend/stores/SettingsStore';
 import { useModelStore } from '@/frontend/stores/ModelStore';
 import type { UIMessage } from 'ai';
@@ -25,7 +25,8 @@ interface ChatProps {
   initialMessages: UIMessage[];
 }
 
-function Chat({ threadId, thread, initialMessages }: ChatProps) {
+// Мемоизированный компонент Chat
+const Chat = React.memo(function Chat({ threadId, thread, initialMessages }: ChatProps) {
   const { isMobile } = useIsMobile();
   const { selectedModel } = useModelStore();
   const router = useRouter();
@@ -86,11 +87,31 @@ function Chat({ threadId, thread, initialMessages }: ChatProps) {
     }
   }, [isMobile]);
 
+  // Мемоизируем классы для мобильной версии
+  const mobileBackButtonClasses = useMemo(() => cn(
+    'fixed left-4 top-4 z-50 transition-all duration-300 ease-in-out',
+    (!isHeaderVisible || isKeyboardVisible) && 'transform -translate-x-full opacity-0',
+  ), [isHeaderVisible, isKeyboardVisible]);
+
+  const mobileMenuButtonClasses = useMemo(() => cn(
+    'fixed right-4 top-4 z-50 transition-all duration-300 ease-in-out',
+    (!isHeaderVisible || isKeyboardVisible) && 'transform translate-x-[calc(100%+1rem)]',
+  ), [isHeaderVisible, isKeyboardVisible]);
+
+  // Мемоизируем основной класс контейнера
+  const mainContainerClasses = useMemo(() => cn(
+    "relative min-h-screen bg-background overflow-y-auto no-scrollbar main-content",
+    isMobile && "mobile-fullscreen touch-target"
+  ), [isMobile]);
+
+  // Мемоизируем классы для позиционирования ChatInput
+  const chatInputClasses = useMemo(() => cn(
+    'fixed left-1/2 -translate-x-1/2 w-full max-w-3xl px-4 transition-all duration-300 z-30',
+    isMobile ? 'bottom-0' : (initialMessages.length > 0 ? 'bottom-0' : 'top-1/2 -translate-y-1/2'),
+  ), [isMobile, initialMessages.length]);
+
   return (
-    <div className={cn(
-      "relative min-h-screen bg-background overflow-y-auto no-scrollbar main-content",
-      isMobile && "mobile-fullscreen touch-target"
-    )}>
+    <div className={mainContainerClasses}>
       
       <div className="w-full min-h-screen flex flex-col overflow-hidden">
         {/* Header for new chat vs existing chat */}
@@ -100,12 +121,7 @@ function Chat({ threadId, thread, initialMessages }: ChatProps) {
           {currentThreadId ? (
             // Existing chat - показываем стрелочку назад слева и меню справа
             <>
-              <div
-                className={cn(
-                  'fixed left-4 top-4 z-50 transition-all duration-300 ease-in-out',
-                  (!isHeaderVisible || isKeyboardVisible) && 'transform -translate-x-full opacity-0',
-                )}
-              >
+              <div className={mobileBackButtonClasses}>
                 <WithTooltip label="Back to Home" side="bottom">
                   <Button
                     variant="ghost"
@@ -118,12 +134,7 @@ function Chat({ threadId, thread, initialMessages }: ChatProps) {
                   </Button>
                 </WithTooltip>
               </div>
-              <div
-                className={cn(
-                  'fixed right-4 top-4 z-50 transition-all duration-300 ease-in-out',
-                  (!isHeaderVisible || isKeyboardVisible) && 'transform translate-x-[calc(100%+1rem)]',
-                )}
-              >
+              <div className={mobileMenuButtonClasses}>
                 <MobileChatMenu threadId={currentThreadId} />
               </div>
             </>
@@ -193,6 +204,6 @@ function Chat({ threadId, thread, initialMessages }: ChatProps) {
       </div>
     </div>
   );
-}
+});
 
-export default React.memo(Chat);
+export default Chat;
