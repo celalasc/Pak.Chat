@@ -133,7 +133,7 @@ const ThreadItem = memo(({
   onSelect: (threadId: Id<"threads">) => void;
   onEdit: (thread: Thread) => void;
   onDelete: (threadId: Id<"threads">) => void;
-  onTogglePin: (threadId: Id<"threads">) => void;
+  onTogglePin: (threadId: Id<"threads">, pinned: boolean) => void;
   onShare: (thread: Thread) => void;
   isEditing: boolean;
   editingTitle: string;
@@ -159,8 +159,8 @@ const ThreadItem = memo(({
 
   const handleTogglePin = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    onTogglePin(thread._id);
-  }, [thread._id, onTogglePin]);
+    onTogglePin(thread._id, !thread.pinned);
+  }, [thread._id, thread.pinned, onTogglePin]);
 
   const handleShare = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -376,8 +376,8 @@ function FastChatHistoryList({
   );
 
   const handleTogglePin = useCallback(
-    async (threadId: Id<"threads">) => {
-      await togglePin({ threadId });
+    async (threadId: Id<"threads">, pinned: boolean) => {
+      await togglePin({ threadId, pinned });
     },
     [togglePin],
   );
