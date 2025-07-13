@@ -373,6 +373,7 @@ export const useChatSubmit = ({
     imageGenerationParams,
     keys,
     selectedModel,
+    selectedMode,
     webSearchEnabled,
     user,
     setSessionThreadId,
@@ -387,6 +388,7 @@ export const useChatSubmit = ({
     clear,
     saveDraftMutation,
     setUploading,
+    getSelectedMode,
   ]);
 
   return {

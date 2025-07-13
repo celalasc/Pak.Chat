@@ -20,6 +20,7 @@ import { useSettingsStore } from '@/frontend/stores/SettingsStore';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
+import { useLongPress } from '@/frontend/hooks/useLongPress';
 import { SearchIcon } from 'lucide-react';
 import Image from 'next/image';
 import AIImageGeneration from '../AIImageGeneration';
@@ -27,6 +28,7 @@ import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { isConvexId } from '@/lib/ids';
 import type { Id } from '@/convex/_generated/dataModel';
+import MobileMessageModal from './MobileMessageModal';
 
 function PureMessage({
   threadId,
@@ -51,6 +53,7 @@ function PureMessage({
 }) {
   const [mode, setMode] = useState<'view' | 'edit'>('view');
   const [mobileControlsVisible, setMobileControlsVisible] = useState(false);
+  const [showMobileModal, setShowMobileModal] = useState(false);
   const isWelcome = message.id === 'welcome';
   const attachments = (message as any).attachments as { id: string; url: string; name: string; type: string; ext?: string; size?: number }[] | undefined;
   const imageGeneration = (message as any).imageGeneration;
@@ -86,15 +89,14 @@ function PureMessage({
     router.push(`/chat`);
   };
 
-  const handleMobileMessageClick = () => {
-    if (isMobile && !isWelcome) {
-      setMobileControlsVisible(!mobileControlsVisible);
-      const selection = window.getSelection();
-      if (selection && selection.rangeCount > 0) {
-        selection.removeAllRanges();
+const { bind, isPressed } = useLongPress({
+    onLongPress: () => {
+      if (!isWelcome) { 
+        setShowMobileModal(true);
       }
-    }
-  };
+    },
+    isMobile,
+  });
 
   // Извлекаем reasoning из первой текстовой части с мемоизацией
   const reasoningData = useMemo(() => {
@@ -309,10 +311,11 @@ function PureMessage({
             <div
               key={key}
               className={cn(
-                'relative group px-4 py-3 rounded-xl bg-secondary border border-secondary-foreground/2 max-w-[90%] sm:max-w-[80%] mx-2 sm:mx-0',
-                isMobile && 'cursor-pointer'
+                'relative group px-4 py-3 rounded-xl bg-secondary border border-secondary-foreground/2 max-w-[90%] sm:max-w-[80%] mx-2 sm:mx-0 transition-all duration-200',
+                isMobile && 'cursor-pointer',
+                isPressed && 'scale-95 opacity-70'
               )}
-              onClick={handleMobileMessageClick}
+              {...bind}
             >
               {attachments && attachments.length > 0 && (
                 <div className="flex gap-2 flex-wrap mb-3">
@@ -368,7 +371,7 @@ function PureMessage({
               )}
               {mode === 'view' && <QuotedMessage content={part.text} />}
 
-              {mode === 'view' && (
+              {mode === 'view' && !isMobile && (
                 <MessageControls
                   threadId={threadId}
                   messages={messages}
@@ -389,10 +392,11 @@ function PureMessage({
             <div
               key={key}
               className={cn(
-                'group flex flex-col gap-2 w-full px-2 sm:px-0',
-                isMobile && 'cursor-pointer'
+                'group flex flex-col gap-2 w-full px-2 sm:px-0 transition-all duration-200',
+                isMobile && 'cursor-pointer',
+                isPressed && 'scale-95 opacity-70'
               )}
-              onClick={handleMobileMessageClick}
+              {...bind}
             >
               <SelectableText messageId={message.id} disabled={isStreaming}>
                 <MarkdownRenderer content={part.text} streaming={isStreaming} />
@@ -435,7 +439,7 @@ function PureMessage({
                   )}
                 </div>
               )}
-              {!isStreaming && (
+              {!isStreaming && !isMobile && (
                 <MessageControls
                   threadId={threadId}
                   messages={messages}
@@ -472,6 +476,22 @@ function PureMessage({
         fileName={lightbox.name}
         fileType={lightbox.type}
         fileSize={lightbox.size}
+      />
+    )}
+    {isMobile && !isWelcome && (
+      <MobileMessageModal
+        isOpen={showMobileModal}
+        onClose={() => setShowMobileModal(false)}
+        threadId={threadId}
+        message={message}
+        messages={messages}
+        setMessages={setMessages}
+        content={message.parts.find(p => p.type === 'text')?.text || ''}
+        setMode={message.role === 'user' ? setMode : undefined}
+        reload={reload}
+        stop={stop}
+        append={append}
+        forceRegeneration={forceRegeneration}
       />
     )}
     </>

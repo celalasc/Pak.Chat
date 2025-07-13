@@ -50,7 +50,11 @@ export const useCustomModesStore = create<CustomModesState>()(
       selectedMode: 'default', // Default mode selected by default
       
       toggleCustomModes: (enabled) => {
-        set({ isCustomModesEnabled: enabled });
+        set({ 
+          isCustomModesEnabled: enabled,
+          // Reset to default mode when custom modes are disabled
+          selectedMode: enabled ? get().selectedMode : 'default'
+        });
       },
       
       setSelectedMode: (modeId) => {
@@ -58,7 +62,11 @@ export const useCustomModesStore = create<CustomModesState>()(
       },
       
       syncCustomModesEnabled: (enabled) => {
-        set({ isCustomModesEnabled: enabled });
+        set({ 
+          isCustomModesEnabled: enabled,
+          // Reset to default mode when custom modes are disabled
+          selectedMode: enabled ? get().selectedMode : 'default'
+        });
       },
       
       syncSelectedMode: (modeId) => {
@@ -163,8 +171,11 @@ export function useCustomModesSync() {
       const serverEnabled = settingsDoc.isCustomModesEnabled ?? false;
       const serverSelectedMode = settingsDoc.selectedMode ?? 'default';
       
-      useCustomModesStore.getState().syncCustomModesEnabled(serverEnabled);
-      useCustomModesStore.getState().syncSelectedMode(serverSelectedMode);
+      // For initial sync, set values directly without the reset logic
+      useCustomModesStore.setState({ 
+        isCustomModesEnabled: serverEnabled,
+        selectedMode: serverSelectedMode 
+      });
       
       lastSaved.current = {
         isCustomModesEnabled: serverEnabled,

@@ -123,7 +123,7 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCrea
   );
 
   const prepareRequestBody = React.useCallback(
-    ({ messages }: { messages: UIMessage[] }) => {
+    ({ messages, ...options }: { messages: UIMessage[]; [key: string]: any }) => {
       const currentThreadId = threadIdRef.current;
       const { isImageGenerationMode, imageGenerationParams } = useChatStore.getState();
       // Get current mode information
@@ -135,10 +135,10 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCrea
       
       const body = {
         messages: messages.map((m) => ({ ...m, id: m.id })),
-        model: selectedModel,
-        apiKeys: keys,
-        threadId: currentThreadId,
-        search: webSearchEnabled,
+        model: options.model || selectedModel, // Use model from options if provided, otherwise use selectedModel
+        apiKeys: options.apiKeys || keys,
+        threadId: options.threadId || currentThreadId,
+        search: options.search !== undefined ? options.search : webSearchEnabled,
         imageGeneration: isImageGenerationMode ? {
           enabled: true,
           params: imageGenerationParams
@@ -146,7 +146,7 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCrea
         customMode: customModeData,
       };
 
-      // Debug log
+      
       if (isImageGenerationMode) {
         // ChatView prepareRequestBody debug removed
       }

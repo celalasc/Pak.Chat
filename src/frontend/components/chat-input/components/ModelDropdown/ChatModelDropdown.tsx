@@ -47,6 +47,7 @@ import { ModelSelector } from '@/frontend/features/chat-input/ui/components/Mode
 import { ReasoningEffortSelector } from './ReasoningEffortSelector';
 import { useCustomModesStore, useCustomModesHelpers } from '@/frontend/stores/CustomModesStore';
 import CustomModesManagement from './CustomModesManagement';
+import { useLongPress } from '@/frontend/hooks/useLongPress';
 
 // Icon component mapping
 const ICON_COMPONENTS = {
@@ -148,6 +149,79 @@ export const ChatModelDropdown = memo<ChatModelDropdownProps>(({ messageCount = 
     [setSelectedMode]
   );
 
+  // Компонент для отдельного режима с долгим нажатием
+  const ModeItem = memo(({ mode }: { mode: any }) => {
+    const longPressHandlers = useLongPress({
+      onLongPress: () => {
+        if (mode.id !== 'default' && isCustomModesEnabled) {
+          setEditingMode(mode);
+          setModesView('edit');
+        }
+      },
+      threshold: 500,
+      isMobile: isMobile && mode.id !== 'default' && isCustomModesEnabled,
+    });
+    
+    return (
+      <div
+        key={mode.id}
+        role="button"
+        tabIndex={0}
+        onClick={() => handleModeSelect(mode.id)}
+        onKeyPress={(e) => e.key === 'Enter' && handleModeSelect(mode.id)}
+        {...(isMobile && mode.id !== 'default' && isCustomModesEnabled ? longPressHandlers.bind : {})}
+        className={cn(
+          "w-full text-left px-3 py-2 text-sm rounded-lg transition-colors group cursor-pointer",
+          "hover:bg-accent/50",
+          selectedMode === mode.id
+            ? "bg-accent text-accent-foreground"
+            : "text-foreground",
+          longPressHandlers.isPressed && "bg-accent/30"
+        )}
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="text-sm flex-shrink-0">{renderModeIcon(mode.icon)}</div>
+          <div className="flex-1 min-w-0">
+            <div className="font-medium truncate">{mode.name}</div>
+            {mode.id === 'default' && mode.systemPrompt && (
+              <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                {mode.systemPrompt}
+              </div>
+            )}
+          </div>
+          {mode.id !== 'default' && isCustomModesEnabled && (
+            <div className={cn(
+              "flex items-center gap-1 flex-shrink-0",
+              isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+            )}>
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditingMode(mode);
+                  setModesView('edit');
+                }}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    e.stopPropagation();
+                    setEditingMode(mode);
+                    setModesView('edit');
+                  }
+                }}
+                className="h-6 w-6 cursor-pointer inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors"
+              >
+                <Edit3 className="h-3 w-3" />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  });
+  
+  ModeItem.displayName = 'ModeItem';
+
   const renderModesContent = () => {
     const availableModes = getAllAvailableModes();
     
@@ -156,55 +230,7 @@ export const ChatModelDropdown = memo<ChatModelDropdownProps>(({ messageCount = 
         <div className={cn("p-3", isMobile && "p-4")}>
           <div className="space-y-1">
             {availableModes.map((mode) => (
-              <div
-                key={mode.id}
-                role="button"
-                tabIndex={0}
-                onClick={() => handleModeSelect(mode.id)}
-                onKeyPress={(e) => e.key === 'Enter' && handleModeSelect(mode.id)}
-                className={cn(
-                  "w-full text-left px-3 py-2 text-sm rounded-lg transition-colors group cursor-pointer",
-                  "hover:bg-accent/50",
-                  selectedMode === mode.id
-                    ? "bg-accent text-accent-foreground"
-                    : "text-foreground"
-                )}
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="text-sm flex-shrink-0">{renderModeIcon(mode.icon)}</div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate">{mode.name}</div>
-                    {mode.id === 'default' && mode.systemPrompt && (
-                      <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                        {mode.systemPrompt}
-                      </div>
-                    )}
-                  </div>
-                  {mode.id !== 'default' && isCustomModesEnabled && (
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 flex-shrink-0">
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingMode(mode);
-                          setModesView('edit');
-                        }}
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter') {
-                            e.stopPropagation();
-                            setEditingMode(mode);
-                            setModesView('edit');
-                          }
-                        }}
-                        className="h-6 w-6 cursor-pointer inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors"
-                      >
-                        <Edit3 className="h-3 w-3" />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
+              <ModeItem key={mode.id} mode={mode} />
             ))}
           </div>
           {/* Custom Modes Management */}
@@ -278,7 +304,7 @@ export const ChatModelDropdown = memo<ChatModelDropdownProps>(({ messageCount = 
 
   return (
     <> 
-<div className="flex items-center gap-2">
+<div className="flex items-center gap-2 overflow-x-auto max-w-full">
       {isImageGenerationMode ? (
         // Image generation mode - show settings button first, then close button
         <>
@@ -313,7 +339,7 @@ export const ChatModelDropdown = memo<ChatModelDropdownProps>(({ messageCount = 
               aria-label={`Selected model: ${selectedModel}`}
             >
               <div className="flex items-center gap-1">
-                <span className="max-w-32 truncate">{selectedModel}</span>
+                <span className="max-w-20 truncate">{selectedModel}</span>
                 <ChevronDown className="w-3 h-3 opacity-50" />
               </div>
             </Button>
@@ -394,7 +420,7 @@ export const ChatModelDropdown = memo<ChatModelDropdownProps>(({ messageCount = 
       )}
       
       {/* Custom Mode Selector */}
-      {!isImageGenerationMode && (
+      {!isImageGenerationMode && isCustomModesEnabled && (
         isMobile ? (
           // Mobile version with Drawer
           <Drawer 
@@ -411,7 +437,7 @@ export const ChatModelDropdown = memo<ChatModelDropdownProps>(({ messageCount = 
               >
                 <div className="flex items-center gap-1">
                   <div className="flex items-center">{renderModeIcon(getAllAvailableModes().find(m => m.id === selectedMode)?.icon || 'Star')}</div>
-                  <span className="max-w-20 truncate">
+                  <span className="max-w-16 truncate">
                     {getAllAvailableModes().find(m => m.id === selectedMode)?.name || 'Default'}
                   </span>
                   <ChevronDown className="w-3 h-3 opacity-50" />
