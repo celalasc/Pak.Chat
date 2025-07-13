@@ -1,19 +1,62 @@
-import type { NextConfig } from "next";
-import { withConvex } from "convex/next";
+import { createRequire } from 'node:module'
+import { resolve } from 'path'
 
-const nextConfig: NextConfig = {
+const require = createRequire(import.meta.url)
+
+const withAnalyzer = require('@next/bundle-analyzer')({ enabled: process.env.ANALYZE === 'true' });
+const withPWA = require('next-pwa')({ 
+  dest: 'public', 
+  disable: process.env.NODE_ENV === 'development', // PWA только в production
+  sw: 'sw.js',
+  register: false,
+  skipWaiting: true,
+  fallbacks: {
+    document: '/offline',
+  },
+  publicExcludes: ['!sw.js', '!workbox-*.js'],
+  buildExcludes: [
+    /middleware-manifest\.json$/,
+    /app-build-manifest\.json$/,
+    /build-manifest\.json$/,
+    /_buildManifest\.js$/,
+    /_ssgManifest\.js$/,
+    /chunks\/.*\.js$/
+  ],
+  cacheOnFrontEndNav: true,
+  reloadOnOnline: true,
+  disableDevLogs: true,
+  mode: 'production',
+  clientsClaim: true,
+  navigateFallback: '/offline',
+  navigateFallbackDenylist: [/^\/_/, /^\/api/, /^\/favicon\.ico$/, /^\/manifest\.webmanifest$/],
+  // Дополнительные настройки для стабильности
+  scope: '/',
+  runtimeCaching: [
+    {
+      urlPattern: /^https:\/\/.*\.convex\.cloud\/.*/,
+      handler: 'NetworkFirst',
+      options: {
+        cacheName: 'api-cache',
+        networkTimeoutSeconds: 10,
+        expiration: {
+          maxEntries: 100,
+          maxAgeSeconds: 24 * 60 * 60, // 24 часа
+        },
+      },
+    },
+  ],
+});
+
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   // Оптимизация для мобильных устройств
   experimental: {
     // Включаем оптимизации для мобильных устройств
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
-    // Оптимизация изображений
-    images: {
-      allowFutureImage: true,
+    // Enable server actions and other optimizations
+    serverActions: {
+      bodySizeLimit: '10mb',
     },
-    // Оптимизация шрифтов
-    fontLoaders: [
-      { loader: '@next/font/google', options: { subsets: ['latin'] } }
-    ],
   },
 
   // Оптимизация изображений
@@ -79,11 +122,23 @@ const nextConfig: NextConfig = {
   },
 
   // Секция headers остается, она нужна для правильной работы Firebase Auth.
-  headers() {
+  async headers() {
     return [
       {
-        source: '/(.*)',
+        source: '/:path*',
         headers: [
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin-allow-popups',
+          },
+          {
+            key: 'Cross-Origin-Embedder-Policy',
+            value: 'unsafe-none',
+          },
+          {
+            key: 'Content-Security-Policy',
+            value: "frame-ancestors 'self' https://*.google.com https://*.googleapis.com https://accounts.google.com;",
+          },
           {
             key: 'X-Content-Type-Options',
             value: 'nosniff',
@@ -122,21 +177,6 @@ const nextConfig: NextConfig = {
           {
             key: 'X-XSS-Protection',
             value: '1; mode=block',
-          },
-          // Кэширование для статических ресурсов
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          },
-        ],
-      },
-      // Оптимизация для API
-      {
-        source: '/api/(.*)',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'no-cache, no-store, must-revalidate',
           },
         ],
       },
@@ -165,7 +205,6 @@ const nextConfig: NextConfig = {
   eslint: {
     dirs: ['src/app', 'src/components'],
   },
-  },
 
   // Оптимизация для производительности
   poweredByHeader: false,
@@ -180,4 +219,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withConvex(nextConfig);
+export default withPWA(withAnalyzer(nextConfig));
