@@ -30,6 +30,9 @@ const eslintConfig = [
       "jsx-a11y/no-noninteractive-element-interactions": "error",
       "custom/no-nested-interactive": "error",
     },
+    ignores: [
+      "src/convex/_generated/**"
+    ],
   },
 ];
 

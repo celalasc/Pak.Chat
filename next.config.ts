@@ -62,8 +62,6 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: '10mb',
     },
-    // Optimize for Edge Runtime in production builds
-    runtime: process.env.NODE_ENV === 'production' ? 'edge' : 'nodejs',
   },
   
   // Секция headers остается, она нужна для правильной работы Firebase Auth.
