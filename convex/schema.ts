@@ -18,6 +18,13 @@ export default defineSchema({
     uiFont: v.optional(v.string()),
     codeFont: v.optional(v.string()),
     hidePersonal: v.optional(v.boolean()),
+    showNavBars: v.optional(v.boolean()),
+    showChatPreview: v.optional(v.boolean()),
+    // Feature toggles
+    isCustomModesEnabled: v.optional(v.boolean()),
+    selectedMode: v.optional(v.string()),
+    webSearchEnabled: v.optional(v.boolean()),
+    selectedModel: v.optional(v.string()),
     // DEPRECATED: saveRegenerationHistory - no longer used
     saveRegenerationHistory: v.optional(v.boolean()),
     // Custom instructions for AI behavior
@@ -115,5 +122,15 @@ export default defineSchema({
       }),
     ),
   }).index("by_share_id", ["shareId"]),
+
+  // Custom AI modes
+  customModes: defineTable({
+    userId: v.id("users"),
+    name: v.string(),
+    systemPrompt: v.string(),
+    icon: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]),
 
 });

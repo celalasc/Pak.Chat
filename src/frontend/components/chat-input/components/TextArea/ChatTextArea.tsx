@@ -33,6 +33,7 @@ export const ChatTextArea = memo(forwardRef<HTMLTextAreaElement, ChatTextAreaPro
 }, ref) => {
   const { handlePaste } = useImagePaste();
 
+
   const handleFocus = useCallback(() => {
     if (window.innerWidth <= 768) {
       setTimeout(() => {
@@ -49,7 +50,7 @@ export const ChatTextArea = memo(forwardRef<HTMLTextAreaElement, ChatTextAreaPro
     ? "Describe the image you want to generate..." 
     : placeholder;
 
-  return (
+return (
     <Textarea
       ref={ref}
       value={value}

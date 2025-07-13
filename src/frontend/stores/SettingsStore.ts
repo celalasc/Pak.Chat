@@ -125,6 +125,8 @@ export function useSettingsSync() {
         uiFont, 
         codeFont, 
         hidePersonal,
+        showNavBars,
+        showChatPreview,
         customInstructionsName,
         customInstructionsOccupation,
         customInstructionsTraits,
@@ -144,6 +146,8 @@ export function useSettingsSync() {
         generalFont: (uiFont as GeneralFont) ?? 'Proxima Vara',
         codeFont: (codeFont as CodeFont) ?? 'Berkeley Mono',
         hidePersonal: hidePersonal ?? false,
+        showNavBars: showNavBars ?? true,
+        showChatPreview: showChatPreview ?? true,
         customInstructions,
       };
       
@@ -151,8 +155,6 @@ export function useSettingsSync() {
       lastSaved.current = {
         ...serverSettings,
         theme: settings.theme,
-        showNavBars: settings.showNavBars,
-        showChatPreview: settings.showChatPreview,
       };
       isInitialized.current = true;
     }
@@ -165,7 +167,9 @@ export function useSettingsSync() {
     
     const hasChanges = settings.generalFont !== lastSaved.current.generalFont ||
                       settings.codeFont !== lastSaved.current.codeFont ||
-                      settings.hidePersonal !== lastSaved.current.hidePersonal;
+                      settings.hidePersonal !== lastSaved.current.hidePersonal ||
+                      settings.showNavBars !== lastSaved.current.showNavBars ||
+                      settings.showChatPreview !== lastSaved.current.showChatPreview;
     
     if (hasChanges) {
       lastSaved.current = { ...lastSaved.current, ...settings };
@@ -173,9 +177,11 @@ export function useSettingsSync() {
         uiFont: settings.generalFont,
         codeFont: settings.codeFont,
         hidePersonal: settings.hidePersonal,
+        showNavBars: settings.showNavBars,
+        showChatPreview: settings.showChatPreview,
       } as any);
     }
-  }, [settings.generalFont, settings.codeFont, settings.hidePersonal, save, convexUser]); // Только конкретные поля
+  }, [settings.generalFont, settings.codeFont, settings.hidePersonal, settings.showNavBars, settings.showChatPreview, save, convexUser]); // Только конкретные поля
 
   // Функция для ручного сохранения кастомных инструкций
   const saveCustomInstructionsManually = async () => {
@@ -207,4 +213,49 @@ export function useSettingsSync() {
   };
 
   return { saveCustomInstructionsManually };
+}
+
+// Separate hook for syncing feature settings with external stores
+export function useFeatureSettingsSync() {
+  const { isAuthenticated } = useConvexAuth();
+  const convexUser = useQuery(
+    api.users.getCurrent,
+    isAuthenticated ? {} : 'skip'
+  );
+  const settingsDoc = useQuery(
+    api.userSettings.get,
+    convexUser ? {} : 'skip'
+  );
+  const save = useMutation(api.userSettings.saveSettings);
+
+  // Import stores that need syncing
+  const { settings } = useSettingsStore();
+  
+  // We'll need to access external stores here
+  const syncFeatureSettings = async (
+    customModesEnabled: boolean,
+    selectedMode: string,
+    webSearchEnabled: boolean,
+    selectedModel: string
+  ) => {
+    if (!isAuthenticated) return;
+    
+    try {
+      await save({
+        uiFont: settings.generalFont,
+        codeFont: settings.codeFont,
+        hidePersonal: settings.hidePersonal,
+        showNavBars: settings.showNavBars,
+        showChatPreview: settings.showChatPreview,
+        isCustomModesEnabled: customModesEnabled,
+        selectedMode: selectedMode,
+        webSearchEnabled: webSearchEnabled,
+        selectedModel: selectedModel,
+      } as any);
+    } catch (error) {
+      console.error('Failed to sync feature settings:', error);
+    }
+  };
+
+  return { syncFeatureSettings, settingsDoc };
 }

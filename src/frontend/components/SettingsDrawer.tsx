@@ -411,9 +411,6 @@ const CustomizationTab = memo(() => {
   const { isMobile } = useIsMobile();
   const { isCustomModesEnabled, toggleCustomModes } = useCustomModesStore();
   const [customModesDialogOpen, setCustomModesDialogOpen] = useState(false);
-  
-  // Debug log to check if dialog state changes
-  console.log('CustomModesDialog state:', { customModesDialogOpen, isCustomModesEnabled });
 
   const handleFontChange = useCallback((type: 'generalFont' | 'codeFont', value: GeneralFont | CodeFont) => {
     setSettings({ [type]: value });
@@ -639,14 +636,14 @@ const CustomizationTab = memo(() => {
             </div>
 
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="custom-modes" className="text-sm">Custom modes</Label>
-                <Switch
-                  id="custom-modes"
-                  checked={isCustomModesEnabled}
-                  onCheckedChange={toggleCustomModes}
-                />
-              </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="custom-modes" className="text-sm">Custom modes</Label>
+              <Switch
+                id="custom-modes"
+                checked={isCustomModesEnabled}
+                onCheckedChange={(enabled) => toggleCustomModes(enabled)}
+              />
+            </div>
               
             </div>
           </CardContent>
@@ -655,7 +652,7 @@ const CustomizationTab = memo(() => {
       
       {/* Custom Modes Dialog */}
       <CustomModesDialog
-        open={customModesDialogOpen}
+        isOpen={customModesDialogOpen}
         onOpenChange={setCustomModesDialogOpen}
       />
     </div>
@@ -1554,7 +1551,7 @@ const CustomModesDialogWrapper = memo(() => {
   
   return (
     <CustomModesDialog
-      open={customModesDialogOpen}
+      isOpen={customModesDialogOpen}
       onOpenChange={setCustomModesDialogOpen}
     />
   );

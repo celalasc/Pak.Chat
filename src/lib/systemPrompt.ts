@@ -22,44 +22,48 @@ When analyzing images, PDF documents, or other files, be descriptive and helpful
 - Summarize or explain the document content when requested
 Explain what you see in detail and answer any questions about the content.`;
 
-export function buildSystemPrompt(customInstructions?: CustomInstructions): string {
+export function buildSystemPrompt(customInstructions?: CustomInstructions, customModePrompt?: string): string {
   let systemPrompt = BASE_SYSTEM_PROMPT;
 
-  if (!customInstructions) {
-    return systemPrompt;
+  // Add custom mode prompt if provided
+  if (customModePrompt?.trim()) {
+    systemPrompt += '\n\n--- Custom Mode Instructions ---\n';
+    systemPrompt += customModePrompt.trim();
   }
 
-  const { name, occupation, traits, traitsText, additionalInfo } = customInstructions;
+  // Add user's custom instructions
+  if (customInstructions) {
+    const { name, occupation, traits, traitsText, additionalInfo } = customInstructions;
 
-  // Добавляем кастомные инструкции
-  if (name?.trim() || occupation?.trim() || traits?.length > 0 || traitsText?.trim() || additionalInfo?.trim()) {
-    systemPrompt += '\n\n--- Custom Instructions ---\n';
+    if (name?.trim() || occupation?.trim() || traits?.length > 0 || traitsText?.trim() || additionalInfo?.trim()) {
+      systemPrompt += '\n\n--- User Preferences ---\n';
 
-    if (name?.trim()) {
-      systemPrompt += `\nThe user prefers to be called: ${name.trim()}`;
-    }
+      if (name?.trim()) {
+        systemPrompt += `\nThe user prefers to be called: ${name.trim()}`;
+      }
 
-    if (occupation?.trim()) {
-      systemPrompt += `\nThe user's occupation/role: ${occupation.trim()}`;
-    }
+      if (occupation?.trim()) {
+        systemPrompt += `\nThe user's occupation/role: ${occupation.trim()}`;
+      }
 
-    // Объединяем готовые плитки и свободный текст для traits
-    const allTraits = [];
-    if (traits && traits.length > 0) {
-      allTraits.push(...traits);
-    }
-    if (traitsText?.trim()) {
-      allTraits.push(traitsText.trim());
-    }
-    
-    if (allTraits.length > 0) {
-      systemPrompt += `\nYou should embody these traits: ${allTraits.join(', ')}`;
-    }
+      // Объединяем готовые плитки и свободный текст для traits
+      const allTraits = [];
+      if (traits && traits.length > 0) {
+        allTraits.push(...traits);
+      }
+      if (traitsText?.trim()) {
+        allTraits.push(traitsText.trim());
+      }
+      
+      if (allTraits.length > 0) {
+        systemPrompt += `\nYou should embody these traits: ${allTraits.join(', ')}`;
+      }
 
-    if (additionalInfo?.trim()) {
-      systemPrompt += `\nAdditional context about the user: ${additionalInfo.trim()}`;
+      if (additionalInfo?.trim()) {
+        systemPrompt += `\nAdditional context about the user: ${additionalInfo.trim()}`;
+      }
     }
   }
 
   return systemPrompt;
-} 
+}

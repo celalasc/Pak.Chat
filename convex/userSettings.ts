@@ -49,10 +49,17 @@ export const saveSettings = mutation({
     uiFont: v.string(),
     codeFont: v.string(),
     hidePersonal: v.boolean(),
+    showNavBars: v.optional(v.boolean()),
+    showChatPreview: v.optional(v.boolean()),
+    isCustomModesEnabled: v.optional(v.boolean()),
+    selectedMode: v.optional(v.string()),
+    webSearchEnabled: v.optional(v.boolean()),
+    selectedModel: v.optional(v.string()),
   },
   async handler(ctx, args) {
     const uid = await currentUserId(ctx);
     if (!uid) throw new Error('Unauthenticated');
+    
     const existing = await ctx.db
       .query('userSettings')
       .withIndex('by_user', (q) => q.eq('userId', uid))
@@ -62,6 +69,12 @@ export const saveSettings = mutation({
         uiFont: args.uiFont,
         codeFont: args.codeFont,
         hidePersonal: args.hidePersonal,
+        showNavBars: args.showNavBars,
+        showChatPreview: args.showChatPreview,
+        isCustomModesEnabled: args.isCustomModesEnabled,
+        selectedMode: args.selectedMode,
+        webSearchEnabled: args.webSearchEnabled,
+        selectedModel: args.selectedModel,
       });
     } else {
       await ctx.db.insert('userSettings', {
@@ -70,6 +83,12 @@ export const saveSettings = mutation({
         uiFont: args.uiFont,
         codeFont: args.codeFont,
         hidePersonal: args.hidePersonal,
+        showNavBars: args.showNavBars,
+        showChatPreview: args.showChatPreview,
+        isCustomModesEnabled: args.isCustomModesEnabled,
+        selectedMode: args.selectedMode,
+        webSearchEnabled: args.webSearchEnabled,
+        selectedModel: args.selectedModel,
       });
     }
   },

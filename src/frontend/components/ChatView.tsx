@@ -10,6 +10,7 @@ import { useModelStore } from '@/frontend/stores/ModelStore';
 import { useQuoteStore } from '@/frontend/stores/QuoteStore';
 import { useAttachmentsStore } from '@/frontend/stores/AttachmentsStore';
 import { useChatStore } from '@/frontend/stores/ChatStore';
+import { useCustomModesHelpers } from '@/frontend/stores/CustomModesStore';
 import { cn } from '@/lib/utils';
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useMutation, useQuery } from 'convex/react';
@@ -37,6 +38,7 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCrea
   const { selectedModel, webSearchEnabled } = useModelStore();
   const { clearQuote } = useQuoteStore();
   const { clear: clearAttachments } = useAttachmentsStore();
+  const { getSelectedMode } = useCustomModesHelpers();
   const { isMobile } = useIsMobile();
   
   // Включаем обработчик клавиши ESC для отмены цитирования
@@ -124,6 +126,12 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCrea
     ({ messages }: { messages: UIMessage[] }) => {
       const currentThreadId = threadIdRef.current;
       const { isImageGenerationMode, imageGenerationParams } = useChatStore.getState();
+      // Get current mode information
+      const currentMode = getSelectedMode();
+      const customModeData = currentMode.id !== 'default' ? {
+        id: currentMode.id,
+        systemPrompt: currentMode.systemPrompt
+      } : undefined;
       
       const body = {
         messages: messages.map((m) => ({ ...m, id: m.id })),
@@ -135,6 +143,7 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCrea
           enabled: true,
           params: imageGenerationParams
         } : undefined,
+        customMode: customModeData,
       };
 
       // Debug log
@@ -144,7 +153,7 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCrea
 
       return body;
     },
-    [selectedModel, keys, webSearchEnabled]
+    [selectedModel, keys, webSearchEnabled, getSelectedMode]
   );
 
   const {
@@ -592,7 +601,7 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCrea
 
       <div className="flex-1 flex flex-col relative">
         <div
-          className="flex-1 overflow-y-auto"
+className="flex-1 overflow-y-auto enhanced-scroll"
           id="messages-scroll-area"
           ref={scrollContainerRef}
         >
