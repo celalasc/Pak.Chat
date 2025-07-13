@@ -55,7 +55,7 @@ export default function PullToRefresh({
       touchCurrentY = e.touches[0].clientY;
       const distance = touchCurrentY - touchStartY;
 
-      if (distance > 0) {
+      if (distance > 10) { // Увеличиваем порог для активации pull-to-refresh
         // Prevent default scroll behavior when pulling down
         e.preventDefault();
         

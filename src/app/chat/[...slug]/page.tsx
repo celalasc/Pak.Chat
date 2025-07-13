@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { use, useEffect, useMemo, useState, useRef, memo } from 'react';
+import { use, useEffect, useMemo, useState, useRef, memo, useCallback } from 'react';
 import { useQuery, useConvexAuth } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id, Doc } from '@/convex/_generated/dataModel';
@@ -22,6 +22,7 @@ const CatchAllChatPageInner = memo(function CatchAllChatPageInner({ params }: { 
   const wasMobileRef = useRef(isMobile);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
+  // Мемоизируем проверку валидности ID
   const isValidId = useMemo(() => isConvexId(chatId), [chatId]);
 
   const thread = useQuery(
@@ -30,7 +31,10 @@ const CatchAllChatPageInner = memo(function CatchAllChatPageInner({ params }: { 
   );
 
   // Выполняем остальные запросы только если thread существует и доступен
-  const shouldRunQueries = isValidId && thread !== null && thread !== undefined;
+  const shouldRunQueries = useMemo(() => 
+    isValidId && thread !== null && thread !== undefined, 
+    [isValidId, thread]
+  );
 
   const messagesResult = useQuery(
     api.messages.get,
@@ -45,6 +49,7 @@ const CatchAllChatPageInner = memo(function CatchAllChatPageInner({ params }: { 
   const lastMessagesRef = useRef<UIMessage[]>([]);
   const savedLastChatRef = useRef<{ id?: string, path?: string }>({});
 
+  // Мемоизируем обработку сообщений
   const messages = useMemo(() => {
     if (!attachments || !messagesResult) return lastMessagesRef.current;
 
@@ -84,7 +89,8 @@ const CatchAllChatPageInner = memo(function CatchAllChatPageInner({ params }: { 
     return formatted
   }, [messagesResult, attachments]);
 
-  useEffect(() => {
+  // Мемоизируем обработчик навигации
+  const handleNavigation = useCallback(() => {
     if (authLoading) return;
     if (!isAuthenticated) {
       router.replace('/');
@@ -113,6 +119,10 @@ const CatchAllChatPageInner = memo(function CatchAllChatPageInner({ params }: { 
     }
   }, [authLoading, isAuthenticated, isValidId, router, chatId, thread]);
 
+  useEffect(() => {
+    handleNavigation();
+  }, [handleNavigation]);
+
   // Автоматическое перенаправление при изменении типа устройства
   useEffect(() => {
     if (!mounted || !isAuthenticated || !isValidId || !thread) return;
@@ -134,12 +144,15 @@ const CatchAllChatPageInner = memo(function CatchAllChatPageInner({ params }: { 
     wasMobileRef.current = isMobile;
   }, [isMobile, mounted, isAuthenticated, isValidId, thread, chatId, router]);
 
-  const isLoading =
+  // Мемоизируем состояние загрузки
+  const isLoading = useMemo(() =>
     authLoading ||
     !isValidId ||
     thread === undefined ||
     messagesResult === undefined ||
-    attachments === undefined;
+    attachments === undefined,
+    [authLoading, isValidId, thread, messagesResult, attachments]
+  );
 
   useEffect(() => {
     if (!isLoading) {

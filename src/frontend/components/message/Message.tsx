@@ -1,4 +1,4 @@
-import { memo, useState, useEffect, useMemo } from 'react';
+import { memo, useState, useEffect, useMemo, useCallback } from 'react';
 import MarkdownRenderer from '@/frontend/components/MemoizedMarkdown';
 import { cn } from '@/lib/utils';
 import { UIMessage } from 'ai';
@@ -30,7 +30,8 @@ import { isConvexId } from '@/lib/ids';
 import type { Id } from '@/convex/_generated/dataModel';
 import MobileMessageModal from './MobileMessageModal';
 
-function PureMessage({
+// Мемоизированный компонент Message
+const PureMessage = memo(function PureMessage({
   threadId,
   message,
   setMessages,
@@ -80,16 +81,20 @@ function PureMessage({
   
   useEffect(() => { setLocalKeys(keys); }, [keys]);
   
-  const saveKeys = () => { setKeys(localKeys); toast.success('API keys saved'); };
+  const saveKeys = useCallback(() => { 
+    setKeys(localKeys); 
+    toast.success('API keys saved'); 
+  }, [setKeys, localKeys]);
+  
   const router = useRouter();
   const { hasRequiredKeys } = useAPIKeyStore();
   const canChat = hasRequiredKeys();
 
-  const handleNewChat = () => {
+  const handleNewChat = useCallback(() => {
     router.push(`/chat`);
-  };
+  }, [router]);
 
-const { bind, isPressed } = useLongPress({
+  const { bind, isPressed } = useLongPress({
     onLongPress: () => {
       if (!isWelcome) { 
         setShowMobileModal(true);
@@ -267,7 +272,7 @@ const { bind, isPressed } = useLongPress({
               <div key={key} className="w-full px-2 sm:px-0 space-y-4">
                 <h3 className="text-base font-semibold">Welcome to Pak.Chat</h3>
                 <SelectableText messageId={message.id} disabled>
-                  <MarkdownRenderer content={part.text} streaming={isStreaming} />
+                  <MarkdownRenderer content={(part as any).text} streaming={isStreaming} />
                 </SelectableText>
                 <div className="space-y-6 mt-4">
                   {(['google','openrouter','openai'] as const).map(provider => (
@@ -361,7 +366,7 @@ const { bind, isPressed } = useLongPress({
                   <MessageEditor
                     threadId={threadId}
                     message={message}
-                    content={part.text}
+                    content={(part as any).text}
                     setMessages={setMessages}
                     reload={reload}
                     setMode={setMode}
@@ -369,13 +374,13 @@ const { bind, isPressed } = useLongPress({
                   />
                 </ErrorBoundary>
               )}
-              {mode === 'view' && <QuotedMessage content={part.text} />}
+              {mode === 'view' && <QuotedMessage content={(part as any).text} />}
 
               {mode === 'view' && !isMobile && (
                 <MessageControls
                   threadId={threadId}
                   messages={messages}
-                  content={part.text}
+                  content={(part as any).text}
                   message={message}
                   setMode={setMode}
                   setMessages={setMessages}
@@ -399,7 +404,7 @@ const { bind, isPressed } = useLongPress({
               {...bind}
             >
               <SelectableText messageId={message.id} disabled={isStreaming}>
-                <MarkdownRenderer content={part.text} streaming={isStreaming} />
+                <MarkdownRenderer content={(part as any).text} streaming={isStreaming} />
               </SelectableText>
               {attachments && attachments.length > 0 && (
                 <div className="flex gap-2 flex-wrap mt-2">
@@ -443,7 +448,7 @@ const { bind, isPressed } = useLongPress({
                 <MessageControls
                   threadId={threadId}
                   messages={messages}
-                  content={part.text}
+                  content={(part as any).text}
                   message={message}
                   setMessages={setMessages}
                   append={append}
@@ -459,7 +464,7 @@ const { bind, isPressed } = useLongPress({
         }
 
         if (type === 'tool-invocation') {
-          const inv = part.toolInvocation as any;
+          const inv = (part as any).toolInvocation;
           if (!inv) return null;
           if (inv.state === 'call' || inv.state === 'result') {
             return null;
@@ -496,16 +501,6 @@ const { bind, isPressed } = useLongPress({
     )}
     </>
   );
-}
-
-const PreviewMessage = memo(PureMessage, (prevProps, nextProps) => {
-  return (
-    prevProps.message === nextProps.message &&
-    prevProps.isStreaming === nextProps.isStreaming &&
-    prevProps.messages.length === nextProps.messages.length
-  );
 });
 
-PreviewMessage.displayName = 'Message';
-
-export default PreviewMessage;
+export default PureMessage;

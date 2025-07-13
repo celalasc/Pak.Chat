@@ -83,7 +83,7 @@ export default function HomePage() {
 
         {/* Center: Logo/Title */}
         <div className="flex items-center gap-2">
-          <MessageSquare className="h-6 w-6 text-primary" />
+          {!isMobile && <MessageSquare className="h-6 w-6 text-primary" />}
           <span className="text-xl font-bold text-foreground">Pak.Chat</span>
         </div>
 

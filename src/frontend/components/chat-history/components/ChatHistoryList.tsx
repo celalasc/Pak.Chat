@@ -270,21 +270,9 @@ function ChatHistoryList({
         }}
         onTouchStart={(e) => {
           if (isMobile) {
-            // Prevent triggering the browser context menu on long press
-            const touchStartTime = Date.now();
-            const touchTimer = setTimeout(() => {
-              /* noop - long press disabled on mobile */
-            }, 500);
-
-            const handleTouchEnd = () => {
-              clearTimeout(touchTimer);
-              const duration = Date.now() - touchStartTime;
-              if (duration >= 500) {
-                e.preventDefault();
-              }
-            };
-
-            e.currentTarget.addEventListener('touchend', handleTouchEnd, { once: true });
+            // Убираем обработку long press на мобильных устройствах
+            // чтобы не мешать скроллингу
+            e.preventDefault();
           }
         }}
         onClick={() => {

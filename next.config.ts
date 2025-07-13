@@ -1,62 +1,19 @@
-import { createRequire } from 'node:module'
-import { resolve } from 'path'
+import type { NextConfig } from "next";
+import { withConvex } from "convex/next";
 
-const require = createRequire(import.meta.url)
-
-const withAnalyzer = require('@next/bundle-analyzer')({ enabled: process.env.ANALYZE === 'true' });
-const withPWA = require('next-pwa')({ 
-  dest: 'public', 
-  disable: process.env.NODE_ENV === 'development', // PWA только в production
-  sw: 'sw.js',
-  register: false,
-  skipWaiting: true,
-  fallbacks: {
-    document: '/offline',
-  },
-  publicExcludes: ['!sw.js', '!workbox-*.js'],
-  buildExcludes: [
-    /middleware-manifest\.json$/,
-    /app-build-manifest\.json$/,
-    /build-manifest\.json$/,
-    /_buildManifest\.js$/,
-    /_ssgManifest\.js$/,
-    /chunks\/.*\.js$/
-  ],
-  cacheOnFrontEndNav: true,
-  reloadOnOnline: true,
-  disableDevLogs: true,
-  mode: 'production',
-  clientsClaim: true,
-  navigateFallback: '/offline',
-  navigateFallbackDenylist: [/^\/_/, /^\/api/, /^\/favicon\.ico$/, /^\/manifest\.webmanifest$/],
-  // Дополнительные настройки для стабильности
-  scope: '/',
-  runtimeCaching: [
-    {
-      urlPattern: /^https:\/\/.*\.convex\.cloud\/.*/,
-      handler: 'NetworkFirst',
-      options: {
-        cacheName: 'api-cache',
-        networkTimeoutSeconds: 10,
-        expiration: {
-          maxEntries: 100,
-          maxAgeSeconds: 24 * 60 * 60, // 24 часа
-        },
-      },
-    },
-  ],
-});
-
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+const nextConfig: NextConfig = {
   // Оптимизация для мобильных устройств
   experimental: {
     // Включаем оптимизации для мобильных устройств
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
-    // Enable server actions and other optimizations
-    serverActions: {
-      bodySizeLimit: '10mb',
+    // Оптимизация изображений
+    images: {
+      allowFutureImage: true,
     },
+    // Оптимизация шрифтов
+    fontLoaders: [
+      { loader: '@next/font/google', options: { subsets: ['latin'] } }
+    ],
   },
 
   // Оптимизация изображений
@@ -67,13 +24,6 @@ const nextConfig = {
     minimumCacheTTL: 60,
     dangerouslyAllowSVG: true,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
-    domains: ['lh3.googleusercontent.com'],
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '**.convex.cloud',
-      },
-    ],
   },
 
   // Оптимизация производительности
@@ -111,7 +61,6 @@ const nextConfig = {
           },
         },
       };
-
       // Оптимизация размера бандла
       config.optimization.minimize = true;
     }
@@ -133,19 +82,34 @@ const nextConfig = {
   headers() {
     return [
       {
-        source: '/:path*',
+        source: '/(.*)',
         headers: [
           {
-            key: 'Cross-Origin-Opener-Policy',
-            value: 'same-origin-allow-popups',
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
           },
           {
-            key: 'Cross-Origin-Embedder-Policy',
-            value: 'unsafe-none',
+            key: 'X-Frame-Options',
+            value: 'DENY',
           },
           {
-            key: 'Content-Security-Policy',
-            value: "frame-ancestors 'self' https://*.google.com https://*.googleapis.com https://accounts.google.com;",
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
+          },
+          // Кэширование для статических ресурсов
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      // Оптимизация для API
+      {
+        source: '/api/(.*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-cache, no-store, must-revalidate',
           },
           {
             key: 'X-Content-Type-Options',
@@ -178,7 +142,6 @@ const nextConfig = {
       },
     ];
   },
-
   // Оптимизация для PWA
   async rewrites() {
     return [
@@ -202,6 +165,7 @@ const nextConfig = {
   eslint: {
     dirs: ['src/app', 'src/components'],
   },
+  },
 
   // Оптимизация для производительности
   poweredByHeader: false,
@@ -216,4 +180,4 @@ const nextConfig = {
   },
 };
 
-export default withPWA(withAnalyzer(nextConfig));
+export default withConvex(nextConfig);

@@ -12,7 +12,7 @@ import { useAttachmentsStore } from '@/frontend/stores/AttachmentsStore';
 import { useChatStore } from '@/frontend/stores/ChatStore';
 import { useCustomModesHelpers } from '@/frontend/stores/CustomModesStore';
 import { cn } from '@/lib/utils';
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { isConvexId } from '@/lib/ids';
@@ -33,7 +33,14 @@ interface ChatViewProps {
   onThreadCreated?: (newThreadId: string) => void;
 }
 
-function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCreated }: ChatViewProps) {
+// Мемоизированный компонент ChatView
+const ChatView = React.memo(function ChatView({ 
+  threadId, 
+  thread, 
+  initialMessages, 
+  showNavBars, 
+  onThreadCreated 
+}: ChatViewProps) {
   const { keys } = useAPIKeyStore();
   const { selectedModel, webSearchEnabled } = useModelStore();
   const { clearQuote } = useQuoteStore();
@@ -57,15 +64,16 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCrea
   // Уникальный ключ для принудительного пересоздания useChat хука
   const [chatKey, setChatKey] = useState(() => `chat-${threadId || 'new'}-${Date.now()}`);
 
-  // Определяем какой API endpoint использовать в зависимости от провайдера
-  const modelConfig = React.useMemo(() => {
+  // Мемоизируем конфигурацию модели
+  const modelConfig = useMemo(() => {
     const config = getModelConfig(selectedModel);
     return config;
   }, [selectedModel]);
 
   const { isImageGenerationMode } = useChatStore(); // Get from store to track changes
   
-  const apiEndpoint = React.useMemo(() => {
+  // Мемоизируем API endpoint
+  const apiEndpoint = useMemo(() => {
     // Always use /api/llm for image generation, regardless of model
     if (isImageGenerationMode) {
       return '/api/llm'; // Force use of main LLM endpoint for image generation
@@ -87,7 +95,8 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCrea
   // Map to hold temporary timestamps for messages that haven't been persisted yet
   const tempCreatedAtMap = useRef(new Map<string, number>());
 
-  const scrollToMessage = (messageId: string) => {
+  // Мемоизируем функцию прокрутки к сообщению
+  const scrollToMessage = useCallback((messageId: string) => {
     const element = document.getElementById(`message-${messageId}`);
     if (element) {
       element.scrollIntoView({ 
@@ -96,7 +105,7 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCrea
         inline: 'nearest'
       });
     }
-  };
+  }, []);
 
   // Обработчик создания нового треда
   const handleThreadCreated = useCallback((newThreadId: string) => {
@@ -111,8 +120,8 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCrea
     setIsRegenerating(true);
   }, []);
 
-  // Memoize body and request preparation to avoid creating new references
-  const requestBody = React.useMemo(
+  // Мемоизируем тело запроса
+  const requestBody = useMemo(
     () => ({
       model: selectedModel,
       apiKeys: keys,
@@ -122,7 +131,8 @@ function ChatView({ threadId, thread, initialMessages, showNavBars, onThreadCrea
     [selectedModel, keys, currentThreadId, webSearchEnabled]
   );
 
-  const prepareRequestBody = React.useCallback(
+  // Мемоизируем функцию подготовки тела запроса
+  const prepareRequestBody = useCallback(
     ({ messages, ...options }: { messages: UIMessage[]; [key: string]: any }) => {
       const currentThreadId = threadIdRef.current;
       const { isImageGenerationMode, imageGenerationParams } = useChatStore.getState();
@@ -652,6 +662,6 @@ className="flex-1 overflow-y-auto enhanced-scroll"
       </div>
     </>
   );
-}
+});
 
-export default React.memo(ChatView);
+export default ChatView;
