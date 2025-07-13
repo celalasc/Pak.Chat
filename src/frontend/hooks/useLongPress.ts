@@ -14,8 +14,9 @@ export function useLongPress({
   isMobile = false,
 }: UseLongPressOptions) {
   const [isPressed, setIsPressed] = useState(false);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<number | null>(null);
   const preventClickRef = useRef(false);
+  const resetTimeoutRef = useRef<number | null>(null);
 
   const start = useCallback((event: React.TouchEvent | React.MouseEvent) => {
     if (!isMobile) return;
@@ -55,12 +56,19 @@ export function useLongPress({
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
     }
+    
+    // Очищаем предыдущий reset таймаут если он есть
+    if (resetTimeoutRef.current) {
+      clearTimeout(resetTimeoutRef.current);
+    }
+    
     setIsPressed(false);
     
     // Добавляем задержку для сброса флага, чтобы избежать race condition
     // между onTouchEnd и onClick
-    setTimeout(() => {
+    resetTimeoutRef.current = setTimeout(() => {
       preventClickRef.current = false;
+      resetTimeoutRef.current = null;
     }, 100);
     
     if (onCancel) {
@@ -73,6 +81,18 @@ export function useLongPress({
       event.preventDefault();
       event.stopPropagation();
       return;
+    }
+  }, []);
+
+  // Cleanup функция для очистки таймаутов
+  const cleanup = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    if (resetTimeoutRef.current) {
+      clearTimeout(resetTimeoutRef.current);
+      resetTimeoutRef.current = null;
     }
   }, []);
 
@@ -90,5 +110,6 @@ export function useLongPress({
   return {
     bind,
     isPressed,
+    cleanup,
   };
 }
