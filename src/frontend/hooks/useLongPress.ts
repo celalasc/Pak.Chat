@@ -14,24 +14,35 @@ export function useLongPress({
   isMobile = false,
 }: UseLongPressOptions) {
   const [isPressed, setIsPressed] = useState(false);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<number | null>(null);
   const preventClickRef = useRef(false);
+  const resetTimeoutRef = useRef<number | null>(null);
 
   const start = useCallback((event: React.TouchEvent | React.MouseEvent) => {
     if (!isMobile) return;
     
+    // Сохраняем тип события для использования в таймауте
+    const eventType = event.type;
+    
     // Предотвращаем выделение текста при долгом нажатии только для touch событий
-    if (event.type === 'touchstart') {
+    if (eventType === 'touchstart') {
       event.preventDefault();
     }
     
-    setIsPressed(true);
+    // Не устанавливаем isPressed сразу для touch событий
+    if (eventType !== 'touchstart') {
+      setIsPressed(true);
+    }
+    // Сбрасываем флаг только при начале нового взаимодействия
     preventClickRef.current = false;
     
     timeoutRef.current = setTimeout(() => {
+      if (eventType === 'touchstart') {
+        setIsPressed(true);
+      }
       onLongPress();
       preventClickRef.current = true;
-      setIsPressed(false);
+      // НЕ сбрасываем isPressed здесь - пусть cancel() это сделает
       
       // Добавляем небольшую вибрацию для обратной связи (если поддерживается)
       if (navigator.vibrate) {
@@ -45,7 +56,20 @@ export function useLongPress({
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
     }
+    
+    // Очищаем предыдущий reset таймаут если он есть
+    if (resetTimeoutRef.current) {
+      clearTimeout(resetTimeoutRef.current);
+    }
+    
     setIsPressed(false);
+    
+    // Добавляем задержку для сброса флага, чтобы избежать race condition
+    // между onTouchEnd и onClick
+    resetTimeoutRef.current = setTimeout(() => {
+      preventClickRef.current = false;
+      resetTimeoutRef.current = null;
+    }, 100);
     
     if (onCancel) {
       onCancel();
@@ -56,6 +80,19 @@ export function useLongPress({
     if (preventClickRef.current) {
       event.preventDefault();
       event.stopPropagation();
+      return;
+    }
+  }, []);
+
+  // Cleanup функция для очистки таймаутов
+  const cleanup = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    if (resetTimeoutRef.current) {
+      clearTimeout(resetTimeoutRef.current);
+      resetTimeoutRef.current = null;
     }
   }, []);
 
@@ -73,5 +110,6 @@ export function useLongPress({
   return {
     bind,
     isPressed,
+    cleanup,
   };
 }

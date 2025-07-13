@@ -296,9 +296,11 @@ const ModeCard = memo(({ mode, onEdit, onDelete }: ModeCardProps) => {
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     const touch = e.touches[0];
     setTouchStartPos({ x: touch.clientX, y: touch.clientY });
-    setIsPressed(true);
+    // Не устанавливаем isPressed сразу, только после задержки
+    // setIsPressed(true);
 
     const timer = setTimeout(() => {
+      setIsPressed(true);
       setShowContextMenu(true);
       navigator.vibrate?.(50); // Haptic feedback if available
     }, 500); // 500ms long press
@@ -312,7 +314,8 @@ const ModeCard = memo(({ mode, onEdit, onDelete }: ModeCardProps) => {
     const deltaX = Math.abs(touch.clientX - touchStartPos.x);
     const deltaY = Math.abs(touch.clientY - touchStartPos.y);
 
-    if (deltaX > 10 || deltaY > 10) {
+    // Уменьшаем порог для более чувствительного отмены анимации
+    if (deltaX > 5 || deltaY > 5) {
       clearLongPress();
     }
   }, [touchStartPos, longPressTimer, clearLongPress]);
