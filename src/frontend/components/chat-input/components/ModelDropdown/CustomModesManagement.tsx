@@ -197,17 +197,17 @@ const CustomModesManagement = memo(({ view, editingMode, onBack, onModeCreated, 
     <>
       <div className="pt-4 sm:pt-6 pb-4 pl-2 pr-4 w-full sm:w-64 relative flex flex-col h-full overflow-hidden">
         {/* Header with back button and actions */}
-        <div className="flex items-center justify-center mb-4 sm:mb-6 relative">
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
           <Button 
             variant="ghost" 
             size="icon" 
             onClick={onBack}
-            className="h-8 w-8 hover:bg-accent absolute left-0"
+            className="h-8 w-8 hover:bg-accent"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
           
-          <div className="flex items-center gap-2 absolute right-0">
+          <div className="flex items-center gap-2">
             {/* Done Button */}
             <Button 
               onClick={handleSaveMode}
@@ -315,7 +315,7 @@ const CustomModesManagement = memo(({ view, editingMode, onBack, onModeCreated, 
       <Dialog open={isPromptModalOpen} onOpenChange={setIsPromptModalOpen}>
         <DialogContent
           showCloseButton={false}
-          className="w-[95vw] sm:w-[50vw] sm:max-w-none max-w-[520px] h-[80vh] sm:h-[65vh] flex flex-col p-0 bg-[rgba(217,217,217,0.03)] backdrop-blur-[70px] border-[0.3px] border-[rgba(103,103,103,1)] shadow-[0_0_4px_0_rgba(255,255,255,0.15)] rounded-[20px] sm:rounded-[35px] overflow-hidden"
+          className="w-[95vw] sm:w-[50vw] sm:max-w-none max-w-[520px] h-[80vh] sm:h-[65vh] flex flex-col p-0 bg-white/10 dark:bg-black/10 backdrop-blur-md border border-white/20 dark:border-gray-600/30 shadow-xl rounded-2xl overflow-hidden"
         >
           {/* Header */}
           <div className="flex items-center justify-between p-4 sm:p-6">

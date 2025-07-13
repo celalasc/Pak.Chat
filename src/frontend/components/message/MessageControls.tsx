@@ -58,8 +58,6 @@ export default function MessageControls({
     isConvexId(threadId) ? { threadId: threadId as Id<'threads'> } : 'skip'
   );
   
-  // Получаем данные о сообщении для версий
-  
   const router = useRouter();
 
   // Clone the current thread and navigate to the new one.
@@ -127,17 +125,12 @@ export default function MessageControls({
     // Небольшая задержка чтобы UI обновился
     await new Promise(resolve => setTimeout(resolve, 50));
 
-    // Finally, request a fresh completion from the model using the **latest**
-    // store values so that a just-changed model is respected even if the UI
-    // hasn't finished re-rendering before the user clicked the button.
-    const {
-      selectedModel: currentModel,
-      webSearchEnabled: currentSearch,
-    } = useModelStore.getState();
-
+    // Используем текущую модель пользователя
+    const { selectedModel: finalModelToUse, webSearchEnabled: currentSearch } = useModelStore.getState();
+    
     reload({
       body: {
-        model: currentModel,
+        model: finalModelToUse,
         apiKeys: keys,
         threadId,
         search: currentSearch,
@@ -147,7 +140,6 @@ export default function MessageControls({
 
   // Show controls on mobile only when explicitly visible.
   const shouldShowControls = useMemo(() => (isMobile ? isVisible : true), [isMobile, isVisible]);
-
 
   return (
     <div className="flex flex-col gap-2">
@@ -176,12 +168,14 @@ export default function MessageControls({
           </Button>
         )}
         {message.role === 'assistant' && canChat && (
-          <Button variant="ghost" size="icon" onClick={handleRegenerate}>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={handleRegenerate}
+          >
             <RefreshCcw className="w-4 h-4" />
           </Button>
         )}
-
-
 
         {/* Model label for assistant messages */}
         {message.role === 'assistant' && (message as any).model && (

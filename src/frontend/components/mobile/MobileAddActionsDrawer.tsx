@@ -139,6 +139,8 @@ export default function MobileAddActionsDrawer({
   }, [createRipple, onImageGenerationToggle, onOpenChange]);
 
   const handleBackToMain = useCallback((event: React.TouchEvent | React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
     createRipple(event);
     setViewMode('main');
   }, [createRipple]);
@@ -298,17 +300,15 @@ export default function MobileAddActionsDrawer({
                  {/* Header with back button */}
          {viewMode === 'recent' && (
            <div className="flex items-center gap-3 px-4 py-2 border-b border-border/20">
-             <Button
-               variant="ghost"
-               size="icon"
-               onClick={handleBackToMain}
-               onTouchStart={handleBackToMain}
-               onMouseDown={handleBackToMain}
-               className={cn(
-                 "w-8 h-8 relative overflow-hidden",
-                 isMobile && "mobile-touch-item"
-               )}
-             >
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleBackToMain}
+              className={cn(
+                "w-8 h-8 relative overflow-hidden",
+                isMobile && "mobile-touch-item"
+              )}
+            >
                <ArrowLeft className="w-4 h-4" />
              </Button>
              <h3 className="text-lg font-semibold">Recent Files</h3>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, memo } from 'react';
+import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/frontend/components/ui/dialog';
 import { Button } from '@/frontend/components/ui/button';
 import { Input } from '@/frontend/components/ui/input';
@@ -279,8 +280,24 @@ interface ModeCardProps {
 const ModeCard = memo(({ mode, onEdit, onDelete }: ModeCardProps) => {
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
+  const [touchStartPos, setTouchStartPos] = useState<{ x: number; y: number } | null>(null);
+  const [isPressed, setIsPressed] = useState(false);
+  const { isMobile } = useIsMobile();
 
-  const handleTouchStart = useCallback(() => {
+  const clearLongPress = useCallback(() => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      setLongPressTimer(null);
+    }
+    setTouchStartPos(null);
+    setIsPressed(false);
+  }, [longPressTimer]);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    setTouchStartPos({ x: touch.clientX, y: touch.clientY });
+    setIsPressed(true);
+
     const timer = setTimeout(() => {
       setShowContextMenu(true);
       navigator.vibrate?.(50); // Haptic feedback if available
@@ -288,36 +305,57 @@ const ModeCard = memo(({ mode, onEdit, onDelete }: ModeCardProps) => {
     setLongPressTimer(timer);
   }, []);
 
-  const handleTouchEnd = useCallback(() => {
-    if (longPressTimer) {
-      clearTimeout(longPressTimer);
-      setLongPressTimer(null);
-    }
-  }, [longPressTimer]);
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!touchStartPos || !longPressTimer) return;
 
-  const handleMouseDown = useCallback(() => {
+    const touch = e.touches[0];
+    const deltaX = Math.abs(touch.clientX - touchStartPos.x);
+    const deltaY = Math.abs(touch.clientY - touchStartPos.y);
+
+    if (deltaX > 10 || deltaY > 10) {
+      clearLongPress();
+    }
+  }, [touchStartPos, longPressTimer, clearLongPress]);
+
+  const handleTouchEnd = useCallback(() => {
+    clearLongPress();
+  }, [clearLongPress]);
+
+  const handleTouchCancel = useCallback(() => {
+    clearLongPress();
+  }, [clearLongPress]);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (e.pointerType === 'touch' || !isMobile) return;
+
     const timer = setTimeout(() => {
       setShowContextMenu(true);
     }, 500);
     setLongPressTimer(timer);
-  }, []);
+  }, [isMobile]);
 
   const handleMouseUp = useCallback(() => {
-    if (longPressTimer) {
-      clearTimeout(longPressTimer);
-      setLongPressTimer(null);
-    }
-  }, [longPressTimer]);
+    clearLongPress();
+  }, [clearLongPress]);
+
+  const handleMouseLeave = useCallback(() => {
+    clearLongPress();
+  }, [clearLongPress]);
 
   return (
     <>
       <Card 
-        className="transition-all hover:shadow-md cursor-pointer select-none relative"
+        className={cn(
+          "transition-all hover:shadow-md cursor-pointer select-none relative",
+          isMobile && isPressed && "scale-95 opacity-70"
+        )}
         onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchCancel}
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
       >
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
@@ -355,25 +393,32 @@ const ModeCard = memo(({ mode, onEdit, onDelete }: ModeCardProps) => {
 
       {/* Context Menu for Mobile */}
       {showContextMenu && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={() => setShowContextMenu(false)}>
-          <div className="bg-background border rounded-lg shadow-lg p-4 m-4 min-w-[200px]" onClick={e => e.stopPropagation()}>
+        <div 
+          className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4" 
+          onClick={() => setShowContextMenu(false)}
+          style={{ zIndex: 9999 }}
+        >
+          <div 
+            className="bg-white/10 dark:bg-black/10 backdrop-blur-md border border-white/20 dark:border-gray-600/30 shadow-xl rounded-2xl p-4 min-w-[250px] max-w-[300px] w-full" 
+            onClick={e => e.stopPropagation()}
+          >
             <div className="flex items-center gap-3 mb-4 pb-3 border-b">
               <div className="text-xl">{mode.icon}</div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <div className="font-medium truncate">{mode.name}</div>
-                <div className="text-sm text-muted-foreground truncate">{mode.systemPrompt}</div>
+                <div className="text-sm text-muted-foreground line-clamp-2">{mode.systemPrompt}</div>
               </div>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-3">
               <Button
                 variant="ghost"
                 onClick={() => {
                   onEdit(mode);
                   setShowContextMenu(false);
                 }}
-                className="w-full justify-start gap-3"
+                className="w-full justify-start gap-3 h-12 text-base"
               >
-                <Edit3 className="h-4 w-4" />
+                <Edit3 className="h-5 w-5" />
                 Редактировать
               </Button>
               <Button
@@ -382,9 +427,9 @@ const ModeCard = memo(({ mode, onEdit, onDelete }: ModeCardProps) => {
                   onDelete(mode._id);
                   setShowContextMenu(false);
                 }}
-                className="w-full justify-start gap-3 text-destructive hover:text-destructive"
+                className="w-full justify-start gap-3 h-12 text-base text-destructive hover:text-destructive hover:bg-destructive/10"
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-5 w-5" />
                 Удалить
               </Button>
             </div>
@@ -448,7 +493,7 @@ const ModeFormView = memo(({
               </Button>
               
               {showIconSelector && (
-                <div className="mt-3 grid grid-cols-6 gap-2 p-3 border rounded-lg bg-muted/20">
+                <div className="mt-3 grid grid-cols-6 gap-2 p-3 bg-white/10 dark:bg-black/10 backdrop-blur-md border border-white/20 dark:border-gray-600/30 shadow-xl rounded-2xl">
                   {DEFAULT_ICONS.map(({ icon, label }) => (
                     <Button
                       key={icon}
