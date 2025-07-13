@@ -14,7 +14,7 @@ export function useLongPress({
   isMobile = false,
 }: UseLongPressOptions) {
   const [isPressed, setIsPressed] = useState(false);
-  const timeoutRef = useRef<number | null>(null);
+ const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const preventClickRef = useRef(false);
   const resetTimeoutRef = useRef<number | null>(null);
 

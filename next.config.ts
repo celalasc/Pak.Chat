@@ -1,19 +1,62 @@
-import type { NextConfig } from "next";
-import { withConvex } from "convex/next";
+import { createRequire } from 'node:module'
+import { resolve } from 'path'
 
-const nextConfig: NextConfig = {
+const require = createRequire(import.meta.url)
+
+const withAnalyzer = require('@next/bundle-analyzer')({ enabled: process.env.ANALYZE === 'true' });
+const withPWA = require('next-pwa')({ 
+  dest: 'public', 
+  disable: process.env.NODE_ENV === 'development', // PWA только в production
+  sw: 'sw.js',
+  register: false,
+  skipWaiting: true,
+  fallbacks: {
+    document: '/offline',
+  },
+  publicExcludes: ['!sw.js', '!workbox-*.js'],
+  buildExcludes: [
+    /middleware-manifest\.json$/,
+    /app-build-manifest\.json$/,
+    /build-manifest\.json$/,
+    /_buildManifest\.js$/,
+    /_ssgManifest\.js$/,
+    /chunks\/.*\.js$/
+  ],
+  cacheOnFrontEndNav: true,
+  reloadOnOnline: true,
+  disableDevLogs: true,
+  mode: 'production',
+  clientsClaim: true,
+  navigateFallback: '/offline',
+  navigateFallbackDenylist: [/^\/_/, /^\/api/, /^\/favicon\.ico$/, /^\/manifest\.webmanifest$/],
+  // Дополнительные настройки для стабильности
+  scope: '/',
+  runtimeCaching: [
+    {
+      urlPattern: /^https:\/\/.*\.convex\.cloud\/.*/,
+      handler: 'NetworkFirst',
+      options: {
+        cacheName: 'api-cache',
+        networkTimeoutSeconds: 10,
+        expiration: {
+          maxEntries: 100,
+          maxAgeSeconds: 24 * 60 * 60, // 24 часа
+        },
+      },
+    },
+  ],
+});
+
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   // Оптимизация для мобильных устройств
   experimental: {
     // Включаем оптимизации для мобильных устройств
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
-    // Оптимизация изображений
-    images: {
-      allowFutureImage: true,
+    // Enable server actions and other optimizations
+    serverActions: {
+      bodySizeLimit: '10mb',
     },
-    // Оптимизация шрифтов
-    fontLoaders: [
-      { loader: '@next/font/google', options: { subsets: ['latin'] } }
-    ],
   },
 
   // Оптимизация изображений
@@ -61,7 +104,6 @@ const nextConfig: NextConfig = {
           },
         },
       };
-
       // Оптимизация размера бандла
       config.optimization.minimize = true;
     }
@@ -69,6 +111,8 @@ const nextConfig: NextConfig = {
     // Оптимизация для мобильных устройств
     config.resolve.alias = {
       ...config.resolve.alias,
+      '@': resolve(__dirname, 'src'),
+      '@frontend': resolve(__dirname, 'src/frontend'),
       // Приоритет для мобильных оптимизаций
       'react': 'react',
       'react-dom': 'react-dom',
@@ -77,12 +121,24 @@ const nextConfig: NextConfig = {
     return config;
   },
 
-  // Оптимизация заголовков
+  // Секция headers остается, она нужна для правильной работы Firebase Auth.
   async headers() {
     return [
       {
-        source: '/(.*)',
+        source: '/:path*',
         headers: [
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin-allow-popups',
+          },
+          {
+            key: 'Cross-Origin-Embedder-Policy',
+            value: 'unsafe-none',
+          },
+          {
+            key: 'Content-Security-Policy',
+            value: "frame-ancestors 'self' https://*.google.com https://*.googleapis.com https://accounts.google.com;",
+          },
           {
             key: 'X-Content-Type-Options',
             value: 'nosniff',
@@ -110,11 +166,22 @@ const nextConfig: NextConfig = {
             key: 'Cache-Control',
             value: 'no-cache, no-store, must-revalidate',
           },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
+          },
         ],
       },
     ];
   },
-
   // Оптимизация для PWA
   async rewrites() {
     return [
@@ -125,11 +192,18 @@ const nextConfig: NextConfig = {
     ];
   },
 
-  // Оптимизация для мобильных устройств
-  async redirects() {
-    return [
-      // Редирект для мобильных устройств если нужно
-    ];
+  // Эта конфигурация для Turbopack остается, она не мешает.
+  turbopack: {
+    resolveExtensions: ['.ts', '.tsx', '.js', '.jsx', '.json', '.css'],
+    // Optimize for better module resolution
+    resolveAlias: {
+      '@': './src',
+      '@frontend': './src/frontend',
+    },
+  },
+
+  eslint: {
+    dirs: ['src/app', 'src/components'],
   },
 
   // Оптимизация для производительности
@@ -145,4 +219,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withConvex(nextConfig);
+export default withPWA(withAnalyzer(nextConfig));

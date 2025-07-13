@@ -140,7 +140,7 @@ const MobileThreadItem = memo(({
   onSelect: (threadId: Id<"threads">) => void;
   onEdit: (thread: Thread) => void;
   onDelete: (threadId: Id<"threads">) => void;
-  onTogglePin: (threadId: Id<"threads">) => void;
+  onTogglePin: (threadId: Id<"threads">, pinned: boolean) => void;
   onShare: (thread: Thread) => void;
   isEditing: boolean;
   editingTitle: string;
@@ -166,8 +166,8 @@ const MobileThreadItem = memo(({
 
   const handleTogglePin = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    onTogglePin(thread._id);
-  }, [thread._id, onTogglePin]);
+    onTogglePin(thread._id, !thread.pinned);
+  }, [thread._id, thread.pinned, onTogglePin]);
 
   const handleShare = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -402,9 +402,9 @@ const FastChatHistoryMobileComponent: React.FC<FastChatHistoryMobileProps> = ({
   );
 
   const handleTogglePin = useCallback(
-    async (threadId: Id<"threads">) => {
+    async (threadId: Id<"threads">, pinned: boolean) => {
       try {
-        await togglePin({ threadId });
+        await togglePin({ threadId, pinned });
       } catch (error) {
         console.error("Failed to toggle pin:", error);
       }
@@ -486,8 +486,6 @@ const FastChatHistoryMobileComponent: React.FC<FastChatHistoryMobileProps> = ({
           {!threads || threads.length === 0 ? (
             <EmptyState
               type="no-chats"
-              title="No chat history"
-              hint="Start chatting to build your history"
             />
           ) : (
             <div className="space-y-4">
