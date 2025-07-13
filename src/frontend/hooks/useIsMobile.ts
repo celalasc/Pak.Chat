@@ -1,4 +1,4 @@
-import { useState, useLayoutEffect, useEffect } from 'react';
+import { useState, useLayoutEffect, useEffect, useMemo, useCallback } from 'react';
 
 export function useIsMobile(breakpoint: number = 768) {
   // Инициализируем состояние один раз с правильным значением для SSR
@@ -18,6 +18,18 @@ export function useIsMobile(breakpoint: number = 768) {
     };
   });
 
+  // Мемоизируем функцию проверки мобильного устройства
+  const checkMobile = useCallback(() => {
+    const isMobileDevice = window.innerWidth < breakpoint;
+    setState((prev: { isMobile: boolean; mounted: boolean }) => {
+      // Обновляем состояние только если оно действительно изменилось
+      if (prev.isMobile !== isMobileDevice) {
+        return { ...prev, isMobile: isMobileDevice };
+      }
+      return prev;
+    });
+  }, [breakpoint]);
+
   useEffect(() => {
     // Если уже mounted, ничего не делаем
     if (state.mounted) return;
@@ -28,17 +40,26 @@ export function useIsMobile(breakpoint: number = 768) {
       isMobile: isMobileDevice,
       mounted: true
     });
-  }, [breakpoint]);
+  }, [breakpoint, state.mounted]);
 
   useLayoutEffect(() => {
-    const checkMobile = () => {
-      const isMobileDevice = window.innerWidth < breakpoint;
-      setState(prev => ({ ...prev, isMobile: isMobileDevice }));
+    // Используем throttled обработчик для уменьшения частоты вызовов
+    let ticking = false;
+    
+    const throttledCheckMobile = () => {
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          checkMobile();
+          ticking = false;
+        });
+        ticking = true;
+      }
     };
     
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, [breakpoint]);
+    window.addEventListener('resize', throttledCheckMobile, { passive: true });
+    return () => window.removeEventListener('resize', throttledCheckMobile);
+  }, [checkMobile]);
 
-  return state;
+  // Мемоизируем возвращаемое значение
+  return useMemo(() => state, [state.isMobile, state.mounted]);
 } 

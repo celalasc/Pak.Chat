@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, RefObject } from 'react';
+import { useState, useEffect, useCallback, RefObject, useMemo } from 'react';
 
 /**
  * Options for {@link useScrollHide}.
@@ -25,6 +25,7 @@ export function useScrollHide<T extends HTMLElement = HTMLElement>({
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
 
+  // Мемоизируем функцию обработки скролла с throttling
   const handleScroll = useCallback(() => {
     const currentScrollY = window.scrollY;
     const scrollDifference = Math.abs(currentScrollY - lastScrollY);
@@ -69,14 +70,26 @@ export function useScrollHide<T extends HTMLElement = HTMLElement>({
     setLastScrollY(window.scrollY);
   }, []);
 
-  // Регистрируем и снимаем обработчик прокрутки. Зависим от handleScroll, но этот
-  // эффект больше не изменяет состояние, поэтому не вызывает бесконечные циклы.
+  // Регистрируем и снимаем обработчик прокрутки с throttling
   useEffect(() => {
-    window.addEventListener('scroll', handleScroll, { passive: true });
+    let ticking = false;
+    
+    const throttledHandleScroll = () => {
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          handleScroll();
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener('scroll', throttledHandleScroll, { passive: true });
     return () => {
-      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('scroll', throttledHandleScroll);
     };
   }, [handleScroll]);
 
-  return isVisible;
+  // Мемоизируем возвращаемое значение
+  return useMemo(() => isVisible, [isVisible]);
 } 
