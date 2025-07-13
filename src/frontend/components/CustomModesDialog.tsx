@@ -325,7 +325,10 @@ const ModeCard = memo(({ mode, onEdit, onDelete }: ModeCardProps) => {
     clearLongPress();
   }, [clearLongPress]);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+  // Use pointer events to reliably detect long press on desktop without
+  // triggering on touch devices. PointerEvent provides `pointerType` which
+  // allows us to distinguish between mouse and touch interactions.
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if (e.pointerType === 'touch' || !isMobile) return;
 
     const timer = setTimeout(() => {
@@ -334,11 +337,11 @@ const ModeCard = memo(({ mode, onEdit, onDelete }: ModeCardProps) => {
     setLongPressTimer(timer);
   }, [isMobile]);
 
-  const handleMouseUp = useCallback(() => {
+  const handlePointerUp = useCallback(() => {
     clearLongPress();
   }, [clearLongPress]);
 
-  const handleMouseLeave = useCallback(() => {
+  const handlePointerLeave = useCallback(() => {
     clearLongPress();
   }, [clearLongPress]);
 
@@ -353,9 +356,9 @@ const ModeCard = memo(({ mode, onEdit, onDelete }: ModeCardProps) => {
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onTouchCancel={handleTouchCancel}
-        onMouseDown={handleMouseDown}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseLeave}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerLeave}
       >
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">

@@ -167,9 +167,21 @@ export const ChatModelDropdown = memo<ChatModelDropdownProps>(({ messageCount = 
         key={mode.id}
         role="button"
         tabIndex={0}
-        onClick={() => handleModeSelect(mode.id)}
+        {...(isMobile && mode.id !== 'default' && isCustomModesEnabled
+          ? (() => {
+              const { onClick, ...rest } = longPressHandlers.bind;
+              return {
+                ...rest,
+                onClick: (e: React.MouseEvent) => {
+                  onClick?.(e);
+                  if (!e.defaultPrevented) {
+                    handleModeSelect(mode.id);
+                  }
+                },
+              };
+            })()
+          : { onClick: () => handleModeSelect(mode.id) })}
         onKeyPress={(e) => e.key === 'Enter' && handleModeSelect(mode.id)}
-        {...(isMobile && mode.id !== 'default' && isCustomModesEnabled ? longPressHandlers.bind : {})}
         className={cn(
           "w-full text-left px-3 py-2 text-sm rounded-lg transition-colors group cursor-pointer",
           "hover:bg-accent/50",
