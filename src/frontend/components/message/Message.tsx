@@ -131,19 +131,16 @@ const PureMessage = memo(function PureMessage({
     return null;
   }, [message.id, message.parts.length, message.parts.map(p => p.type === 'text' ? (p as any).text : '').join('')]);
 
-  // Мемоизируем классы сообщения
-  const messageClasses = useMemo(() => cn(
-    'flex flex-col',
-    message.role === 'user' ? 'items-end' : 'items-start'
-  ), [message.role]);
-
   return (
     <>
     <div
       id={`message-${message.id}`}
       role="article"
       data-role={message.role}
-      className={messageClasses}
+      className={cn(
+        'flex flex-col',
+        message.role === 'user' ? 'items-end' : 'items-start'
+      )}
     >
       {/*
        * Препроцессинг частей сообщения.
@@ -210,170 +207,296 @@ const PureMessage = memo(function PureMessage({
                       return;
                     }
 
-                    // Удаляем все сообщения после родительского
-                    setMessages((prev) => prev.slice(0, parentMessageIndex + 1));
+                    const parentMessageToResend = messages[parentMessageIndex];
 
-                    // Включаем режим генерации изображений
+                    // Очищаем БД от сообщений после пользовательского
+                    if (isConvexId(parentMessageToResend.id)) {
+                      try {
+                        await prepareForRegenerate({
+                          threadId: threadId as Id<'threads'>,
+                          userMessageId: parentMessageToResend.id as Id<'messages'>,
+                        });
+                      } catch (error) {
+                        console.error('Error during regeneration cleanup:', error);
+                      }
+                    }
+
+                    // Включаем режим генерации изображений ПЕРЕД обрезкой сообщений
                     setImageGenerationMode(true);
 
-                    // Добавляем сообщение пользователя для регенерации
-                    const userMessage = messages[parentMessageIndex];
-                    await append({
-                      id: userMessage.id,
-                      role: 'user',
-                      content: userMessage.content,
-                      createdAt: userMessage.createdAt,
+                    // Обрезаем локальные сообщения до пользовательского
+                    const messagesUpToParent = messages.slice(0, parentMessageIndex + 1);
+                    setMessages(messagesUpToParent);
+                    forceRegeneration();
+
+                    // Небольшая задержка для обновления UI
+                    await new Promise(resolve => setTimeout(resolve, 50));
+
+                    // Запускаем регенерацию с актуальными настройками
+                    const {
+                      selectedModel: currentModel,
+                      webSearchEnabled: currentSearch,
+                    } = useModelStore.getState();
+
+                    reload({
+                      body: {
+                        model: currentModel,
+                        apiKeys: keys,
+                        threadId,
+                        search: currentSearch,
+                        imageGeneration: {
+                          enabled: true,
+                          params: imageGeneration.params
+                        }
+                      },
                     });
+                  }}
+                  onNewBranch={async () => {
+                    // Клонируем тред как в MessageControls
+                    if (!isConvexId(threadId)) return;
+                    
+                    const title = thread?.title ?? imageGeneration.prompt.slice(0, 30);
+                    const newId = await cloneThread({
+                      threadId: threadId as Id<'threads'>,
+                      title,
+                    });
+                    router.push(`/chat/${newId}`);
                   }}
                 />
               </div>
             );
           }
 
-          // Обычный текстовый контент
-          return (
-            <div key={key} className="w-full px-2 sm:px-0">
-              <div
-                {...bind}
-                className={cn(
-                  'group relative rounded-lg border border-border/50 bg-card p-4 shadow-sm',
-                  message.role === 'user' ? 'ml-auto max-w-[85%]' : 'mr-auto max-w-[85%]',
-                  isPressed && 'scale-95 transition-transform duration-75',
-                  isWelcome && 'border-primary/20 bg-primary/5'
-                )}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 space-y-2 overflow-hidden">
-                    <SelectableText>
-                      <MarkdownRenderer content={(part as any).text} />
-                    </SelectableText>
-                  </div>
+          if (isWelcome && message.role === 'assistant') {
+            return (
+              <div key={key} className="w-full px-2 sm:px-0 space-y-4">
+                <h3 className="text-base font-semibold">Welcome to Pak.Chat</h3>
+                <SelectableText messageId={message.id} disabled>
+                  <MarkdownRenderer content={(part as any).text} streaming={isStreaming} />
+                </SelectableText>
+                <div className="space-y-6 mt-4">
+                  {(['google','openrouter','openai'] as const).map(provider => (
+                    <div key={provider} className="flex flex-col gap-2">
+                      <Label htmlFor={provider} className="flex gap-1 text-sm">
+                        <span>{provider.charAt(0).toUpperCase()+provider.slice(1)} API Key</span>
+                        {provider === 'google' && <span className="text-muted-foreground">(Required)</span>}
+                      </Label>
+                      <Input id={provider}
+                        placeholder={provider === 'google' ? 'AIza...' : provider === 'openrouter' ? 'sk-or-...' : 'sk-...'}
+                        value={localKeys[provider]||''}
+                        onChange={e =>
+                            setLocalKeys((prev: APIKeys) => ({
+                              ...prev,
+                              [provider]: e.target.value,
+                            }))
+                        }
+                      />
+                      <a href={provider === 'google' ? 'https://aistudio.google.com/apikey' : provider === 'openrouter' ? 'https://openrouter.ai/settings/keys' : 'https://platform.openai.com/settings/organization/api-keys'}
+                         target="_blank" rel="noopener noreferrer"
+                         className="text-xs text-blue-500 hover:underline inline w-fit">
+                        Create {provider.charAt(0).toUpperCase()+provider.slice(1)} API Key
+                      </a>
+                    </div>
+                  ))}
                 </div>
-
-                {/* Показываем вложения если есть */}
-                {attachments && attachments.length > 0 && (
-                  <div className="mt-4 space-y-2">
-                    {attachments.map((attachment) => (
-                      <div
-                        key={attachment.id}
-                        className="flex items-center gap-2 rounded border border-border/50 bg-muted/50 p-2"
-                      >
-                        {attachment.type.startsWith('image/') ? (
-                          <div className="relative h-12 w-12 overflow-hidden rounded">
-                            <Image
-                              src={attachment.url}
-                              alt={attachment.name}
-                              fill
-                              className="object-cover"
-                              onClick={() => setLightbox({
-                                url: attachment.url,
-                                name: attachment.name,
-                                type: attachment.type,
-                                size: attachment.size
-                              })}
-                            />
-                          </div>
-                        ) : (
-                          <div className="flex h-12 w-12 items-center justify-center rounded bg-muted">
-                            <span className="text-xs text-muted-foreground">
-                              {attachment.ext?.toUpperCase() || 'FILE'}
-                            </span>
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{attachment.name}</p>
-                          {attachment.size && (
-                            <p className="text-xs text-muted-foreground">
-                              {(attachment.size / 1024 / 1024).toFixed(1)} MB
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Показываем цитируемое сообщение если есть */}
-                {(message as any).quotedMessage && (
-                  <QuotedMessage
-                    message={(message as any).quotedMessage}
-                    onRemove={() => {
-                      setMessages((prev) =>
-                        prev.map((m) =>
-                          m.id === message.id
-                            ? { ...m, quotedMessage: undefined }
-                            : m
-                        )
-                      );
-                    }}
-                  />
-                )}
-
-                {/* Контролы сообщения */}
-                <MessageControls
-                  message={message}
-                  messages={messages}
-                  threadId={threadId}
-                  setMessages={setMessages}
-                  reload={reload}
-                  append={append}
-                  stop={stop}
-                  forceRegeneration={forceRegeneration}
-                  isStreaming={isStreaming}
-                  isWelcome={isWelcome}
-                  canChat={canChat}
-                  onEdit={() => setMode('edit')}
-                  onShowMobileModal={() => setShowMobileModal(true)}
-                />
+                <div className="flex gap-2 mt-2">
+                  <Button size="sm" variant="outline" className="bg-gray-50 text-gray-600 dark:bg-secondary dark:text-secondary-foreground" onClick={saveKeys}>
+                    Save
+                  </Button>
+                  {canChat && (
+                    <Button size="sm" variant="outline" onClick={handleNewChat}>
+                      New Chat
+                    </Button>
+                  )}
+                </div>
               </div>
+            );
+          }
+          return message.role === 'user' ? (
+            <div
+              key={key}
+              className={cn(
+                'relative group px-4 py-3 rounded-xl bg-secondary border border-secondary-foreground/2 max-w-[90%] sm:max-w-[80%] mx-2 sm:mx-0 transition-all duration-200',
+                isMobile && 'cursor-pointer',
+                isPressed && 'scale-95 opacity-70'
+              )}
+              {...bind}
+            >
+              {attachments && attachments.length > 0 && (
+                <div className="flex gap-2 flex-wrap mb-3">
+                  {attachments.map((a, index) =>
+                    a.type.startsWith('image') && a.url ? (
+                      <Image
+                        key={`${a.id}-${index}`}
+                        src={a.url}
+                        className="h-32 w-32 rounded cursor-pointer hover:scale-105 transition object-cover"
+                        onClick={() => {
+                          // Use original URL for high-quality lightbox view
+                          const imageUrl = (a as any).originalUrl || a.url;
+                          setLightbox({
+                            url: imageUrl,
+                            name: a.name,
+                            type: a.type,
+                            size: a.size,
+                          })
+                        }}
+                        alt={a.name}
+                        width={128}
+                        height={128}
+                        loading="eager"
+                        decoding="async"
+                      />
+                    ) : a.url ? (
+                      <a
+                        key={`${a.id}-${index}`}
+                        href={a.url}
+                        target="_blank"
+                        className="h-10 w-28 bg-muted rounded flex flex-col items-center justify-center text-[10px] px-1 hover:bg-accent"
+                      >
+                        <span className="line-clamp-1">{a.name}</span>
+                        <span className="text-muted-foreground">{a.ext}</span>
+                      </a>
+                    ) : null
+                  )}
+                </div>
+              )}
+
+              {mode === 'edit' && (
+                <ErrorBoundary>
+                  <MessageEditor
+                    threadId={threadId}
+                    message={message}
+                    content={(part as any).text}
+                    setMessages={setMessages}
+                    reload={reload}
+                    setMode={setMode}
+                    stop={stop}
+                  />
+                </ErrorBoundary>
+              )}
+              {mode === 'view' && <QuotedMessage content={(part as any).text} />}
+
+              {mode === 'view' && !isMobile && (
+                <MessageControls
+                  threadId={threadId}
+                  messages={messages}
+                  content={(part as any).text}
+                  message={message}
+                  setMode={setMode}
+                  setMessages={setMessages}
+                  append={append}
+                  reload={reload}
+                  stop={stop}
+                  isVisible={mobileControlsVisible}
+                  onToggleVisibility={() => setMobileControlsVisible(!mobileControlsVisible)}
+                  forceRegeneration={forceRegeneration}
+                />
+              )}
+            </div>
+          ) : (
+            <div
+              key={key}
+              className={cn(
+                'group flex flex-col gap-2 w-full px-2 sm:px-0 transition-all duration-200',
+                isMobile && 'cursor-pointer',
+                isPressed && 'scale-95 opacity-70'
+              )}
+              {...bind}
+            >
+              <SelectableText messageId={message.id} disabled={isStreaming}>
+                <MarkdownRenderer content={(part as any).text} streaming={isStreaming} />
+              </SelectableText>
+              {attachments && attachments.length > 0 && (
+                <div className="flex gap-2 flex-wrap mt-2">
+                  {attachments.map((a, index) =>
+                    a.type.startsWith('image') && a.url ? (
+                      <Image
+                        key={`${a.id}-${index}`}
+                        src={a.url}
+                        className="h-24 w-24 rounded cursor-pointer hover:scale-105 transition"
+                        onClick={() => {
+                          // Use original URL for high-quality lightbox view
+                          const imageUrl = (a as any).originalUrl || a.url;
+                          setLightbox({
+                            url: imageUrl,
+                            name: a.name,
+                            type: a.type,
+                            size: a.size,
+                          })
+                        }}
+                        loading="eager"
+                        decoding="async"
+                        alt={a.name}
+                        width={96}
+                        height={96}
+                      />
+                    ) : a.url ? (
+                      <a
+                        key={`${a.id}-${index}`}
+                        href={a.url}
+                        target="_blank"
+                        className="h-10 w-28 bg-muted rounded flex flex-col items-center justify-center text-[10px] px-1 hover:bg-accent"
+                      >
+                        <span className="line-clamp-1">{a.name}</span>
+                        <span className="text-muted-foreground">{a.ext}</span>
+                      </a>
+                    ) : null
+                  )}
+                </div>
+              )}
+              {!isStreaming && !isMobile && (
+                <MessageControls
+                  threadId={threadId}
+                  messages={messages}
+                  content={(part as any).text}
+                  message={message}
+                  setMessages={setMessages}
+                  append={append}
+                  reload={reload}
+                  stop={stop}
+                  isVisible={mobileControlsVisible}
+                  onToggleVisibility={() => setMobileControlsVisible(!mobileControlsVisible)}
+                  forceRegeneration={forceRegeneration}
+                />
+              )}
             </div>
           );
         }
 
-        // Обработка других типов частей сообщения
-        return null;
+        if (type === 'tool-invocation') {
+          const inv = (part as any).toolInvocation;
+          if (!inv) return null;
+          if (inv.state === 'call' || inv.state === 'result') {
+            return null;
+          }
+        }
+
       })}
     </div>
-
-    {/* Модальное окно для мобильных устройств */}
-    {showMobileModal && (
+    {lightbox && lightbox.url && (
+      <ImageModal
+        isOpen={Boolean(lightbox)}
+        onClose={() => setLightbox(null)}
+        imageUrl={lightbox.url}
+        fileName={lightbox.name}
+        fileType={lightbox.type}
+        fileSize={lightbox.size}
+      />
+    )}
+    {isMobile && !isWelcome && (
       <MobileMessageModal
+        isOpen={showMobileModal}
+        onClose={() => setShowMobileModal(false)}
+        threadId={threadId}
         message={message}
         messages={messages}
-        threadId={threadId}
         setMessages={setMessages}
+        content={message.parts.find(p => p.type === 'text')?.text || ''}
+        setMode={message.role === 'user' ? setMode : undefined}
         reload={reload}
-        append={append}
         stop={stop}
+        append={append}
         forceRegeneration={forceRegeneration}
-        isStreaming={isStreaming}
-        isWelcome={isWelcome}
-        canChat={canChat}
-        onClose={() => setShowMobileModal(false)}
-      />
-    )}
-
-    {/* Модальное окно для просмотра изображений */}
-    {lightbox && (
-      <ImageModal
-        image={lightbox}
-        onClose={() => setLightbox(null)}
-      />
-    )}
-
-    {/* Редактор сообщения */}
-    {mode === 'edit' && (
-      <MessageEditor
-        message={message}
-        onSave={(content) => {
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === message.id ? { ...m, content } : m
-            )
-          );
-          setMode('view');
-        }}
-        onCancel={() => setMode('view')}
       />
     )}
     </>
