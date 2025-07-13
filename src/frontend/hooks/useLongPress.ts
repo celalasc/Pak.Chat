@@ -20,24 +20,27 @@ export function useLongPress({
   const start = useCallback((event: React.TouchEvent | React.MouseEvent) => {
     if (!isMobile) return;
     
+    // Сохраняем тип события для использования в таймауте
+    const eventType = event.type;
+    
     // Предотвращаем выделение текста при долгом нажатии только для touch событий
-    if (event.type === 'touchstart') {
+    if (eventType === 'touchstart') {
       event.preventDefault();
     }
     
     // Не устанавливаем isPressed сразу для touch событий
-    if (event.type !== 'touchstart') {
+    if (eventType !== 'touchstart') {
       setIsPressed(true);
     }
     preventClickRef.current = false;
     
     timeoutRef.current = setTimeout(() => {
-      if (event.type === 'touchstart') {
+      if (eventType === 'touchstart') {
         setIsPressed(true);
       }
       onLongPress();
       preventClickRef.current = true;
-      setIsPressed(false);
+      // НЕ сбрасываем isPressed здесь - пусть cancel() это сделает
       
       // Добавляем небольшую вибрацию для обратной связи (если поддерживается)
       if (navigator.vibrate) {
@@ -52,6 +55,7 @@ export function useLongPress({
       timeoutRef.current = null;
     }
     setIsPressed(false);
+    preventClickRef.current = false;
     
     if (onCancel) {
       onCancel();

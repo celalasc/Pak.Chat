@@ -5,23 +5,39 @@
 
 ## Внесенные изменения
 
-### 1. Улучшен хук `useLongPress` (`src/frontend/hooks/useLongPress.ts`)
+### 1. Исправлен хук `useLongPress` (`src/frontend/hooks/useLongPress.ts`)
 
-**Проблема:** Анимация `isPressed` активировалась сразу при `onTouchStart`, что мешало нормальному скроллингу.
+**Проблема 1:** Анимация `isPressed` активировалась сразу при `onTouchStart`, что мешало нормальному скроллингу.
+
+**Проблема 2:** В таймауте `setIsPressed(true)` сразу же сменялся на `setIsPressed(false)`, делая визуальный фидбек невидимым.
+
+**Проблема 3:** `event.type` в таймауте был `null` из-за React's SyntheticEvent pooling.
 
 **Решение:** 
+- Сохраняем тип события в переменную перед таймаутом
+- Убираем `setIsPressed(false)` из таймаута - пусть `cancel()` это сделает
 - Анимация `isPressed` теперь активируется только после задержки (500ms)
 - Для touch событий анимация не устанавливается сразу, а только после таймаута
 
 ```typescript
 // Было:
-setIsPressed(true); // Сразу при touch start
+timeoutRef.current = setTimeout(() => {
+  if (event.type === 'touchstart') { // event.type будет null!
+    setIsPressed(true);
+  }
+  onLongPress();
+  setIsPressed(false); // Сразу сбрасываем!
+}, threshold);
 
 // Стало:
-if (event.type !== 'touchstart') {
-  setIsPressed(true);
-}
-// Для touch событий анимация устанавливается только в таймауте
+const eventType = event.type; // Сохраняем тип события
+timeoutRef.current = setTimeout(() => {
+  if (eventType === 'touchstart') {
+    setIsPressed(true);
+  }
+  onLongPress();
+  // НЕ сбрасываем isPressed здесь - пусть cancel() это сделает
+}, threshold);
 ```
 
 ### 2. Улучшен компонент `CustomModesDialog` (`src/frontend/components/CustomModesDialog.tsx`)
