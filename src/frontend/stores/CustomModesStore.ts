@@ -111,15 +111,18 @@ export const useCustomModesHelpers = () => {
     return isCustomModesEnabled ? modes : [];
   };
 
-  const getSelectedMode = (): CustomMode | DefaultMode => {
+  // Returns the currently selected mode. Custom modes include an `id`
+  // property for easy use across the UI components.
+  const getSelectedMode = (): (CustomMode & { id: string }) | DefaultMode => {
     if (selectedMode === 'default') {
       return DEFAULT_MODE;
     }
+
     const customMode = modes.find((mode) => mode._id === selectedMode);
-    return customMode || DEFAULT_MODE;
+    return customMode ? { ...customMode, id: customMode._id } : DEFAULT_MODE;
   };
 
-  const getAllAvailableModes = (): (CustomMode | DefaultMode)[] => {
+  const getAllAvailableModes = (): (DefaultMode | (CustomMode & { id: string }))[] => {
     if (!isCustomModesEnabled) {
       return [DEFAULT_MODE];
     }

@@ -9,7 +9,7 @@ import { useChatStore } from '@/frontend/stores/ChatStore';
 import { useAttachmentsStore, LocalAttachment } from '@/frontend/stores/AttachmentsStore';
 import { useQuoteStore } from '@/frontend/stores/QuoteStore';
 import { useAuthStore } from '@/frontend/stores/AuthStore';
-import { useCustomModesStore } from '@/frontend/stores/CustomModesStore';
+import { useCustomModesStore, useCustomModesHelpers } from '@/frontend/stores/CustomModesStore';
 import { useMessageSummary } from '@/frontend/hooks/useMessageSummary';
 import { isConvexId } from '@/lib/ids';
 import { getModelConfig } from '@/lib/models';
@@ -52,7 +52,8 @@ export const useChatSubmit = ({
   const { attachments, clear, setUploading } = useAttachmentsStore();
   const { currentQuote } = useQuoteStore();
   const { user } = useAuthStore();
-  const { selectedMode, getSelectedMode } = useCustomModesStore();
+  const { selectedMode } = useCustomModesStore();
+  const { getSelectedMode } = useCustomModesHelpers();
   const { complete } = useMessageSummary();
   
   // Mutations
