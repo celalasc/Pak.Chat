@@ -2,31 +2,34 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useAuthStore } from "@/frontend/stores/AuthStore";
 import { Id, Doc } from "@/convex/_generated/dataModel";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { threadsCache } from "@/frontend/lib/threadsCache";
 
 export function useConvexThreads() {
   const { user } = useAuthStore();
   const [cachedThreads, setCachedThreads] = useState<Doc<"threads">[]>([]);
   const [hasInitialData, setHasInitialData] = useState(false);
+  const [isLoadingFromCache, setIsLoadingFromCache] = useState(false);
   // Firebase User object uses `uid` as the identifier
   const userId = user?.uid || 'anonymous';
   
-  // Получение тредов пользователя
+  // Получение тредов пользователя с оптимизацией для мобильных устройств
   const threads = useQuery(
     api.threads.list,
     user ? {} : "skip"
   );
 
-  // Загружаем кэшированные данные при инициализации
+  // Быстрая загрузка из кэша при инициализации
   useEffect(() => {
     if (!user) return;
     
+    setIsLoadingFromCache(true);
     const cached = threadsCache.get(userId);
     if (cached && !cached.isStale) {
       setCachedThreads(cached.threads);
       setHasInitialData(true);
     }
+    setIsLoadingFromCache(false);
   }, [user, userId]);
 
   // Обновляем кэш когда приходят новые данные
@@ -43,8 +46,8 @@ export function useConvexThreads() {
   const updateThreadTitle = useMutation(api.threads.rename);
   const deleteThread = useMutation(api.threads.remove);
 
-  // Обертки для удобства использования
-  const handleCreateThread = async (title: string) => {
+  // Оптимизированные обертки для удобства использования
+  const handleCreateThread = useCallback(async (title: string) => {
     if (!user) return null;
     const result = await createThread({
       title,
@@ -52,22 +55,22 @@ export function useConvexThreads() {
     // Инвалидируем кэш после создания нового треда
     threadsCache.invalidate(userId);
     return result;
-  };
+  }, [user, createThread, userId]);
 
-  const handleUpdateThreadTitle = async (threadId: Id<"threads">, title: string) => {
+  const handleUpdateThreadTitle = useCallback(async (threadId: Id<"threads">, title: string) => {
     await updateThreadTitle({ threadId, title });
     // Инвалидируем кэш после обновления
     threadsCache.invalidate(userId);
-  };
+  }, [updateThreadTitle, userId]);
 
-  const handleDeleteThread = async (threadId: Id<"threads">) => {
+  const handleDeleteThread = useCallback(async (threadId: Id<"threads">) => {
     await deleteThread({ threadId });
     // Инвалидируем кэш после удаления
     threadsCache.invalidate(userId);
-  };
+  }, [deleteThread, userId]);
 
   // Функция для предзагрузки данных
-  const prefetchThreads = () => {
+  const prefetchThreads = useCallback(() => {
     if (!user) return;
     
     const cached = threadsCache.prefetch(userId);
@@ -75,7 +78,17 @@ export function useConvexThreads() {
       setCachedThreads(cached.threads);
       setHasInitialData(true);
     }
-  };
+  }, [user, userId]);
+
+  // Быстрая проверка наличия кэша
+  const hasValidCache = useCallback(() => {
+    return threadsCache.hasValidCache(userId);
+  }, [userId]);
+
+  // Получение только заголовков для быстрого отображения
+  const getThreadTitles = useCallback(() => {
+    return threadsCache.getThreadTitles(userId);
+  }, [userId]);
 
   // Возвращаем кэшированные данные если они есть, иначе загружаемые
   const finalThreads = hasInitialData ? cachedThreads : (threads || []);
@@ -84,10 +97,13 @@ export function useConvexThreads() {
   return {
     threads: finalThreads,
     isLoading,
+    isLoadingFromCache,
     createThread: handleCreateThread,
     updateThreadTitle: handleUpdateThreadTitle,
     deleteThread: handleDeleteThread,
     prefetchThreads,
     hasCache: hasInitialData,
+    hasValidCache,
+    getThreadTitles,
   };
 }
