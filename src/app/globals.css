@@ -1,3 +1,12 @@
+/* Класс для скрытия скроллбара */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @plugin '@tailwindcss/typography';
@@ -216,8 +225,8 @@
     -webkit-tap-highlight-color: transparent;
     -webkit-text-size-adjust: 100%;
     -ms-text-size-adjust: 100%;
-    /* Ensure base scrolling always works */
-    overflow-y: auto;
+    /* Разрешаем прокрутку */
+    overflow: auto;
     /* PWA полноэкранный режим с безопасными зонами */
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
@@ -448,6 +457,39 @@
     select {
       font-size: 16px !important;
     }
+  }
+  
+  /* Принудительное отключение нативного appearance для всех input элементов */
+  input, textarea, select {
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    appearance: none !important;
+  }
+  
+  /* Специальные стили для предотвращения отображения слайдеров */
+  .no-slider input[type="text"],
+  .no-slider input[type="email"],
+  .no-slider input[type="password"],
+  .no-slider input[type="number"],
+  .no-slider textarea,
+  .no-slider select {
+    -webkit-appearance: textfield !important;
+    -moz-appearance: textfield !important;
+    appearance: textfield !important;
+    background-clip: padding-box !important;
+    border-radius: 0.375rem !important;
+  }
+  
+  /* Убираем все спин-боксы и другие нативные элементы управления */
+  .no-slider input::-webkit-outer-spin-button,
+  .no-slider input::-webkit-inner-spin-button {
+    -webkit-appearance: none !important;
+    margin: 0 !important;
+  }
+  
+  .no-slider input[type="number"] {
+    -moz-appearance: textfield !important;
+  }
     
     /* Улучшенная поддержка мобильной клавиатуры */
     .mobile-keyboard-fix {
@@ -510,10 +552,19 @@
       scroll-behavior: smooth;
     }
     
-    /* Скрытие полос прокрутки ТОЛЬКО на мобильных */
+    /* Тонкие полосы прокрутки на мобильных */
     *::-webkit-scrollbar {
-      width: 0px;
+      width: 4px;
       background: transparent;
+    }
+    
+    *::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 2px;
+    }
+    
+    .dark *::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
     }
     
     /* Адаптивные размеры для touch-интерфейса */
@@ -522,7 +573,6 @@
       min-width: 44px;
     }
   }
-}
 
 .shiki {
   @apply !bg-transparent overflow-x-auto;

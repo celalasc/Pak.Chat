@@ -1,6 +1,10 @@
 import { create, Mutate, StoreApi } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { AIModel, getModelConfig, ModelConfig } from '@/lib/models';
+import { useEffect, useRef } from 'react';
+import { useConvexAuth, useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { useCustomModesStore } from './CustomModesStore';
 
 export type ReasoningEffort = "medium" | "low" | "high";
 
@@ -102,3 +106,70 @@ export const useModelStore = create<ModelStore>()(
 );
 
 withStorageDOMEvents(useModelStore);
+
+// Sync model settings with Convex
+export function useModelSync() {
+  const { isAuthenticated } = useConvexAuth();
+  const convexUser = useQuery(
+    api.users.getCurrent,
+    isAuthenticated ? {} : 'skip'
+  );
+  const settingsDoc = useQuery(
+    api.userSettings.get,
+    convexUser ? {} : 'skip'
+  );
+  const save = useMutation(api.userSettings.saveSettings);
+
+  const { selectedModel, webSearchEnabled, syncSelectedModel, setWebSearchEnabled } = useModelStore();
+  const lastSaved = useRef<{ selectedModel: AIModel; webSearchEnabled: boolean } | null>(null);
+  const isInitialized = useRef(false);
+
+  // Load from server once
+  useEffect(() => {
+    if (settingsDoc && !isInitialized.current) {
+      const serverSelectedModel = (settingsDoc.selectedModel as AIModel) ?? 'Gemini 2.5 Flash';
+      const serverWebSearchEnabled = settingsDoc.webSearchEnabled ?? false;
+      
+      syncSelectedModel(serverSelectedModel);
+      setWebSearchEnabled(serverWebSearchEnabled);
+      
+      lastSaved.current = {
+        selectedModel: serverSelectedModel,
+        webSearchEnabled: serverWebSearchEnabled,
+      };
+      isInitialized.current = true;
+    }
+  }, [settingsDoc, syncSelectedModel, setWebSearchEnabled]);
+
+  // Save to server when settings change
+  useEffect(() => {
+    if (!convexUser || !isInitialized.current || !lastSaved.current) return;
+    
+    const hasChanges = selectedModel !== lastSaved.current.selectedModel ||
+                      webSearchEnabled !== lastSaved.current.webSearchEnabled;
+    
+    if (hasChanges) {
+      lastSaved.current = { selectedModel, webSearchEnabled };
+      
+      // We need all settings to call the save function
+      if (settingsDoc) {
+        // Get current custom modes settings from their store to avoid overwriting
+        const customModesStore = useCustomModesStore.getState();
+        
+        save({
+          uiFont: settingsDoc.uiFont || 'Proxima Vara',
+          codeFont: settingsDoc.codeFont || 'Berkeley Mono',
+          hidePersonal: settingsDoc.hidePersonal || false,
+          showNavBars: settingsDoc.showNavBars ?? true,
+          showChatPreview: settingsDoc.showChatPreview ?? true,
+          isCustomModesEnabled: customModesStore.isCustomModesEnabled,
+          selectedMode: customModesStore.selectedMode,
+          webSearchEnabled: webSearchEnabled,
+          selectedModel: selectedModel,
+        } as any);
+      }
+    }
+  }, [selectedModel, webSearchEnabled, save, convexUser, settingsDoc]);
+
+  return {};
+}

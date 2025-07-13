@@ -13,54 +13,82 @@ export type ScrollToBottomButtonProps = {
 
 export default function ScrollToBottomButton({
   className,
-  threshold = 20, // Уменьшаем порог для большей отзывчивости
+  threshold = 100,
   scrollContainerRef,
   ...props
 }: ScrollToBottomButtonProps) {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    // Контейнер прокрутки, если он не предоставлен — используем window
-    const scrollArea = scrollContainerRef.current ?? window;
-
-    const handleScroll = () => {
-      const scrollTop = scrollArea instanceof HTMLElement ? scrollArea.scrollTop : window.scrollY;
-      const clientHeight = scrollArea instanceof HTMLElement ? scrollArea.clientHeight : document.documentElement.clientHeight;
-      const scrollHeight = scrollArea instanceof HTMLElement ? scrollArea.scrollHeight : document.documentElement.scrollHeight;
-      const distanceFromBottom = scrollHeight - (scrollTop + clientHeight);
-      const shouldBeVisible = distanceFromBottom > threshold && scrollHeight > clientHeight;
+    // Функция проверки позиции скролла
+    const checkScroll = () => {
+      const container = scrollContainerRef.current;
+      if (!container) return;
       
-      setIsVisible(shouldBeVisible);
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+      
+      // Показываем кнопку если прокрутили вверх больше чем на threshold пикселей
+      setIsVisible(distanceFromBottom > threshold);
     };
 
-    // Добавляем обработчик скролла напрямую к элементу из ref
-    scrollArea.addEventListener('scroll', handleScroll, { passive: true });
-    
-    // Начальная проверка
-    handleScroll();
-    
-    // Убираем обработчик при размонтировании
-    return () => {
-      scrollArea.removeEventListener('scroll', handleScroll);
+    // Ждем пока контейнер появится
+    const waitForContainer = () => {
+      const container = scrollContainerRef.current;
+      if (container) {
+        // Контейнер найден, добавляем слушатель
+        container.addEventListener('scroll', checkScroll, { passive: true });
+        checkScroll(); // Проверяем начальное состояние
+        return true;
+      }
+      return false;
     };
-  // Отслеживаем изменение текущего DOM-элемента, чтобы корректно
-  // перевесить обработчик при появлении контейнера
-  }, [scrollContainerRef.current, threshold]);
 
-  const scrollToBottom = () => {
-    const scrollArea = scrollContainerRef.current;
-    if (scrollArea) {
-      scrollArea.scrollTo({
-        top: scrollArea.scrollHeight,
-        behavior: 'smooth',
-      });
-      return;
+    // Пытаемся найти контейнер
+    if (!waitForContainer()) {
+      // Если не нашли сразу, проверяем каждые 100мс
+      const interval = setInterval(() => {
+        if (waitForContainer()) {
+          clearInterval(interval);
+        }
+      }, 100);
+      
+      return () => {
+        clearInterval(interval);
+        const container = scrollContainerRef.current;
+        if (container) {
+          container.removeEventListener('scroll', checkScroll);
+        }
+      };
     }
 
-    window.scrollTo({
-      top: document.documentElement.scrollHeight,
-      behavior: 'smooth',
-    });
+    // Cleanup
+    return () => {
+      const container = scrollContainerRef.current;
+      if (container) {
+        container.removeEventListener('scroll', checkScroll);
+      }
+    };
+  }, [scrollContainerRef, threshold]);
+
+  const handleClick = () => {
+    const container = scrollContainerRef.current;
+    if (container) {
+      // Прокручиваем контейнер вниз
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: 'smooth'
+      });
+    } else {
+      // Если контейнер не найден, пробуем найти по ID
+      const messagesArea = document.getElementById('messages-scroll-area');
+      if (messagesArea) {
+        messagesArea.scrollTo({
+          top: messagesArea.scrollHeight,
+          behavior: 'smooth'
+        });
+      }
+    }
   };
 
   if (!isVisible) {
@@ -72,16 +100,16 @@ export default function ScrollToBottomButton({
       variant="outline"
       size="icon"
       className={cn(
-        'z-50 h-10 w-10 rounded-full transition-all duration-150 ease-out',
-        'backdrop-blur-md border border-foreground/20 shadow-lg',
+        'h-10 w-10 rounded-full transition-all duration-200',
+        'backdrop-blur-md border border-gray-200 dark:border-gray-700',
+        'bg-white/90 hover:bg-white dark:bg-gray-800/90 dark:hover:bg-gray-800',
+        'shadow-lg hover:shadow-xl',
         'flex items-center justify-center',
-        'bg-white/70 hover:bg-white/80 border-gray-200/60',
-        'dark:bg-background/90 dark:hover:bg-background',
-        'translate-y-0 scale-100 opacity-100',
+        'hover:scale-105 active:scale-95',
         className
       )}
-      onClick={scrollToBottom}
-      style={{ touchAction: 'manipulation' }}
+      onClick={handleClick}
+      aria-label="Scroll to bottom"
       {...props}
     >
       <ChevronDown className="h-4 w-4" />

@@ -46,7 +46,7 @@ const EXTRA_TEXT_MIME_TYPES = new Set([
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, model, apiKeys, threadId, userId, search, imageGeneration } = await req.json();
+    const { messages, model, apiKeys, threadId, userId, search, imageGeneration, customMode } = await req.json();
     
     // Debug log for image generation
     if (imageGeneration?.enabled) {
@@ -368,6 +368,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Get custom mode prompt if provided
+    let customModePrompt: string | undefined;
+    if (customMode && customMode.id !== 'default') {
+      customModePrompt = customMode.systemPrompt;
+    }
+
     const result = await streamText({
       model: aiModel,
       messages: coreMessages,
@@ -376,7 +382,7 @@ export async function POST(req: NextRequest) {
       onError: (e: unknown) => {
         console.error('AI SDK streamText Error:', e);
       },
-      system: buildSystemPrompt(userCustomInstructions),
+      system: buildSystemPrompt(userCustomInstructions, customModePrompt),
       abortSignal: req.signal,
         });
 

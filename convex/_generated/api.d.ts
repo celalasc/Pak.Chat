@@ -15,6 +15,7 @@ import type {
 } from "convex/server";
 import type * as apiKeys from "../apiKeys.js";
 import type * as attachments from "../attachments.js";
+import type * as customModes from "../customModes.js";
 import type * as encryption from "../encryption.js";
 import type * as http from "../http.js";
 import type * as messages from "../messages.js";
@@ -35,6 +36,7 @@ import type * as utils from "../utils.js";
 declare const fullApi: ApiFromModules<{
   apiKeys: typeof apiKeys;
   attachments: typeof attachments;
+  customModes: typeof customModes;
   encryption: typeof encryption;
   http: typeof http;
   messages: typeof messages;

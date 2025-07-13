@@ -88,11 +88,11 @@ function Chat({ threadId, thread, initialMessages }: ChatProps) {
 
   return (
     <div className={cn(
-      "relative min-h-screen bg-background overflow-y-auto main-content",
+      "relative min-h-screen bg-background overflow-y-auto no-scrollbar main-content",
       isMobile && "mobile-fullscreen touch-target"
     )}>
       
-      <div className="w-full min-h-screen flex flex-col overflow-y-auto">
+      <div className="w-full min-h-screen flex flex-col overflow-hidden">
         {/* Header for new chat vs existing chat */}
         {isMobile ? (
         // МОБИЛЬНАЯ версия - только меню с тремя точками для существующих чатов

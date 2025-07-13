@@ -205,12 +205,10 @@ function PureChatInput({
   return (
       <div className="w-full flex justify-center pb-safe mobile-keyboard-fix">
         <DragDropArea messageCount={messageCount}>
-          <div className="relative rounded-[16px] sm:rounded-[24px] overflow-hidden bg-white dark:bg-transparent">
-            {messageCount > 0 && (
-              <div className="absolute right-2 -top-12 z-20">
-                <ScrollToBottomButton scrollContainerRef={scrollContainerRef} />
-              </div>
-            )}
+  <div className="relative rounded-[16px] sm:rounded-[24px] overflow-visible bg-white dark:bg-transparent">
+            <div className="absolute right-2 -top-12 z-50 pointer-events-auto">
+              <ScrollToBottomButton scrollContainerRef={scrollContainerRef} />
+            </div>
             <div className="flex flex-col">
             {/* Attachments at the top */}
             {attachments.length > 0 && (

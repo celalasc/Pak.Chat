@@ -1,7 +1,28 @@
 "use client";
 
-import { memo, useCallback, useState } from 'react';
-import { ChevronDown, Globe, X } from 'lucide-react';
+import React, { memo, useCallback, useState } from 'react';
+import { 
+  ChevronDown, 
+  Globe, 
+  X, 
+  Plus, 
+  Settings, 
+  Edit3,
+  User, 
+  Bot, 
+  MessageSquare, 
+  Code, 
+  FileText, 
+  Zap, 
+  Brain, 
+  Target, 
+  Search, 
+  Star, 
+  Sparkles,
+  Palette,
+  Camera,
+  Music
+} from 'lucide-react';
 import { Button } from '@/frontend/components/ui/button';
 import {
   DropdownMenu,
@@ -24,11 +45,37 @@ import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { AIModel, getModelConfig } from '@/lib/models';
 import { ModelSelector } from '@/frontend/features/chat-input/ui/components/ModelDropdown/ModelSelector';
 import { ReasoningEffortSelector } from './ReasoningEffortSelector';
+import { useCustomModesStore, useCustomModesHelpers } from '@/frontend/stores/CustomModesStore';
+import CustomModesManagement from './CustomModesManagement';
+
+// Icon component mapping
+const ICON_COMPONENTS = {
+  'Bot': Bot,
+  'User': User,
+  'MessageSquare': MessageSquare,
+  'Code': Code,
+  'FileText': FileText,
+  'Settings': Settings,
+  'Zap': Zap,
+  'Brain': Brain,
+  'Target': Target,
+  'Search': Search,
+  'Star': Star,
+  'Sparkles': Sparkles,
+  'Palette': Palette,
+  'Camera': Camera,
+  'Music': Music,
+  'Globe': Globe
+};
+
+const renderModeIcon = (iconName: string) => {
+  const IconComponent = ICON_COMPONENTS[iconName as keyof typeof ICON_COMPONENTS] || Star;
+  return React.createElement(IconComponent, { className: "h-4 w-4" });
+};
 
 interface ChatModelDropdownProps {
   messageCount?: number;
 }
-
 export const ChatModelDropdown = memo<ChatModelDropdownProps>(({ messageCount = 0 }) => {
   const { getKey } = useAPIKeyStore();
   const {
@@ -46,8 +93,17 @@ export const ChatModelDropdown = memo<ChatModelDropdownProps>(({ messageCount = 
     getVisibleGeneralModels,
     isProviderEnabled,
   } = useModelVisibilityStore();
+  const {
+    selectedMode,
+    setSelectedMode,
+    isCustomModesEnabled,
+  } = useCustomModesStore();
+  const { getAllAvailableModes } = useCustomModesHelpers();
   const [isOpen, setIsOpen] = useState(false);
   const [isReasoningEffortOpen, setIsReasoningEffortOpen] = useState(false);
+  const [isModeOpen, setIsModeOpen] = useState(false);
+  const [modesView, setModesView] = useState<'list' | 'create' | 'edit'>('list');
+  const [editingMode, setEditingMode] = useState<any>(null);
   const { isMobile } = useIsMobile();
 
   const currentModelConfig = getModelConfigFromStore();
@@ -82,6 +138,113 @@ export const ChatModelDropdown = memo<ChatModelDropdownProps>(({ messageCount = 
     [setReasoningEffort, selectedModel]
   );
 
+  const handleModeSelect = useCallback(
+    (modeId: string) => {
+      setSelectedMode(modeId);
+      setIsModeOpen(false);
+      setModesView('list');
+      setEditingMode(null);
+    },
+    [setSelectedMode]
+  );
+
+  const renderModesContent = () => {
+    const availableModes = getAllAvailableModes();
+    
+    if (modesView === 'list') {
+      return (
+        <div className={cn("p-3", isMobile && "p-4")}>
+          <div className="space-y-1">
+            {availableModes.map((mode) => (
+              <div
+                key={mode.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => handleModeSelect(mode.id)}
+                onKeyPress={(e) => e.key === 'Enter' && handleModeSelect(mode.id)}
+                className={cn(
+                  "w-full text-left px-3 py-2 text-sm rounded-lg transition-colors group cursor-pointer",
+                  "hover:bg-accent/50",
+                  selectedMode === mode.id
+                    ? "bg-accent text-accent-foreground"
+                    : "text-foreground"
+                )}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="text-sm flex-shrink-0">{renderModeIcon(mode.icon)}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium truncate">{mode.name}</div>
+                    {mode.id === 'default' && mode.systemPrompt && (
+                      <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                        {mode.systemPrompt}
+                      </div>
+                    )}
+                  </div>
+                  {mode.id !== 'default' && isCustomModesEnabled && (
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 flex-shrink-0">
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingMode(mode);
+                          setModesView('edit');
+                        }}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            e.stopPropagation();
+                            setEditingMode(mode);
+                            setModesView('edit');
+                          }
+                        }}
+                        className="h-6 w-6 cursor-pointer inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors"
+                      >
+                        <Edit3 className="h-3 w-3" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* Custom Modes Management */}
+          {isCustomModesEnabled && (
+            <div className="pt-4 border-t">
+              <Button 
+                onClick={() => setModesView('create')} 
+                variant="outline" 
+                className="w-full flex items-center gap-2"
+                size="sm"
+              >
+                <Plus className="h-4 w-4" />
+                Add Custom Mode
+              </Button>
+            </div>
+          )}
+        </div>
+      );
+    }
+    
+    // Render the inline management component
+    return (
+      <CustomModesManagement 
+        view={modesView}
+        editingMode={editingMode}
+        onBack={() => {
+          setModesView('list');
+          setEditingMode(null);
+        }}
+        onModeCreated={() => {
+          setModesView('list');
+        }}
+        onModeUpdated={() => {
+          setModesView('list');
+          setEditingMode(null);
+        }}
+      />
+    );
+  };
+
   const renderModelsContent = () => {
     // Show only favorite models (those with checkmark in settings)
     const favoriteModels = getVisibleFavoriteModels();
@@ -114,7 +277,8 @@ export const ChatModelDropdown = memo<ChatModelDropdownProps>(({ messageCount = 
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <> 
+<div className="flex items-center gap-2">
       {isImageGenerationMode ? (
         // Image generation mode - show settings button first, then close button
         <>
@@ -149,7 +313,7 @@ export const ChatModelDropdown = memo<ChatModelDropdownProps>(({ messageCount = 
               aria-label={`Selected model: ${selectedModel}`}
             >
               <div className="flex items-center gap-1">
-                {selectedModel}
+                <span className="max-w-32 truncate">{selectedModel}</span>
                 <ChevronDown className="w-3 h-3 opacity-50" />
               </div>
             </Button>
@@ -179,7 +343,7 @@ export const ChatModelDropdown = memo<ChatModelDropdownProps>(({ messageCount = 
               aria-label={`Selected model: ${selectedModel}`}
             >
               <div className="flex items-center gap-1">
-                {selectedModel}
+                <span className="max-w-32 truncate">{selectedModel}</span>
                 <ChevronDown className="w-3 h-3 opacity-50" />
               </div>
             </Button>
@@ -187,14 +351,14 @@ export const ChatModelDropdown = memo<ChatModelDropdownProps>(({ messageCount = 
           <DropdownMenuContent
             className={cn(
               'w-64',
-              'border border-border/50 bg-popover/95 backdrop-blur-sm shadow-xl rounded-xl overflow-hidden max-h-[50vh]'
+              'border border-border/50 bg-popover/95 backdrop-blur-sm shadow-xl rounded-xl overflow-x-hidden max-h-[50vh]'
             )}
             align="center"
             side="top"
             sideOffset={12}
             avoidCollisions
           >
-            <div className="overflow-y-auto max-h-[45vh] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-muted-foreground/20 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb:hover]:bg-muted-foreground/30">
+            <div className="overflow-y-auto overflow-x-hidden max-h-[45vh] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-muted-foreground/20 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb:hover]:bg-muted-foreground/30">
               {renderModelsContent()}
             </div>
           </DropdownMenuContent>
@@ -228,7 +392,85 @@ export const ChatModelDropdown = memo<ChatModelDropdownProps>(({ messageCount = 
           <Globe className="w-4 h-4" />
         </Button>
       )}
-    </div>
+      
+      {/* Custom Mode Selector */}
+      {!isImageGenerationMode && (
+        isMobile ? (
+          // Mobile version with Drawer
+          <Drawer 
+            open={isModeOpen} 
+            onOpenChange={(open: boolean) => {
+              setIsModeOpen(open);
+            }}
+          >
+            <DrawerTrigger asChild>
+              <Button
+                variant="ghost"
+                className="flex items-center gap-1 h-8 pl-3 pr-2 text-xs rounded-lg text-foreground hover:bg-accent/50 focus-visible:ring-0 focus-visible:ring-offset-0 transition-colors"
+                aria-label={`Selected mode: ${selectedMode}`}
+              >
+                <div className="flex items-center gap-1">
+                  <div className="flex items-center">{renderModeIcon(getAllAvailableModes().find(m => m.id === selectedMode)?.icon || 'Star')}</div>
+                  <span className="max-w-20 truncate">
+                    {getAllAvailableModes().find(m => m.id === selectedMode)?.name || 'Default'}
+                  </span>
+                  <ChevronDown className="w-3 h-3 opacity-50" />
+                </div>
+              </Button>
+            </DrawerTrigger>
+            <DrawerContent className="max-h-[80vh] flex flex-col">
+              <DrawerHeader className="sr-only">
+                <DrawerTitle>Select Mode</DrawerTitle>
+              </DrawerHeader>
+              
+              <div className="flex-1 min-h-0 overflow-y-auto scrollbar-none">
+                {renderModesContent()}
+              </div>
+            </DrawerContent>
+          </Drawer>
+        ) : (
+          // Desktop version with DropdownMenu
+          <DropdownMenu
+            open={isModeOpen}
+            onOpenChange={(open: boolean) => {
+              setIsModeOpen(open);
+            }}
+          >
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="flex items-center gap-1 h-8 pl-3 pr-2 text-xs rounded-lg text-foreground hover:bg-accent/50 focus-visible:ring-0 focus-visible:ring-offset-0 transition-colors"
+                aria-label={`Selected mode: ${selectedMode}`}
+              >
+                <div className="flex items-center gap-1">
+                  <div className="flex items-center">{renderModeIcon(getAllAvailableModes().find(m => m.id === selectedMode)?.icon || 'Star')}</div>
+                  <span className="max-w-20 truncate">
+                    {getAllAvailableModes().find(m => m.id === selectedMode)?.name || 'Default'}
+                  </span>
+                  <ChevronDown className="w-3 h-3 opacity-50" />
+                </div>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              className={cn(
+                'w-64',
+                'border border-border/50 bg-popover/95 backdrop-blur-sm shadow-xl rounded-xl overflow-x-hidden max-h-[50vh]'
+              )}
+              align="center"
+              side="top"
+              sideOffset={12}
+              avoidCollisions
+            >
+              <div className="overflow-y-auto overflow-x-hidden max-h-[45vh] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-muted-foreground/20 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb:hover]:bg-muted-foreground/30">
+                {renderModesContent()}
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )
+      )}
+      </div>
+
+    </>
   );
 });
 

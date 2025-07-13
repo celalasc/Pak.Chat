@@ -9,6 +9,7 @@ import { useChatStore } from '@/frontend/stores/ChatStore';
 import { useAttachmentsStore, LocalAttachment } from '@/frontend/stores/AttachmentsStore';
 import { useQuoteStore } from '@/frontend/stores/QuoteStore';
 import { useAuthStore } from '@/frontend/stores/AuthStore';
+import { useCustomModesStore } from '@/frontend/stores/CustomModesStore';
 import { useMessageSummary } from '@/frontend/hooks/useMessageSummary';
 import { isConvexId } from '@/lib/ids';
 import { getModelConfig } from '@/lib/models';
@@ -51,6 +52,7 @@ export const useChatSubmit = ({
   const { attachments, clear, setUploading } = useAttachmentsStore();
   const { currentQuote } = useQuoteStore();
   const { user } = useAuthStore();
+  const { selectedMode, getSelectedMode } = useCustomModesStore();
   const { complete } = useMessageSummary();
   
   // Mutations
@@ -284,6 +286,13 @@ export const useChatSubmit = ({
         }
       } : undefined;
 
+      // Get current mode information
+      const currentMode = getSelectedMode();
+      const customModeData = currentMode.id !== 'default' ? {
+        id: currentMode.id,
+        systemPrompt: currentMode.systemPrompt
+      } : undefined;
+
       // Send to LLM
       append(
         createUserMessage(dbMsgId, finalMessage, attachmentsForUI),
@@ -296,6 +305,7 @@ export const useChatSubmit = ({
             search: webSearchEnabled,
             attachments: attachmentsForLLM,
             imageGeneration: imageGenerationData,
+            customMode: customModeData,
           },
         }
       );
