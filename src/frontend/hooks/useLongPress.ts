@@ -25,10 +25,16 @@ export function useLongPress({
       event.preventDefault();
     }
     
-    setIsPressed(true);
+    // Не устанавливаем isPressed сразу для touch событий
+    if (event.type !== 'touchstart') {
+      setIsPressed(true);
+    }
     preventClickRef.current = false;
     
     timeoutRef.current = setTimeout(() => {
+      if (event.type === 'touchstart') {
+        setIsPressed(true);
+      }
       onLongPress();
       preventClickRef.current = true;
       setIsPressed(false);
