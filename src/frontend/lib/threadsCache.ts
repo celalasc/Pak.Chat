@@ -4,13 +4,17 @@ export interface ThreadsCacheEntry {
   threads: Doc<"threads">[];
   timestamp: number;
   isStale: boolean;
+  // Добавляем поле для отслеживания версии кэша
+  version: number;
 }
 
 export class ThreadsCache {
   private static instance: ThreadsCache;
   private memoryCache = new Map<string, ThreadsCacheEntry>();
-  private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 минут
+  // Увеличиваем время кэширования для мобильных устройств
+  private readonly CACHE_DURATION = 10 * 60 * 1000; // 10 минут
   private readonly STORAGE_KEY = "pak_chat_threads_cache";
+  private readonly CACHE_VERSION = 2; // Версия кэша для инвалидации при обновлениях
 
   public static getInstance(): ThreadsCache {
     if (!ThreadsCache.instance) {
@@ -31,9 +35,9 @@ export class ThreadsCache {
         const parsedData: Record<string, ThreadsCacheEntry> = JSON.parse(stored);
         const now = Date.now();
         
-        // Проверяем актуальность данных
+        // Проверяем актуальность данных и версию кэша
         Object.entries(parsedData).forEach(([key, entry]) => {
-          if (now - entry.timestamp < this.CACHE_DURATION) {
+          if (now - entry.timestamp < this.CACHE_DURATION && entry.version === this.CACHE_VERSION) {
             this.memoryCache.set(key, entry);
           }
         });
@@ -60,7 +64,7 @@ export class ThreadsCache {
     if (!cached) return null;
 
     const now = Date.now();
-    if (now - cached.timestamp > this.CACHE_DURATION) {
+    if (now - cached.timestamp > this.CACHE_DURATION || cached.version !== this.CACHE_VERSION) {
       cached.isStale = true;
     }
 
@@ -72,7 +76,8 @@ export class ThreadsCache {
     const entry: ThreadsCacheEntry = {
       threads,
       timestamp: now,
-      isStale: false
+      isStale: false,
+      version: this.CACHE_VERSION
     };
 
     this.memoryCache.set(userId, entry);
@@ -114,6 +119,25 @@ export class ThreadsCache {
       return cached;
     }
     return null;
+  }
+
+  // Новый метод для быстрой проверки наличия кэша
+  public hasValidCache(userId: string): boolean {
+    const cached = this.get(userId);
+    return cached !== null && !cached.isStale;
+  }
+
+  // Метод для получения только заголовков тредов для быстрого отображения
+  public getThreadTitles(userId: string): Array<{_id: string, title: string, pinned: boolean, _creationTime: number}> | null {
+    const cached = this.get(userId);
+    if (!cached || cached.isStale) return null;
+    
+    return cached.threads.map(thread => ({
+      _id: thread._id,
+      title: thread.title,
+      pinned: thread.pinned || false,
+      _creationTime: thread._creationTime
+    }));
   }
 }
 
