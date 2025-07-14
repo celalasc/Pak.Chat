@@ -400,11 +400,7 @@ function FastChatHistoryList({
   // Показываем пустое состояние если нет тредов
   if (!threads || threads.length === 0) {
     return (
-      <EmptyState
-        type="no-chats"
-        title="No chat history"
-        hint="Start chatting to build your history"
-      />
+      <EmptyState type="no-history" />
     );
   }
 
