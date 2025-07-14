@@ -357,8 +357,6 @@ function OptimizedChatHistory({
     return (
       <EmptyState
         type="no-chats"
-        title="No chat history"
-        hint="Start chatting to build your history"
       />
     );
   }
