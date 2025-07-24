@@ -33,6 +33,11 @@ export default function RootLayout({
         />
         <link rel="manifest" href="/manifest.webmanifest" />
         
+        {/* Предзагрузка критических ресурсов */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://your-convex-url.convex.cloud" />
+        
         {/* PWA и мобильные мета-теги */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />

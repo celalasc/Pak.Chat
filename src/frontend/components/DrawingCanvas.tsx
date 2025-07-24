@@ -684,6 +684,27 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
     setElements(prev => [...prev, newElement]);
   }, [tool, color, strokeWidth, getCoords, findElementAtPoint, getHandleAtPoint, getTouchDistance, getTouchCenter]);
 
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (tool !== 'move') return;
+    
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const pos = getCoords(e);
+    const element = findElementAtPoint(pos);
+    
+    if (element) {
+      const handle = getHandleAtPoint(pos, element);
+      if (handle) {
+        canvas.style.cursor = handle.cursor;
+      } else {
+        canvas.style.cursor = 'move';
+      }
+    } else {
+      canvas.style.cursor = 'default';
+    }
+  }, [tool, getCoords, findElementAtPoint, getHandleAtPoint]);
+
   const draw = useCallback((e: MouseEvent | TouchEvent) => {
     e.preventDefault();
     
@@ -1051,27 +1072,6 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
     generateImage(lastUsedPrompt);
   }, [generateImage, lastUsedPrompt]);
 
-  // Handle mouse move for cursor changes
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (tool !== 'move') return;
-    
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    
-    const pos = getCoords(e);
-    const element = findElementAtPoint(pos);
-    
-    if (element) {
-      const handle = getHandleAtPoint(pos, element);
-      if (handle) {
-        canvas.style.cursor = handle.cursor;
-      } else {
-        canvas.style.cursor = 'move';
-      }
-    } else {
-      canvas.style.cursor = 'default';
-    }
-  }, [tool, getCoords, findElementAtPoint, getHandleAtPoint]);
 
   // Add mouse move listener for cursor changes
   useEffect(() => {
@@ -1082,7 +1082,7 @@ export default function DrawingCanvas({ isOpen, onClose, onSave }: DrawingCanvas
     return () => {
       canvas.removeEventListener('mousemove', handleMouseMove);
     };
-  }, [handleMouseMove, isOpen]);
+  }, [isOpen, handleMouseMove]);
 
   if (!isOpen) return null;
 

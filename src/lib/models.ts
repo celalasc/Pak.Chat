@@ -16,6 +16,7 @@ export const AI_MODELS = [
   'DeepSeek R1 Distill Llama 70B',
   'Qwen QwQ 32B',
   'Qwen 3 32B',
+  'Moonshot AI Kimi K2',
 ] as const;
 
 export type AIModel = (typeof AI_MODELS)[number];
@@ -106,10 +107,15 @@ export const MODEL_CONFIGS: Record<AIModel, ModelConfig> = {
     company: 'Groq',
     // Use provider default reasoning effort
   },
+  'Moonshot AI Kimi K2': {
+    modelId: 'moonshotai/kimi-k2-instruct',
+    provider: 'groq',
+    company: 'Groq',
+  },
 } as const satisfies Record<AIModel, ModelConfig>;
 
 // Fallback model used when an unknown model is requested
-export const DEFAULT_MODEL: AIModel = 'Gemini 2.5 Flash';
+export const DEFAULT_MODEL: AIModel = 'Moonshot AI Kimi K2';
 
 export const getModelConfig = (modelName: string): ModelConfig => {
   const config = MODEL_CONFIGS[modelName as AIModel] ?? MODEL_CONFIGS[DEFAULT_MODEL];

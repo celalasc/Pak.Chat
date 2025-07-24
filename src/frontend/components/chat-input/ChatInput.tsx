@@ -8,10 +8,17 @@ import { Id, Doc } from '@/convex/_generated/dataModel';
 import useAutoResizeTextarea from '@/hooks/useAutoResizeTextArea';
 import { useDebouncedCallback } from 'use-debounce';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
-import { useChatStore } from '@/frontend/stores/ChatStore';
 import { useQuoteStore } from '@/frontend/stores/QuoteStore';
 import { useAttachmentsStore } from '@/frontend/stores/AttachmentsStore';
 import { useAuthStore } from '@/frontend/stores/AuthStore';
+import { 
+  useImageGenerationMode,
+  useImageGenerationParams,
+  useSetImageGenerationMode,
+  useInitializeImageGenerationParams,
+  useHasRequiredKeys,
+  useCurrentUser
+} from '@/frontend/hooks/useOptimizedSelectors';
 import { isConvexId } from '@/lib/ids';
 import { cn } from '@/lib/utils';
 
@@ -24,7 +31,6 @@ import { SendButton, StopButton } from './components/ActionButtons';
 import { useChatSubmit } from './hooks/useChatSubmit';
 import AttachmentsBar from '../AttachmentsBar';
 import QuoteDisplay from '../message/QuoteDisplay';
-import ScrollToBottomButton from '../ScrollToBottomButton';
 
 interface ChatInputProps {
   threadId: string;
@@ -38,8 +44,8 @@ interface ChatInputProps {
   append: UseChatHelpers['append'];
   stop: UseChatHelpers['stop'];
   messageCount: number;
-  scrollContainerRef: RefObject<HTMLElement | null>;
   onThreadCreated?: (id: Id<'threads'>) => void;
+  projectId?: Id<'projects'>;
 }
 
 function PureChatInput({
@@ -54,12 +60,15 @@ function PureChatInput({
   append,
   stop,
   messageCount,
-  scrollContainerRef,
   onThreadCreated,
+  projectId,
 }: ChatInputProps) {
-  const { isImageGenerationMode, imageGenerationParams, setImageGenerationMode, initializeImageGenerationParams } = useChatStore();
-  const { hasRequiredKeys } = useAPIKeyStore();
-  const { user } = useAuthStore();
+  const isImageGenerationMode = useImageGenerationMode();
+  const imageGenerationParams = useImageGenerationParams();
+  const setImageGenerationMode = useSetImageGenerationMode();
+  const initializeImageGenerationParams = useInitializeImageGenerationParams();
+  const hasRequiredKeys = useHasRequiredKeys();
+  const user = useCurrentUser();
   const { currentQuote, clearQuote } = useQuoteStore();
   const { attachments } = useAttachmentsStore();
   
@@ -139,6 +148,7 @@ function PureChatInput({
     clearQuote,
     adjustHeight,
     onThreadCreated,
+    projectId,
   });
 
   // Combine refs
@@ -206,9 +216,6 @@ function PureChatInput({
       <div className="w-full flex justify-center pb-safe mobile-keyboard-fix">
         <DragDropArea messageCount={messageCount}>
   <div className="relative rounded-[16px] sm:rounded-[24px] overflow-visible bg-white dark:bg-transparent">
-            <div className="absolute right-2 -top-12 z-50 pointer-events-auto">
-              <ScrollToBottomButton scrollContainerRef={scrollContainerRef} />
-            </div>
             <div className="flex flex-col">
             {/* Attachments at the top */}
             {attachments.length > 0 && (
@@ -273,8 +280,7 @@ const ChatInput = memo(PureChatInput, (prevProps, nextProps) => {
   return (
     prevProps.input === nextProps.input &&
     prevProps.status === nextProps.status &&
-    prevProps.messageCount === nextProps.messageCount &&
-    prevProps.scrollContainerRef === nextProps.scrollContainerRef
+    prevProps.messageCount === nextProps.messageCount
   );
 });
 ChatInput.displayName = 'ChatInput';

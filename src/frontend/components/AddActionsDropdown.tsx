@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from 'react';
-import { Plus, FileIcon, Clock, Brush, Sparkles } from 'lucide-react';
+import { Plus, FileIcon, Clock, Brush, Sparkles, FolderOpen, ChevronRight } from 'lucide-react';
 import { Button } from './ui/button';
 import {
   DropdownMenu,
@@ -13,6 +13,7 @@ import { useAttachmentsStore } from '../stores/AttachmentsStore';
 import { useChatStore } from '../stores/ChatStore';
 import DrawingCanvas from './DrawingCanvas';
 import RecentFilesDropdown from './RecentFilesDropdown';
+import ProjectsDropdown from './ProjectsDropdown';
 import MobileAddActionsDrawer from './mobile/MobileAddActionsDrawer';
 import { toast } from 'sonner';
 import { convertToSupportedImage } from '../lib/fileHelpers';
@@ -83,6 +84,7 @@ export default function AddActionsDropdown({ className, messageCount = 0 }: AddA
     setIsDrawingOpen(true);
   }, []);
 
+
   const triggerButton = (
     <Button
       variant="ghost"
@@ -133,6 +135,21 @@ export default function AddActionsDropdown({ className, messageCount = 0 }: AddA
                   </div>
                 </DropdownMenuItem>
               </RecentFilesDropdown>
+            </div>
+            
+            <div className="relative">
+              <ProjectsDropdown>
+                <DropdownMenuItem
+                  onSelect={e => e.preventDefault()}
+                  className="flex items-center gap-2 justify-between cursor-pointer group"
+                >
+                  <div className="flex items-center gap-2">
+                    <FolderOpen className="w-4 h-4" />
+                    Projects
+                  </div>
+                  <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </DropdownMenuItem>
+              </ProjectsDropdown>
             </div>
             
             <DropdownMenuItem onClick={handleDrawingOpen} className="flex items-center gap-2">

@@ -137,7 +137,7 @@ export default function StreamingCodeBlock({ lang, codeString, isStreaming }: St
     }
   }, [codeString, isStreaming, triggerHighlighting]);
 
-  // Определяем когда код "стабилизировался" (не изменялся 500мс)
+  // Определяем когда код "стабилизировался" (не изменялся 1000мс)
   useEffect(() => {
     if (isStreaming && codeString.trim()) {
       // Сбрасываем таймер при каждом изменении
@@ -145,10 +145,10 @@ export default function StreamingCodeBlock({ lang, codeString, isStreaming }: St
         clearTimeout(stabilityTimerRef.current);
       }
       
-      // Устанавливаем новый таймер
+      // Устанавливаем новый таймер с увеличенной задержкой
       stabilityTimerRef.current = setTimeout(() => {
         setIsStable(true);
-      }, 500); // 500мс без изменений = блок завершен
+      }, 1000); // 1000мс без изменений = блок завершен
     }
 
     return () => {

@@ -29,8 +29,15 @@ import { api } from '@/convex/_generated/api';
 import { isConvexId } from '@/lib/ids';
 import type { Id } from '@/convex/_generated/dataModel';
 import MobileMessageModal from './MobileMessageModal';
+// Оптимизированные селекторы
+import {
+  useHasRequiredKeys,
+  useSelectedModel,
+  useWebSearchEnabled,
+  useSetImageGenerationMode
+} from '@/frontend/hooks/useOptimizedSelectors';
 
-// Мемоизированный компонент Message
+// Мемоизированный компонент Message с оптимизированным сравнением
 const PureMessage = memo(function PureMessage({
   threadId,
   message,
@@ -51,6 +58,7 @@ const PureMessage = memo(function PureMessage({
   isStreaming: boolean;
   stop: UseChatHelpers['stop'];
   forceRegeneration: () => void;
+  isWelcome?: boolean;
 }) {
   const [mode, setMode] = useState<'view' | 'edit'>('view');
   const [mobileControlsVisible, setMobileControlsVisible] = useState(false);
@@ -69,8 +77,9 @@ const PureMessage = memo(function PureMessage({
   const { keys, setKeys } = useAPIKeyStore();
   const [localKeys, setLocalKeys] = useState<APIKeys>(keys);
   const { isMobile } = useIsMobile();
-  const { setImageGenerationMode } = useChatStore();
-  const { selectedModel, webSearchEnabled } = useModelStore();
+  const setImageGenerationMode = useSetImageGenerationMode();
+  const selectedModel = useSelectedModel();
+  const webSearchEnabled = useWebSearchEnabled();
   const { settings } = useSettingsStore();
   const cloneThread = useMutation(api.threads.clone);
   const prepareForRegenerate = useMutation(api.messages.prepareForRegeneration);
@@ -87,8 +96,7 @@ const PureMessage = memo(function PureMessage({
   }, [setKeys, localKeys]);
   
   const router = useRouter();
-  const { hasRequiredKeys } = useAPIKeyStore();
-  const canChat = hasRequiredKeys();
+  const canChat = useHasRequiredKeys();
 
   const handleNewChat = useCallback(() => {
     router.push(`/chat`);
@@ -105,6 +113,9 @@ const PureMessage = memo(function PureMessage({
 
   // Извлекаем reasoning из первой текстовой части с мемоизацией
   const reasoningData = useMemo(() => {
+    // Пропускаем извлечение для стриминга чтобы избежать частых перерендеров
+    if (isStreaming) return null;
+    
     const extractReasoning = (text: string) => {
       const openTag = text.indexOf('<think>');
       const closeTag = text.indexOf('</think>');
@@ -129,7 +140,7 @@ const PureMessage = memo(function PureMessage({
       }
     }
     return null;
-  }, [message.id, message.parts.length, message.parts.map(p => p.type === 'text' ? (p as any).text : '').join('')]);
+  }, [message.id, isStreaming, message.parts]);
 
   return (
     <>
@@ -272,7 +283,7 @@ const PureMessage = memo(function PureMessage({
               <div key={key} className="w-full px-2 sm:px-0 space-y-4">
                 <h3 className="text-base font-semibold">Welcome to Pak.Chat</h3>
                 <SelectableText messageId={message.id} disabled>
-                  <MarkdownRenderer content={(part as any).text} streaming={isStreaming} />
+                  <MarkdownRenderer content={part.type === 'text' ? (part as any).text : ''} streaming={isStreaming} />
                 </SelectableText>
                 <div className="space-y-6 mt-4">
                   {(['google','openrouter','openai'] as const).map(provider => (
@@ -366,7 +377,7 @@ const PureMessage = memo(function PureMessage({
                   <MessageEditor
                     threadId={threadId}
                     message={message}
-                    content={(part as any).text}
+                    content={part.type === 'text' ? (part as any).text : ''}
                     setMessages={setMessages}
                     reload={reload}
                     setMode={setMode}
@@ -374,13 +385,13 @@ const PureMessage = memo(function PureMessage({
                   />
                 </ErrorBoundary>
               )}
-              {mode === 'view' && <QuotedMessage content={(part as any).text} />}
+              {mode === 'view' && <QuotedMessage content={part.type === 'text' ? (part as any).text : ''} />}
 
               {mode === 'view' && !isMobile && (
                 <MessageControls
                   threadId={threadId}
                   messages={messages}
-                  content={(part as any).text}
+                  content={part.type === 'text' ? (part as any).text : ''}
                   message={message}
                   setMode={setMode}
                   setMessages={setMessages}
@@ -448,7 +459,7 @@ const PureMessage = memo(function PureMessage({
                 <MessageControls
                   threadId={threadId}
                   messages={messages}
-                  content={(part as any).text}
+                  content={part.type === 'text' ? (part as any).text : ''}
                   message={message}
                   setMessages={setMessages}
                   append={append}
@@ -500,6 +511,27 @@ const PureMessage = memo(function PureMessage({
       />
     )}
     </>
+  );
+}, (prevProps, nextProps) => {
+  // Кастомное сравнение для оптимизации мемоизации
+  return (
+    prevProps.threadId === nextProps.threadId &&
+    prevProps.message.id === nextProps.message.id &&
+    prevProps.message.role === nextProps.message.role &&
+    prevProps.message.parts.length === nextProps.message.parts.length &&
+    prevProps.message.parts.every((part, index) => {
+      const nextPart = nextProps.message.parts[index];
+      return part.type === nextPart.type && 
+             (part.type === 'text' ? (part as any).text === (nextPart as any).text : true);
+    }) &&
+    prevProps.isStreaming === nextProps.isStreaming &&
+    (prevProps.isWelcome || false) === (nextProps.isWelcome || false) &&
+    prevProps.messages.length === nextProps.messages.length &&
+    prevProps.setMessages === nextProps.setMessages &&
+    prevProps.append === nextProps.append &&
+    prevProps.reload === nextProps.reload &&
+    prevProps.stop === nextProps.stop &&
+    prevProps.forceRegeneration === nextProps.forceRegeneration
   );
 });
 

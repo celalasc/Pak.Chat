@@ -1,7 +1,7 @@
 // convex/threads.ts
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { Id } from "./_generated/dataModel";
+import { Id, Doc } from "./_generated/dataModel";
 import { currentUserId } from "./utils";
 import { encrypt, tryDecrypt } from "./encryption";
 
@@ -44,6 +44,101 @@ export const list = query({
       .withIndex("by_user_and_time", (q) => q.eq("userId", uid))
       .order("desc")
       .collect();
+  },
+});
+
+/** List threads with project information for the authenticated user */
+export const listWithProjects = query({
+  args: { searchQuery: v.optional(v.string()) },
+  async handler(ctx, args) {
+    const uid = await currentUserId(ctx);
+    if (uid === null) {
+      return [];
+    }
+
+    // Get all threads for the user
+    let threads: Doc<"threads">[];
+    if (args.searchQuery) {
+      threads = await ctx.db
+        .query("threads")
+        .withSearchIndex("by_title", (q) => q.search("title", args.searchQuery!))
+        .take(20)
+        .then((res) => res.filter((t) => t.userId === uid));
+    } else {
+      threads = await ctx.db
+        .query("threads")
+        .withIndex("by_user_and_time", (q) => q.eq("userId", uid))
+        .order("desc")
+        .collect();
+    }
+
+    // Get all project associations for these threads
+    const threadIds = threads.map(t => t._id);
+    
+    // Handle empty threads case
+    let projectThreads: Doc<"projectThreads">[] = [];
+    if (threadIds.length > 0) {
+      projectThreads = await ctx.db
+        .query("projectThreads")
+        .filter((q) => q.and(
+          q.eq(q.field("userId"), uid),
+          q.or(...threadIds.map(id => q.eq(q.field("threadId"), id)))
+        ))
+        .collect();
+    }
+
+    // Create a map of threadId to projectId
+    const threadToProject = new Map<Id<"threads">, Id<"projects">>();
+    projectThreads.forEach(pt => {
+      threadToProject.set(pt.threadId, pt.projectId);
+    });
+
+    // Return threads with projectId attached
+    return threads.map(thread => ({
+      ...thread,
+      projectId: threadToProject.get(thread._id) || undefined
+    }));
+  },
+});
+
+/** List threads for a specific project */
+export const listByProject = query({
+  args: { 
+    projectId: v.id("projects"),
+    searchQuery: v.optional(v.string()) 
+  },
+  async handler(ctx, args) {
+    const uid = await currentUserId(ctx);
+    if (uid === null) {
+      return [];
+    }
+
+    // Get all thread IDs associated with this project
+    const projectThreads = await ctx.db
+      .query("projectThreads")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+
+    const threadIds = projectThreads.map(pt => pt.threadId);
+    
+    // Get the actual threads
+    const threads = await Promise.all(
+      threadIds.map(id => ctx.db.get(id))
+    );
+
+    // Filter out nulls and ensure they belong to the current user
+    let userThreads = threads.filter(t => t !== null && t.userId === uid) as Doc<"threads">[];
+
+    // Apply search filter if provided
+    if (args.searchQuery) {
+      const query = args.searchQuery.toLowerCase();
+      userThreads = userThreads.filter(t => 
+        t.title.toLowerCase().includes(query)
+      );
+    }
+
+    // Sort by creation time
+    return userThreads.sort((a, b) => b._creationTime - a._creationTime);
   },
 });
 
@@ -101,6 +196,41 @@ export const create = mutation({
       pinned: false,
       system: args.system ?? false,
     });
+  },
+});
+
+/** Create a new thread with project support */
+export const createWithProject = mutation({
+  args: { 
+    title: v.string(), 
+    system: v.optional(v.boolean()),
+    projectId: v.optional(v.id("projects"))
+  },
+  async handler(ctx, args) {
+    const uid = await currentUserId(ctx);
+    if (!uid) {
+      throw new Error("Unauthenticated");
+    }
+    
+    // Create the thread first
+    const threadId = await ctx.db.insert("threads", {
+      userId: uid,
+      title: args.title,
+      createdAt: Date.now(),
+      pinned: false,
+      system: args.system ?? false,
+    });
+    
+    // Create project-thread association if projectId is provided
+    if (args.projectId) {
+      await ctx.db.insert("projectThreads", {
+        userId: uid,
+        projectId: args.projectId,
+        threadId: threadId,
+      });
+    }
+    
+    return threadId;
   },
 });
 

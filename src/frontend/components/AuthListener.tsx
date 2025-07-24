@@ -1,6 +1,6 @@
 'use client';
 import { useAuthStore } from '@/frontend/stores/AuthStore';
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useState, useCallback } from 'react';
 import { getRedirectResult } from 'firebase/auth';
 import { auth } from '@/firebase';
 
@@ -9,42 +9,72 @@ export default function AuthListener({ children }: { children: ReactNode }) {
   const loading = useAuthStore((s) => s.loading);
   const [isInitialized, setIsInitialized] = useState(false);
 
+  // Мемоизированная функция для скрытия глобального лоадера
+  const hideGlobalLoader = useCallback(() => {
+    if (typeof window !== 'undefined' && (window as any).__hideGlobalLoader) {
+      (window as any).__hideGlobalLoader();
+    }
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
+    let timeoutId: NodeJS.Timeout;
     
     // Инициализируем слушатель auth state один раз
     const unsub = init();
     
-    // Проверяем результат редиректа параллельно
-    getRedirectResult(auth)
-      .then((result) => {
-        // Результат обрабатывается в onAuthStateChanged
-      })
-      .catch((error) => {
-        if (error?.code !== 'auth/popup-blocked-by-browser' && error?.code !== 'auth/cancelled-popup-request') {
+    // Асинхронная инициализация без блокировки UI
+    const initializeAuth = async () => {
+      try {
+        // Используем Promise.race для таймаута на случай медленного соединения
+        const redirectPromise = getRedirectResult(auth);
+        const timeoutPromise = new Promise((_, reject) => {
+          timeoutId = setTimeout(() => reject(new Error('Redirect result timeout')), 5000);
+        });
+        
+        await Promise.race([redirectPromise, timeoutPromise]);
+        clearTimeout(timeoutId);
+      } catch (error) {
+        if (error?.code !== 'auth/popup-blocked-by-browser' && 
+            error?.code !== 'auth/cancelled-popup-request' &&
+            error?.message !== 'Redirect result timeout') {
           console.error('Error handling redirect result:', error);
         }
-      })
-      .finally(() => {
-        if (isMounted) {
-          // Даем время на обработку auth state
-          setTimeout(() => {
+      }
+      
+      if (isMounted) {
+        // Используем scheduler для неблокирующего обновления
+        if ('scheduler' in window && (window as any).scheduler?.postTask) {
+          (window as any).scheduler.postTask(() => {
             if (isMounted) {
               setIsInitialized(true);
-              // Скрываем глобальный лоадер
-              if (typeof window !== 'undefined' && (window as any).__hideGlobalLoader) {
-                (window as any).__hideGlobalLoader();
-              }
+              hideGlobalLoader();
             }
-          }, 100);
+          }, { priority: 'user-blocking' });
+        } else {
+          // Fallback к requestAnimationFrame
+          requestAnimationFrame(() => {
+            if (isMounted) {
+              setIsInitialized(true);
+              hideGlobalLoader();
+            }
+          });
         }
-      });
+      }
+    };
+    
+    // Запускаем асинхронную инициализацию с минимальной задержкой
+    const initTimeout = setTimeout(() => {
+      initializeAuth();
+    }, 0);
 
     return () => {
       isMounted = false;
+      clearTimeout(initTimeout);
+      clearTimeout(timeoutId);
       unsub();
     };
-  }, [init]);
+  }, [init, hideGlobalLoader]);
 
   // Показываем детей только после полной инициализации
   if (!isInitialized) return null;

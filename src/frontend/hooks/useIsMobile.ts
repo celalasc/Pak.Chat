@@ -1,15 +1,14 @@
 import { useState, useLayoutEffect, useEffect, useMemo, useCallback } from 'react';
 
 export function useIsMobile(breakpoint: number = 768) {
-  // Инициализируем состояние один раз с правильным значением для SSR
+  // Инициализируем состояние с правильным значением для предотвращения гидратационных ошибок
   const [state, setState] = useState(() => {
     // На сервере всегда возвращаем немобильное состояние
     if (typeof window === 'undefined') {
       return { isMobile: false, mounted: false };
     }
     
-    // Простое определение мобильного устройства по ширине экрана
-    // Это позволяет корректно работать при изменении размера окна браузера
+    // На клиенте сразу определяем правильное значение
     const isMobileDevice = window.innerWidth < breakpoint;
     
     return {
@@ -34,13 +33,12 @@ export function useIsMobile(breakpoint: number = 768) {
     // Если уже mounted, ничего не делаем
     if (state.mounted) return;
     
-    // Устанавливаем mounted только один раз
-    const isMobileDevice = window.innerWidth < breakpoint;
-    setState({
-      isMobile: isMobileDevice,
+    // Устанавливаем mounted только один раз для случаев когда состояние инициализировалось как unmounted
+    setState(prev => ({
+      ...prev,
       mounted: true
-    });
-  }, [breakpoint, state.mounted]);
+    }));
+  }, [state.mounted]);
 
   useLayoutEffect(() => {
     // Используем throttled обработчик для уменьшения частоты вызовов

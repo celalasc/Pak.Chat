@@ -4,7 +4,7 @@ import { ChatHistoryButton } from './chat-history';
 import NewChatButton from './NewChatButton';
 import SettingsDrawer from './SettingsDrawer';
 import MobileChatMenu from './mobile/MobileChatMenu';
-import ChatView from './ChatView';
+import { LazyChatView } from './lazy';
 import { useRouter } from 'next/navigation';
 import { Button } from './ui/button';
 import { WithTooltip } from './WithTooltip';
@@ -17,16 +17,20 @@ import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useSettingsStore } from '@/frontend/stores/SettingsStore';
 import { useModelStore } from '@/frontend/stores/ModelStore';
 import type { UIMessage } from 'ai';
-import { Doc } from '@/convex/_generated/dataModel';
+import { Doc, Id } from '@/convex/_generated/dataModel';
 
 interface ChatProps {
   threadId: string;
   thread: Doc<'threads'> | null | undefined;
   initialMessages: UIMessage[];
+  projectId?: Id<"projects">;
+  project?: Doc<"projects">;
+  customLayout?: boolean; // Для специальных layout'ов
+  onThreadCreated?: (threadId: Id<'threads'>) => void;
 }
 
 // Мемоизированный компонент Chat
-const Chat = React.memo(function Chat({ threadId, thread, initialMessages }: ChatProps) {
+const Chat = React.memo(function Chat({ threadId, thread, initialMessages, projectId, project, customLayout, onThreadCreated }: ChatProps) {
   const { isMobile } = useIsMobile();
   const { selectedModel } = useModelStore();
   const router = useRouter();
@@ -49,16 +53,30 @@ const Chat = React.memo(function Chat({ threadId, thread, initialMessages }: Cha
   // Обработчик создания нового треда
   const handleThreadCreated = useCallback((newThreadId: string) => {
     setCurrentThreadId(newThreadId);
-  }, []);
+    if (onThreadCreated) {
+      onThreadCreated(newThreadId as Id<'threads'>);
+    }
+  }, [onThreadCreated]);
 
   // Мемоизированные обработчики для предотвращения лишних ререндеров
   const handleGoHome = useCallback(() => {
-    router.push('/home');
-  }, [router]);
+    if (projectId) {
+      // If in project context, go to project page
+      router.push(`/project/${projectId}`);
+    } else {
+      // Перенаправляем на соответствующую главную страницу в зависимости от устройства
+      const targetPath = isMobile ? '/home' : '/chat';
+      router.push(targetPath);
+    }
+  }, [router, isMobile, projectId]);
 
   const handleGoNewChat = useCallback(() => {
-    router.push('/chat');
-  }, [router]);
+    if (projectId) {
+      router.push(`/project/${projectId}/chat`);
+    } else {
+      router.push('/chat');
+    }
+  }, [router, projectId]);
 
   const handleOpenSettings = useCallback(() => {
     handleSettingsOpenChange(true);
@@ -105,17 +123,25 @@ const Chat = React.memo(function Chat({ threadId, thread, initialMessages }: Cha
   ), [isMobile]);
 
   // Мемоизируем классы для позиционирования ChatInput
-  const chatInputClasses = useMemo(() => cn(
-    'fixed left-1/2 -translate-x-1/2 w-full max-w-3xl px-4 transition-all duration-300 z-30',
-    isMobile ? 'bottom-0' : (initialMessages.length > 0 ? 'bottom-0' : 'top-1/2 -translate-y-1/2'),
-  ), [isMobile, initialMessages.length]);
+  const chatInputClasses = useMemo(() => {
+    if (customLayout) {
+      // Для специальных layout'ов не используем fixed позиционирование
+      return cn(
+        'relative w-full max-w-none transition-all duration-300 z-30'
+      );
+    }
+    return cn(
+      'fixed left-1/2 -translate-x-1/2 w-full max-w-3xl px-4 transition-all duration-300 z-30',
+      isMobile ? 'bottom-0' : (initialMessages.length > 0 ? 'bottom-0' : 'top-1/2 -translate-y-1/2'),
+    );
+  }, [isMobile, initialMessages.length, customLayout]);
 
   return (
     <div className={mainContainerClasses}>
       
-      <div className="w-full min-h-screen flex flex-col overflow-hidden">
+      <div className="w-full min-h-screen flex flex-col">
         {/* Header for new chat vs existing chat */}
-        {isMobile ? (
+        {!customLayout && isMobile ? (
         // МОБИЛЬНАЯ версия - только меню с тремя точками для существующих чатов
         <>
           {currentThreadId ? (
@@ -155,7 +181,7 @@ const Chat = React.memo(function Chat({ threadId, thread, initialMessages }: Cha
             </div>
           )}
         </>
-      ) : (
+      ) : !customLayout ? (
         // ПК версия - всегда показываем заголовок и кнопки (как раньше)
         <>
           {/* Top-right control panel */}
@@ -164,7 +190,7 @@ const Chat = React.memo(function Chat({ threadId, thread, initialMessages }: Cha
             className="fixed right-4 top-4 z-50 flex gap-2 p-1 bg-background/60 backdrop-blur-md rounded-lg border border-border/20"
           >
             <NewChatButton className="backdrop-blur-sm" />
-            <ChatHistoryButton className="backdrop-blur-sm" />
+            <ChatHistoryButton className="backdrop-blur-sm" projectId={projectId} projectName={project?.name} />
               <SettingsDrawer isOpen={isSettingsOpen} setIsOpen={handleSettingsOpenChange}>
               <WithTooltip label="Settings" side="bottom">
                 <Button
@@ -180,26 +206,47 @@ const Chat = React.memo(function Chat({ threadId, thread, initialMessages }: Cha
             </SettingsDrawer>
           </div>
 
-          {/* Top-left logo */}
+          {/* Top-left logo/breadcrumb */}
           <div className="fixed left-4 top-4 z-50">
-            <span
-              className="text-xl font-bold text-foreground hover:text-primary transition-colors cursor-pointer"
-              onClick={handleGoNewChat}
-            >
-              Pak.Chat
-            </span>
+            {projectId && project ? (
+              <nav className="flex items-center gap-1 text-xl font-bold">
+                <span
+                  className="text-foreground hover:text-primary transition-colors cursor-pointer hover:underline"
+                  onClick={handleGoNewChat}
+                >
+                  Pak.Chat
+                </span>
+                <span className="text-muted-foreground">/</span>
+                <span 
+                  className="text-foreground hover:text-primary transition-colors cursor-pointer hover:underline"
+                  onClick={handleGoHome}
+                >
+                  {project.name}
+                </span>
+              </nav>
+            ) : (
+              <span
+                className="text-xl font-bold text-foreground hover:text-primary transition-colors cursor-pointer"
+                onClick={handleGoNewChat}
+              >
+                Pak.Chat
+              </span>
+            )}
           </div>
         </>
-      )}
+      ) : null}
 
         {/* Core chat UI */}
-        <ChatView
+        <LazyChatView
           key={threadId}
           threadId={threadId}
           thread={thread}
           initialMessages={initialMessages}
           showNavBars={settings.showNavBars}
           onThreadCreated={handleThreadCreated}
+          projectId={projectId}
+          project={project}
+          customLayout={customLayout}
         />
       </div>
     </div>

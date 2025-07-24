@@ -46,7 +46,7 @@ const EXTRA_TEXT_MIME_TYPES = new Set([
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, model, apiKeys, threadId, userId, search, imageGeneration, customMode } = await req.json();
+    const { messages, model, apiKeys, threadId, userId, search, imageGeneration, customMode, projectId } = await req.json();
     
     // Debug log for image generation
     if (imageGeneration?.enabled) {
@@ -115,41 +115,99 @@ export async function POST(req: NextRequest) {
         });
     }
 
-    // Получаем настройки пользователя для кастомных инструкций
-    let userCustomInstructions: CustomInstructions | undefined;
+    // Оптимизация: для нового чата пропускаем все БД запросы
+    const isNewChat = !threadId || !isConvexId(threadId);
+    const isFirstMessage = messages.length === 1 && messages[0].role === 'user';
     
-    try {
-      let userSettings = null;
+    let userCustomInstructions: CustomInstructions | undefined;
+    let attachments: Attachment[] = [];
+    
+    // Загружаем настройки только если не первое сообщение или есть userId
+    if (!isFirstMessage || userId) {
+      const settingsPromise = (async () => {
+        try {
+          let userSettings = null;
+          
+          if (isNewChat && userId) {
+            userSettings = await fetchQuery(api.userSettings.getByFirebaseUid, { firebaseUid: userId });
+          } else if (threadId && isConvexId(threadId) && userId) {
+            const [byThread, byUser] = await Promise.allSettled([
+              fetchQuery(api.userSettings.getByThreadId, { threadId }),
+              fetchQuery(api.userSettings.getByFirebaseUid, { firebaseUid: userId })
+            ]);
+            
+            userSettings = byThread.status === 'fulfilled' && byThread.value 
+              ? byThread.value 
+              : (byUser.status === 'fulfilled' ? byUser.value : null);
+          } else if (threadId && isConvexId(threadId)) {
+            userSettings = await fetchQuery(api.userSettings.getByThreadId, { threadId });
+          } else if (userId) {
+            userSettings = await fetchQuery(api.userSettings.getByFirebaseUid, { firebaseUid: userId });
+          }
+          
+          if (userSettings) {
+            return {
+              name: userSettings.customInstructionsName || '',
+              occupation: userSettings.customInstructionsOccupation || '',
+              traits: userSettings.customInstructionsTraits || [],
+              traitsText: userSettings.customInstructionsTraitsText || '',
+              additionalInfo: userSettings.customInstructionsAdditionalInfo || '',
+            } as CustomInstructions;
+          }
+        } catch (e) {
+          console.error('User settings fetch failed:', e);
+        }
+        return undefined;
+      })();
       
-      // Попробуем получить настройки через threadId
-      if (threadId && isConvexId(threadId)) {
-        userSettings = await fetchQuery(api.userSettings.getByThreadId, { threadId });
-      }
+      // Загружаем вложения только для существующих чатов
+      const attachmentsPromise = (async () => {
+        if (threadId && isConvexId(threadId) && !isFirstMessage) {
+          try {
+            return await fetchQuery(api.attachments.byThread, { threadId });
+          } catch (e) {
+            console.error('Attachment fetch failed:', e);
+          }
+        }
+        return [] as Attachment[];
+      })();
       
-      // Если не удалось через threadId, попробуем через userId
-      if (!userSettings && userId) {
-        userSettings = await fetchQuery(api.userSettings.getByFirebaseUid, { firebaseUid: userId });
-      }
-      
-      if (userSettings) {
-        userCustomInstructions = {
-          name: userSettings.customInstructionsName || '',
-          occupation: userSettings.customInstructionsOccupation || '',
-          traits: userSettings.customInstructionsTraits || [],
-          traitsText: userSettings.customInstructionsTraitsText || '',
-          additionalInfo: userSettings.customInstructionsAdditionalInfo || '',
-        };
-      }
-    } catch (e) {
-      console.error('User settings fetch failed:', e);
+      [userCustomInstructions, attachments] = await Promise.all([settingsPromise, attachmentsPromise]);
     }
 
-    let attachments: Attachment[] = [];
-    if (threadId && isConvexId(threadId)) {
+    // Fetch project context if projectId is provided
+    let projectContext = "";
+    if (projectId && isConvexId(projectId)) {
       try {
-        attachments = await fetchQuery(api.attachments.byThread, { threadId });
-      } catch (e) {
-        console.error('Attachment fetch failed:', e);
+        const [project, projectFiles] = await Promise.all([
+          fetchQuery(api.projects.get, { projectId }),
+          fetchQuery(api.projectFiles.list, { 
+            projectId, 
+            paginationOpts: { numItems: 100, cursor: null } 
+          })
+        ]);
+
+        if (project) {
+          projectContext += `\n\n--- Project Context ---`;
+          projectContext += `\nProject: ${project.name}`;
+          
+          if (project.customInstructions) {
+            projectContext += `\n\nProject Instructions: ${project.customInstructions}`;
+          }
+
+          if (projectFiles?.page && projectFiles.page.length > 0) {
+            projectContext += `\n\nProject Files:`;
+            projectFiles.page.forEach((file) => {
+              projectContext += `\n\n--- File: ${file.name} (${file.fileType}) ---`;
+              projectContext += `\n${file.content}`;
+              projectContext += `\n--- End of ${file.name} ---`;
+            });
+          }
+          
+          projectContext += `\n--- End Project Context ---\n\n`;
+        }
+      } catch (error) {
+        console.error('Failed to fetch project context:', error);
       }
     }
 
@@ -382,7 +440,7 @@ export async function POST(req: NextRequest) {
       onError: (e: unknown) => {
         console.error('AI SDK streamText Error:', e);
       },
-      system: buildSystemPrompt(userCustomInstructions, customModePrompt),
+      system: buildSystemPrompt(userCustomInstructions, customModePrompt, projectContext),
       abortSignal: req.signal,
         });
 

@@ -24,12 +24,19 @@ export class ThreadsCache {
   }
 
   private constructor() {
-    // Восстанавливаем кэш из localStorage при инициализации
-    this.restoreFromStorage();
+    // Восстанавливаем кэш из localStorage при инициализации только в браузере
+    if (typeof window !== 'undefined') {
+      this.restoreFromStorage();
+    }
   }
 
   private restoreFromStorage(): void {
     try {
+      // Проверяем доступность localStorage
+      if (typeof window === 'undefined' || !window.localStorage) {
+        return;
+      }
+      
       const stored = localStorage.getItem(this.STORAGE_KEY);
       if (stored) {
         const parsedData: Record<string, ThreadsCacheEntry> = JSON.parse(stored);
@@ -49,6 +56,11 @@ export class ThreadsCache {
 
   private saveToStorage(): void {
     try {
+      // Проверяем доступность localStorage
+      if (typeof window === 'undefined' || !window.localStorage) {
+        return;
+      }
+      
       const cacheData: Record<string, ThreadsCacheEntry> = {};
       this.memoryCache.forEach((entry, key) => {
         cacheData[key] = entry;
@@ -100,7 +112,10 @@ export class ThreadsCache {
 
   public clear(): void {
     this.memoryCache.clear();
-    localStorage.removeItem(this.STORAGE_KEY);
+    // Проверяем доступность localStorage
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.removeItem(this.STORAGE_KEY);
+    }
   }
 
   public has(userId: string): boolean {

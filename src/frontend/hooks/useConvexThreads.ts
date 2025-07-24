@@ -5,17 +5,22 @@ import { Id, Doc } from "@/convex/_generated/dataModel";
 import { useEffect, useState, useCallback } from "react";
 import { threadsCache } from "@/frontend/lib/threadsCache";
 
+// Extended thread type with project information
+type ThreadWithProject = Doc<"threads"> & {
+  projectId?: Id<"projects">;
+};
+
 export function useConvexThreads() {
   const { user } = useAuthStore();
-  const [cachedThreads, setCachedThreads] = useState<Doc<"threads">[]>([]);
+  const [cachedThreads, setCachedThreads] = useState<ThreadWithProject[]>([]);
   const [hasInitialData, setHasInitialData] = useState(false);
   const [isLoadingFromCache, setIsLoadingFromCache] = useState(false);
   // Firebase User object uses `uid` as the identifier
   const userId = user?.uid || 'anonymous';
   
-  // Получение тредов пользователя с оптимизацией для мобильных устройств
+  // Получение тредов пользователя с информацией о проектах
   const threads = useQuery(
-    api.threads.list,
+    api.threads.listWithProjects,
     user ? {} : "skip"
   );
 

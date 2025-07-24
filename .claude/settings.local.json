@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(rm:*)",
+      "Bash(grep:*)",
+      "Bash(mkdir:*)",
+      "Bash(npx convex deploy)",
+      "Bash(npx convex dev:*)",
+      "Bash(npx convex deploy:*)",
+      "Bash(npx convex schema:*)",
+      "Bash(npx:*)",
+      "Bash(cp:*)",
+      "Bash(npm run build:*)"
+    ],
+    "deny": []
+  }
+}

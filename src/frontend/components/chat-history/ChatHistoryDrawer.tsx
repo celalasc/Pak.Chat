@@ -9,12 +9,16 @@ interface ChatHistoryDrawerProps {
   children: React.ReactNode;
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
+  projectId?: string;
+  projectName?: string;
 }
 
 const ChatHistoryDrawerComponent: React.FC<ChatHistoryDrawerProps> = ({
   children,
   isOpen,
   setIsOpen,
+  projectId,
+  projectName,
 }) => {
   const { isMobile, mounted } = useIsMobile(600);
 
@@ -22,14 +26,14 @@ const ChatHistoryDrawerComponent: React.FC<ChatHistoryDrawerProps> = ({
 
   if (isMobile) {
     return (
-      <ChatHistoryMobile isOpen={isOpen} setIsOpen={setIsOpen}>
+      <ChatHistoryMobile isOpen={isOpen} setIsOpen={setIsOpen} projectId={projectId} projectName={projectName}>
         {children}
       </ChatHistoryMobile>
     );
   }
 
   return (
-    <ChatHistoryDesktop isOpen={isOpen} setIsOpen={setIsOpen}>
+    <ChatHistoryDesktop isOpen={isOpen} setIsOpen={setIsOpen} projectId={projectId} projectName={projectName}>
       {children}
     </ChatHistoryDesktop>
   );

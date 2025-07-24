@@ -133,4 +133,30 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_user", ["userId"]),
 
+  // Projects for organizing files and threads
+  projects: defineTable({
+    userId: v.id("users"),
+    name: v.string(),
+    customInstructions: v.optional(v.string()),
+    isPublic: v.boolean(),
+  }).index("by_user", ["userId"]),
+
+  // Files attached to projects
+  projectFiles: defineTable({
+    userId: v.id("users"),
+    projectId: v.id("projects"),
+    name: v.string(),
+    content: v.string(),
+    fileType: v.string(),
+  }).index("by_project", ["projectId"]),
+
+  // Association table linking projects to chat threads
+  projectThreads: defineTable({
+    userId: v.id("users"),
+    projectId: v.id("projects"),
+    threadId: v.id("threads"),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_thread", ["threadId"]),
+
 });

@@ -25,26 +25,16 @@ const CatchAllChatPageInner = memo(function CatchAllChatPageInner({ params }: { 
   // Мемоизируем проверку валидности ID
   const isValidId = useMemo(() => isConvexId(chatId), [chatId]);
 
-  const thread = useQuery(
-    api.threads.get,
+  // Используем агрегированный запрос для получения всех данных одновременно
+  const chatPageData = useQuery(
+    api.getChatPageData.getChatPageData,
     isValidId ? { threadId: chatId as Id<'threads'> } : 'skip'
   );
 
-  // Выполняем остальные запросы только если thread существует и доступен
-  const shouldRunQueries = useMemo(() => 
-    isValidId && thread !== null && thread !== undefined, 
-    [isValidId, thread]
-  );
-
-  const messagesResult = useQuery(
-    api.messages.get,
-    shouldRunQueries ? { threadId: chatId as Id<'threads'> } : 'skip'
-  );
-
-  const attachments = useQuery(
-    api.attachments.byThread,
-    shouldRunQueries ? { threadId: chatId as Id<'threads'> } : 'skip'
-  );
+  // Извлекаем данные из агрегированного результата
+  const thread = chatPageData?.thread;
+  const messagesResult = chatPageData?.messages;
+  const attachments = chatPageData?.attachments;
 
   const lastMessagesRef = useRef<UIMessage[]>([]);
   const savedLastChatRef = useRef<{ id?: string, path?: string }>({});
@@ -183,10 +173,15 @@ const CatchAllChatPageInner = memo(function CatchAllChatPageInner({ params }: { 
   )
 });
 
+import { Suspense } from 'react';
+import PageSkeleton from '@/frontend/components/PageSkeleton';
+
 export default function CatchAllChatPage({ params }: { params: Promise<{ slug: string[] }> }) {
   return (
     <ErrorBoundary fallbackRedirect="/chat">
-      <CatchAllChatPageInner params={params} />
+      <Suspense fallback={<PageSkeleton />}>
+        <CatchAllChatPageInner params={params} />
+      </Suspense>
     </ErrorBoundary>
   );
 }
