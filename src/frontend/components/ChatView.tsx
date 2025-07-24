@@ -643,12 +643,16 @@ const ChatView = React.memo(function ChatView({
     setImageGenerationMode(false);
   }, [stop, originalSetMessages]);
 
+  // Determine if there are any messages or if a message is being processed
+  const hasAnyMessages =
+    mergedMessages.length > 0 || status === 'submitted' || status === 'streaming';
+
   return (
     <>
       {mergedMessages.length > 0 && showNavBars && (
-        <ChatNavigationBars 
-          messages={mergedMessages} 
-          scrollToMessage={scrollToMessage} 
+        <ChatNavigationBars
+          messages={mergedMessages}
+          scrollToMessage={scrollToMessage}
         />
       )}
 
@@ -656,7 +660,7 @@ const ChatView = React.memo(function ChatView({
         "flex-1 flex flex-col relative",
         customLayout && "min-h-0" // Обеспечиваем правильное поведение flex для customLayout
       )}>
-        {(mergedMessages.length > 0) && (
+        {hasAnyMessages && (
           <div
             className="flex-1 overflow-y-auto enhanced-scroll"
             id="messages-scroll-area"
@@ -665,7 +669,7 @@ const ChatView = React.memo(function ChatView({
               "w-full mx-auto min-h-full flex-1",
               customLayout ? "px-0 pt-0 pb-0" : "max-w-3xl pt-24 pb-44 px-4"
             )}>
-              {mergedMessages.length > 0 && (
+              {hasAnyMessages && (
                 <LazyMessages
                   threadId={currentThreadId}
                   messages={mergedMessages}
@@ -690,7 +694,7 @@ const ChatView = React.memo(function ChatView({
             customLayout 
               ? 'relative w-full max-w-none transition-all duration-300 z-30 flex-shrink-0'
               : 'fixed left-1/2 -translate-x-1/2 w-full max-w-3xl px-4 transition-all duration-300 z-30',
-            !customLayout && (isMobile ? 'bottom-0' : (mergedMessages.length > 0 ? 'bottom-0' : 'top-1/2 -translate-y-1/2')),
+            !customLayout && (isMobile ? 'bottom-0' : (hasAnyMessages ? 'bottom-0' : 'top-1/2 -translate-y-1/2')),
           )}
         >
           
