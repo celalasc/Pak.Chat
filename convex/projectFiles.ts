@@ -100,3 +100,26 @@ export const remove = mutation({
     await ctx.db.delete(args.fileId);
   },
 });
+
+// Версия для API роутов без проверки авторизации (используется только внутренне)
+export const listForAPI = query({
+  args: {
+    projectId: v.id("projects"),
+    paginationOpts: v.any(),
+  },
+  handler: async (ctx, args) => {
+    // Проверяем, что проект существует
+    const project = await ctx.db.get(args.projectId);
+    if (!project) {
+      throw new Error("Проект не найден");
+    }
+
+    const files = await ctx.db
+      .query("projectFiles")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .order("asc")
+      .paginate(args.paginationOpts);
+
+    return files;
+  },
+});

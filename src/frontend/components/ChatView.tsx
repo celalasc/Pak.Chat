@@ -196,6 +196,13 @@ const ChatView = React.memo(function ChatView({
     experimental_prepareRequestBody: prepareRequestBody,
     experimental_throttle: 50, // Throttle updates to 50ms for smoother streaming
 
+    onStart: () => {
+      // Set loading state for first message in empty chat
+      if (messages.length === 0) {
+        setIsFirstMessagePending(true);
+      }
+    },
+
     fetch: async (url, init) => {
       // Check if this is an image generation request
       const body = typeof init?.body === 'string' ? JSON.parse(init.body) : null;
@@ -501,18 +508,13 @@ const ChatView = React.memo(function ChatView({
 
     // Добавляем временные сообщения, которых еще нет в Convex
     const convexIds = new Set(convexMessages.map(cm => cm._id as string));
-    // Также создаем набор содержимого для предотвращения дублирования по контенту
-    const convexContentSet = new Set(
-      convexMessages.map(cm => `${cm.role}-${cm.content.slice(0, 100)}`)
-    );
     
     const temporaryMessages = messages.filter(m => {
       // Исключаем сообщения, которые уже есть в Convex по ID
       if (convexIds.has(m.id)) return false;
       
-      // Исключаем сообщения, которые уже есть в Convex по содержимому
-      const contentKey = `${m.role}-${m.content.slice(0, 100)}`;
-      return !convexContentSet.has(contentKey);
+      // Всегда показываем новые временные сообщения (не в БД)
+      return true;
     });
     
     // Объединяем и сортируем
@@ -681,6 +683,7 @@ const ChatView = React.memo(function ChatView({
                   stop={stopWithCleanup}
                   forceRegeneration={forceRegeneration}
                   isRegenerating={isRegenerating}
+                  isFirstMessagePending={isFirstMessagePending}
                 />
               )}
               <div ref={messagesEndRef} />

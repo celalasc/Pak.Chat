@@ -10,7 +10,7 @@ import Chat from "@/frontend/components/Chat";
 import { Button } from "@/components/ui/button";
 import { WithTooltip } from "@/frontend/components/WithTooltip";
 import { Settings, Plus } from "lucide-react";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import SettingsDrawer from "@/frontend/components/SettingsDrawer";
 import { ChatHistoryButton } from "@/frontend/components/chat-history";
 import { saveLastPath, saveLastChatId } from "@/frontend/lib/lastChat";
@@ -23,6 +23,7 @@ export default function ProjectPage() {
   const projectId = params?.projectId as Id<"projects"> | undefined;
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   
   // Проверяем, находимся ли мы на главной странице проекта (исключая чаты проекта)
   const isProjectHomePage = pathname === `/project/${projectId}`;
@@ -30,27 +31,44 @@ export default function ProjectPage() {
   const { project, files, isLoading, updateProject, uploadFile, deleteFile } =
     useProject(projectId);
 
-
-
   const handleSettingsOpenChange = useCallback((open: boolean) => {
     setIsSettingsOpen(open);
   }, []);
 
   const handleNewChat = useCallback(() => {
-    // Navigate to project chat page
-    router.push(`/project/${projectId}/chat`);
-  }, [router, projectId]);
+    // Если мы внутри проекта, сбрасываем currentChatId и возвращаемся на главную страницу проекта
+    if (currentChatId) {
+      setCurrentChatId(null);
+      if (typeof window !== 'undefined') {
+        window.history.pushState(null, '', `/project/${projectId}`);
+      }
+    } else {
+      // Если уже на главной странице проекта, остаемся здесь
+      // Поле ввода уже показано и готово для нового сообщения
+    }
+  }, [currentChatId, projectId]);
 
   const handleBackToHome = useCallback(() => {
     // Сбрасываем currentChatId чтобы вернуться на главную страницу проекта
     setCurrentChatId(null);
-    // Обновляем URL
-    if (typeof window !== 'undefined') {
+    // Обновляем URL только если мы не на главной странице
+    if (typeof window !== 'undefined' && pathname !== `/project/${projectId}`) {
       window.history.pushState(null, '', `/project/${projectId}`);
     }
-  }, [projectId]);
+  }, [projectId, pathname]);
 
-  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
+  // Обработка навигации браузера (кнопка "назад")
+  useEffect(() => {
+    const handlePopState = () => {
+      // Если URL изменился на главную страницу проекта, сбрасываем currentChatId
+      if (window.location.pathname === `/project/${projectId}`) {
+        setCurrentChatId(null);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [projectId]);
 
   const handleThreadCreated = useCallback((threadId: Id<'threads'>) => {
     // Сохраняем информацию о последнем чате и пути
@@ -60,13 +78,8 @@ export default function ProjectPage() {
       saveLastChatId(threadId);
     }
     
-    // НЕ делаем роутинг! Просто обновляем состояние чтобы показать чат здесь же
+    // НЕ делаем роутинг и НЕ обновляем URL! Просто обновляем состояние чтобы показать чат на главной странице
     setCurrentChatId(threadId);
-    
-    // Обновляем URL без перезагрузки страницы
-    if (typeof window !== 'undefined') {
-      window.history.pushState(null, '', `/project/${projectId}/chat/${threadId}`);
-    }
   }, [projectId]);
 
   if (isLoading) {
@@ -85,16 +98,16 @@ export default function ProjectPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative">
       {/* Top-left navigation */}
-      <div className="fixed left-4 top-4 z-50">
+      <div className="fixed left-4 top-4 z-50 pointer-events-auto">
         <nav className="flex items-center gap-1 text-xl font-bold">
-          <a href="/chat" className="text-foreground hover:text-primary transition-colors cursor-pointer hover:underline">
+          <a href="/chat" className="text-foreground hover:text-primary transition-colors cursor-pointer hover:underline pointer-events-auto">
             Pak.Chat
           </a>
           <span className="text-muted-foreground">/</span>
           <span 
-            className="text-foreground hover:text-primary transition-colors cursor-pointer hover:underline"
+            className="text-foreground hover:text-primary transition-colors cursor-pointer hover:underline pointer-events-auto"
             onClick={handleBackToHome}
           >
             {project.name}
@@ -103,25 +116,25 @@ export default function ProjectPage() {
       </div>
       
       {/* Top-right control panel */}
-      <div className="fixed right-4 top-4 z-50 flex gap-2 p-1 bg-background/60 backdrop-blur-md rounded-lg border border-border/20">
+      <div className="fixed right-4 top-4 z-50 flex gap-2 p-1 bg-background/60 backdrop-blur-md rounded-lg border border-border/20 pointer-events-auto">
         <WithTooltip label="New Chat" side="bottom">
           <Button
             variant="outline"
             size="icon"
-            className="bg-background/80 backdrop-blur-sm border-border/50"
+            className="bg-background/80 backdrop-blur-sm border-border/50 pointer-events-auto"
             onClick={handleNewChat}
             aria-label="Start new chat"
           >
             <Plus className="h-5 w-5" />
           </Button>
         </WithTooltip>
-        <ChatHistoryButton className="backdrop-blur-sm" projectId={projectId} projectName={project.name} />
+        <ChatHistoryButton className="backdrop-blur-sm pointer-events-auto" projectId={projectId} projectName={project.name} />
         <SettingsDrawer isOpen={isSettingsOpen} setIsOpen={handleSettingsOpenChange}>
           <WithTooltip label="Settings" side="bottom">
             <Button
               variant="outline"
               size="icon"
-              className="bg-background/80 backdrop-blur-sm border-border/50"
+              className="bg-background/80 backdrop-blur-sm border-border/50 pointer-events-auto"
               aria-label="Open settings"
               onClick={() => handleSettingsOpenChange(true)}
             >
@@ -133,57 +146,45 @@ export default function ProjectPage() {
       
       {/* Специальный layout для главной страницы проекта */}
       {isProjectHomePage ? (
-        currentChatId ? (
-          // Когда есть активный чат - показываем только чат без атрибутов проекта
-          <div className="min-h-screen bg-background">
-            <Chat
-              key={`project-home-${projectId}`} // ТОТ ЖЕ key что и на главной странице!
-              threadId={currentChatId}
-              thread={null}
-              initialMessages={[]}
-              projectId={projectId}
-              project={project}
-              // НЕ используем customLayout для обычного отображения чата
-            />
-          </div>
-        ) : (
-          // Главная страница проекта с атрибутами
-          <div className="flex pt-16 min-h-screen">
-            {/* Left side - Project info and chat input */}
-            <div className="flex-1 p-8 pr-4 flex flex-col">
-              <div className="max-w-4xl w-full flex flex-col h-full">
-                {/* Project header - в верхней части */}
+        // Главная страница проекта с атрибутами
+        <div className={currentChatId ? "pt-16 min-h-screen" : "flex pt-16 min-h-screen"}>
+          {/* Left side - Project info and chat input */}
+          <div className={currentChatId ? "w-full min-h-screen flex flex-col pointer-events-auto" : "flex-1 p-8 pr-4 flex flex-col pointer-events-auto"}>
+            <div className={currentChatId ? "w-full flex flex-col h-full pointer-events-auto" : "max-w-4xl w-full flex flex-col h-full pointer-events-auto"}>
+              {/* Project header - в верхней части (только если нет активного чата) */}
+              {!currentChatId && (
                 <div className="mb-4 flex-shrink-0">
                   <ProjectHeader
                     project={project}
                     onUpdate={(updates) => updateProject(updates)}
                   />
                 </div>
-                
-                {/* Chat component - full height */}
-                <div className="flex-1 flex flex-col">
-                  {/* Всегда показываем пустой чат на главной странице проекта */}
-                  <div className="flex-1 flex items-center justify-center">
-                    <div className="w-full max-w-4xl">
-                      <Chat
-                         key={`project-home-${projectId}`}
-                         threadId="new"
-                         thread={null}
-                         initialMessages={[]}
-                         projectId={projectId}
-                         project={project}
-                         customLayout={true}
-                         onThreadCreated={handleThreadCreated}
-                       />
-                    </div>
+              )}
+              
+              {/* Chat component - full height */}
+              <div className="flex-1 flex flex-col">
+                <div className={currentChatId ? "flex-1 w-full" : "flex-1 flex items-center justify-center"}>
+                  <div className={currentChatId ? "w-full h-full" : "w-full max-w-4xl"}>
+                    <Chat
+                       key={`project-home-${projectId}-${currentChatId || 'new'}`} // Уникальный ключ для каждого состояния
+                       threadId={currentChatId || "new"}
+                       thread={null}
+                       initialMessages={[]}
+                       projectId={projectId}
+                       project={project}
+                       customLayout={!currentChatId} // customLayout только для новых чатов
+                       onThreadCreated={handleThreadCreated}
+                     />
                   </div>
                 </div>
               </div>
             </div>
-            
-            {/* Right side - Project Knowledge panel */}
-            <div className="hidden lg:block w-[500px] p-8 pl-4">
-              <div className="h-[calc(100vh-8rem)] overflow-y-auto">
+          </div>
+          
+          {/* Right side - Project Knowledge panel (только если нет активного чата) */}
+          {!currentChatId && (
+            <div className="hidden lg:block w-[500px] p-8 pl-4 pointer-events-auto">
+              <div className="h-[calc(100vh-8rem)] overflow-y-auto pointer-events-auto">
                 <ProjectKnowledge
                   files={files || []}
                   project={project}
@@ -193,8 +194,8 @@ export default function ProjectPage() {
                 />
               </div>
             </div>
-          </div>
-        )
+          )}
+        </div>
       ) : (
         // Обычный чат для других страниц проекта
         <Chat
