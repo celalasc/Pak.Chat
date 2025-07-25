@@ -196,13 +196,6 @@ const ChatView = React.memo(function ChatView({
     experimental_prepareRequestBody: prepareRequestBody,
     experimental_throttle: 50, // Throttle updates to 50ms for smoother streaming
 
-    onStart: () => {
-      // Set loading state for first message in empty chat
-      if (messages.length === 0) {
-        setIsFirstMessagePending(true);
-      }
-    },
-
     fetch: async (url, init) => {
       // Check if this is an image generation request
       const body = typeof init?.body === 'string' ? JSON.parse(init.body) : null;
