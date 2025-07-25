@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { clearDraft } from '@/frontend/lib/drafts';
 import { useQuoteStore } from '@/frontend/stores/QuoteStore';
 import { useAttachmentsStore } from '@/frontend/stores/AttachmentsStore';
+import { Id } from '@/convex/_generated/dataModel';
 
 interface NewChatButtonProps {
   className?: string;
@@ -20,12 +21,14 @@ interface NewChatButtonProps {
     | 'ghost'
     | 'link';
   size?: 'default' | 'sm' | 'lg' | 'icon';
+  projectId?: Id<"projects">; // Добавляем projectId как опциональный пропс
 }
 
 function NewChatButton({
   className,
   variant = 'outline',
   size = 'icon',
+  projectId,
 }: NewChatButtonProps) {
   const router = useRouter();
   const { clearQuote } = useQuoteStore();
@@ -37,10 +40,15 @@ function NewChatButton({
     clearQuote();
     clearAttachments();
 
-    // Переходим на новый чат и на всякий случай принудительно обновляем
-    router.push('/chat');
+    if (projectId) {
+      // Если в контексте проекта - идем на главную страницу проекта
+      router.push(`/project/${projectId}`);
+    } else {
+      // Иначе на обычный новый чат
+      router.push('/chat');
+    }
     router.refresh();
-  }, [router, clearQuote, clearAttachments]);
+  }, [router, clearQuote, clearAttachments, projectId]);
 
   return (
     <WithTooltip label="New Chat" side="bottom">

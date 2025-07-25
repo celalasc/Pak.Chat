@@ -72,7 +72,8 @@ const Chat = React.memo(function Chat({ threadId, thread, initialMessages, proje
 
   const handleGoNewChat = useCallback(() => {
     if (projectId) {
-      router.push(`/project/${projectId}/chat`);
+      // Для проектов - возвращаемся на главную страницу проекта
+      router.push(`/project/${projectId}`);
     } else {
       router.push('/chat');
     }
@@ -189,7 +190,7 @@ const Chat = React.memo(function Chat({ threadId, thread, initialMessages, proje
             ref={panelRef}
             className="fixed right-4 top-4 z-50 flex gap-2 p-1 bg-background/60 backdrop-blur-md rounded-lg border border-border/20"
           >
-            <NewChatButton className="backdrop-blur-sm" />
+            <NewChatButton className="backdrop-blur-sm" projectId={projectId} />
             <ChatHistoryButton className="backdrop-blur-sm" projectId={projectId} projectName={project?.name} />
               <SettingsDrawer isOpen={isSettingsOpen} setIsOpen={handleSettingsOpenChange}>
               <WithTooltip label="Settings" side="bottom">

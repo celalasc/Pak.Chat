@@ -181,7 +181,7 @@ export async function POST(req: NextRequest) {
       try {
         const [project, projectFiles] = await Promise.all([
           fetchQuery(api.projects.get, { projectId }),
-          fetchQuery(api.projectFiles.list, { 
+          fetchQuery(api.projectFiles.listForAPI, { 
             projectId, 
             paginationOpts: { numItems: 100, cursor: null } 
           })

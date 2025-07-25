@@ -36,6 +36,7 @@ function PureMessages({
   const lastMessage = messages[messages.length - 1];
   const shouldShowLoading =
     (status === 'submitted' && lastMessage?.role === 'user') ||
+    (status === 'streaming' && lastMessage?.role === 'user') ||
     (isRegenerating && lastMessage?.role === 'user') ||
     (isFirstMessagePending && messages.length === 0);
 
