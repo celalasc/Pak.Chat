@@ -11,10 +11,12 @@ export const getChatPageData = query({
     const uid = await currentUserId(ctx);
     if (!uid) return { thread: null, messages: [], attachments: [] };
     
+    const threadId = args.threadId; // TypeScript now knows this is not undefined
+    
     const [thread, messages, attachments] = await Promise.all([
-      ctx.db.get(args.threadId),
-      ctx.db.query("messages").withIndex("by_thread_and_time", q => q.eq("threadId", args.threadId)).order("asc").collect(),
-      ctx.db.query("attachments").withIndex("by_thread", q => q.eq("threadId", args.threadId)).collect()
+      ctx.db.get(threadId),
+      ctx.db.query("messages").withIndex("by_thread_and_time", q => q.eq("threadId", threadId)).order("asc").collect(),
+      ctx.db.query("attachments").withIndex("by_thread", q => q.eq("threadId", threadId)).collect()
     ]);
 
     if (!thread || thread.userId !== uid) {

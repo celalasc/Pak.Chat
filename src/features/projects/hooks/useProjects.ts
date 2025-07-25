@@ -15,66 +15,13 @@ export function useProjects() {
   // Мутация для создания проекта с оптимистичным обновлением
   const createProjectMutation = useMutation(api.projects.create);
   const createProject = (name: string, customInstructions?: string) => {
-    return createProjectMutation(
-      { name, customInstructions },
-      {
-        optimisticUpdate: (localStore, args) => {
-          // Создаем временный ID для нового проекта
-          const tempId = localStore.generateOptimisticId() as Id<"projects">;
-          // Добавляем новый проект в кэш
-          localStore.setQuery(
-            api.projects.list,
-            {},
-            (oldProjects) => [
-              {
-                _id: tempId,
-                _creationTime: Date.now(),
-                name: args.name,
-                customInstructions: args.customInstructions,
-                isPublic: false,
-                userId: "optimistic_user_id" as Id<"users">,
-              },
-              ...oldProjects,
-            ],
-            true
-          );
-        },
-      }
-    );
+    return createProjectMutation({ name, customInstructions });
   };
 
   // Мутация для удаления проекта с оптимистичным обновлением
   const deleteProjectMutation = useMutation(api.projects.remove);
   const deleteProject = (projectId: Id<"projects">) => {
-    return deleteProjectMutation(
-      { projectId },
-      {
-        optimisticUpdate: (localStore) => {
-          // Удаляем проект из кэша
-          localStore.setQuery(
-            api.projects.list,
-            {},
-            (oldProjects) =>
-              oldProjects.filter((p) => p._id !== projectId),
-            false
-          );
-          // Также можно удалить связанные файлы и треды из соответствующих кэшей,
-          // если они загружены отдельными запросами.
-          localStore.setQuery(
-            api.projectFiles.list,
-            { projectId },
-            () => ({ page: [], isDone: true, continueCursor: null }),
-            false
-          );
-          localStore.setQuery(
-            api.projectThreads.getForProject,
-            { projectId },
-            () => [],
-            false
-          );
-        },
-      }
-    );
+    return deleteProjectMutation({ projectId });
   };
 
   // Мутация для обновления проекта

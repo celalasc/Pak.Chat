@@ -34,7 +34,7 @@ export default function AuthListener({ children }: { children: ReactNode }) {
         
         await Promise.race([redirectPromise, timeoutPromise]);
         clearTimeout(timeoutId);
-      } catch (error) {
+      } catch (error: any) {
         if (error?.code !== 'auth/popup-blocked-by-browser' && 
             error?.code !== 'auth/cancelled-popup-request' &&
             error?.message !== 'Redirect result timeout') {

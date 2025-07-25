@@ -4,16 +4,15 @@ import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Button } from '@/frontend/components/ui/button';
 import { ArrowLeft, Plus, Upload, FileText, Edit3, X, File, Eye, Trash2 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/frontend/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/frontend/components/ui/dialog';
 import { Textarea } from '@/frontend/components/ui/textarea';
 import { WithTooltip } from '@/frontend/components/WithTooltip';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import { useChat } from '@ai-sdk/react';
 import ChatInput from '@/frontend/components/chat-input';
-import { useMutation } from 'convex/react';
-import { api } from '@/convex/_generated/api';
+
 import { Id } from '@/convex/_generated/dataModel';
-import { isConvexId } from '@/lib/ids';
+
 import { useState, useCallback, useRef } from 'react';
 import NewChatButton from '@/frontend/components/NewChatButton';
 import ChatHistoryButton from '@/frontend/components/chat-history/components/ChatHistoryButton';
@@ -32,7 +31,7 @@ export default function ProjectPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { isMobile, mounted } = useIsMobile();
+  const { isMobile } = useIsMobile();
   const [isPageLoading, setIsPageLoading] = useState(true);
   
   const projectId = params.projectId as string;
@@ -40,7 +39,7 @@ export default function ProjectPage() {
   
   // Chat state
   const [sessionThreadId, setSessionThreadId] = useState<string | null>(null);
-  const createThread = useMutation(api.threads.create);
+
   
   // Initialize chat with project context
   const {
@@ -53,7 +52,6 @@ export default function ProjectPage() {
     setMessages,
     error,
     isLoading,
-    data,
   } = useChat({
     api: '/api/chat',
     initialMessages: [],
@@ -227,6 +225,14 @@ export default function ProjectPage() {
           <div
             className="text-xl font-bold text-foreground hover:text-primary transition-colors cursor-pointer flex items-center gap-1"
             onClick={handleTitleClick}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleTitleClick();
+              }
+            }}
+            role="button"
+            tabIndex={0}
           >
             <span className="hover:underline">Pak.Chat</span>
             <span className="text-muted-foreground">/</span>
@@ -272,7 +278,7 @@ export default function ProjectPage() {
             {/* Header with title and plus button */}
             <div className="flex items-center justify-between px-0">
               <h3 className="text-lg font-semibold text-foreground">Project knowledge</h3>
-              <WithTooltip label="Add knowledge" side="bottom" delayDuration={800}>
+              <WithTooltip label="Add knowledge" side="bottom">
                 <Button
                   ref={buttonRef}
                   variant="outline"
@@ -320,6 +326,14 @@ export default function ProjectPage() {
             height: '50px'
           }}
           onClick={() => setIsInstructionsDialogOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setIsInstructionsDialogOpen(true);
+            }
+          }}
+          role="button"
+          tabIndex={0}
         >
           <div className="h-full flex items-center justify-between px-4">
             <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -361,8 +375,7 @@ export default function ProjectPage() {
             style={{
               maxHeight: '340px',
               scrollbarWidth: 'none',
-              msOverflowStyle: 'none',
-              WebkitScrollbar: { display: 'none' }
+              msOverflowStyle: 'none'
             }}
           >
             <div className="grid grid-cols-2 gap-3">
@@ -418,9 +431,10 @@ export default function ProjectPage() {
                       </Button>
                     </WithTooltip>
                   </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -440,7 +454,7 @@ export default function ProjectPage() {
                 threadId={sessionThreadId || 'new'}
                 thread={null}
                 input={input}
-                status={isLoading ? 'loading' : 'awaiting_message'}
+                status={isLoading ? 'streaming' : 'ready'}
                 error={error}
                 setInput={setInput}
                 reload={reload}
@@ -533,7 +547,7 @@ export default function ProjectPage() {
                 maxLength={4000}
                 className="w-full h-full resize-none bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 text-base sm:text-base text-white/90 placeholder:text-white/50 whitespace-pre-wrap break-words overflow-y-auto p-0 min-h-[200px] focus:bg-transparent hover:bg-transparent"
                 placeholder="Enter custom instructions for this project..."
-                style={{ wordWrap: 'break-word', overflowWrap: 'break-word', backgroundColor: 'transparent', fontSize: window.innerWidth < 640 ? '16px' : '14px' }}
+                style={{ wordWrap: 'break-word', overflowWrap: 'break-word', backgroundColor: 'transparent' }}
               />
             </div>
           </div>

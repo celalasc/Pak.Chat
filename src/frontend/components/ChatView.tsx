@@ -195,7 +195,7 @@ const ChatView = React.memo(function ChatView({
     body: requestBody,
     experimental_prepareRequestBody: prepareRequestBody,
     experimental_throttle: 50, // Throttle updates to 50ms for smoother streaming
-    experimental_streamData: true, // Включаем стриминг данных для лучшей синхронизации
+
     fetch: async (url, init) => {
       // Check if this is an image generation request
       const body = typeof init?.body === 'string' ? JSON.parse(init.body) : null;
@@ -596,7 +596,7 @@ const ChatView = React.memo(function ChatView({
       if (draft) {
         if (draft.input) setInput(draft.input);
         if (draft.messages.length > 0) {
-          setMessages((prev) => [...prev, ...draft.messages]);
+          setMessages((prev: any) => [...prev, ...draft.messages]);
         }
       }
       // Remember last active chat for automatic restoration on reload
