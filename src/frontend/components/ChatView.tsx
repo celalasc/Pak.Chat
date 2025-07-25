@@ -1,9 +1,8 @@
 "use client";
 
 import { useChat } from '@ai-sdk/react';
-// Chat message list component
-import Messages from './message/Messages';
-import ChatInput from './chat-input';
+// Chat message list component - lazy loaded
+import { LazyMessages, LazyChatInput } from './lazy';
 import ChatNavigationBars from './ChatNavigationBars';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 import { useModelStore } from '@/frontend/stores/ModelStore';
@@ -31,6 +30,9 @@ interface ChatViewProps {
   initialMessages: UIMessage[];
   showNavBars: boolean;
   onThreadCreated?: (newThreadId: string) => void;
+  projectId?: Id<"projects">;
+  project?: Doc<"projects">;
+  customLayout?: boolean;
 }
 
 // Мемоизированный компонент ChatView
@@ -39,12 +41,20 @@ const ChatView = React.memo(function ChatView({
   thread, 
   initialMessages, 
   showNavBars, 
-  onThreadCreated 
+  onThreadCreated,
+  projectId,
+  project,
+  customLayout
 }: ChatViewProps) {
   const { keys } = useAPIKeyStore();
   const { selectedModel, webSearchEnabled } = useModelStore();
-  const { clearQuote } = useQuoteStore();
-  const { clear: clearAttachments } = useAttachmentsStore();
+  const clearQuote = useCallback(() => {
+    useQuoteStore.getState().clearQuote();
+  }, []);
+  
+  const clearAttachments = useCallback(() => {
+    useAttachmentsStore.getState().clear();
+  }, []);
   const { getSelectedMode } = useCustomModesHelpers();
   const { isMobile } = useIsMobile();
   
@@ -56,10 +66,7 @@ const ChatView = React.memo(function ChatView({
   
   // Состояние для отслеживания регенераций
   const [isRegenerating, setIsRegenerating] = useState(false);
-  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
-  // Флаг для отслеживания первоначальной загрузки чата
-  const [hasScrolledToEnd, setHasScrolledToEnd] = useState(false);
   
   // Уникальный ключ для принудительного пересоздания useChat хука
   const [chatKey, setChatKey] = useState(() => `chat-${threadId || 'new'}-${Date.now()}`);
@@ -127,8 +134,9 @@ const ChatView = React.memo(function ChatView({
       apiKeys: keys,
       threadId: currentThreadId,
       search: webSearchEnabled,
+      projectId: projectId,
     }),
-    [selectedModel, keys, currentThreadId, webSearchEnabled]
+    [selectedModel, keys, currentThreadId, webSearchEnabled, projectId]
   );
 
   // Мемоизируем функцию подготовки тела запроса
@@ -154,6 +162,7 @@ const ChatView = React.memo(function ChatView({
           params: imageGenerationParams
         } : undefined,
         customMode: customModeData,
+        projectId: options.projectId || projectId,
       };
 
       
@@ -163,17 +172,20 @@ const ChatView = React.memo(function ChatView({
 
       return body;
     },
-    [selectedModel, keys, webSearchEnabled, getSelectedMode]
+    [selectedModel, keys, webSearchEnabled, getSelectedMode, projectId]
   );
+
+  // Add optimistic loading state for new chats
+  const [isFirstMessagePending, setIsFirstMessagePending] = useState(false);
 
   const {
     messages,
     input,
-    setInput,
-    setMessages,
+    setInput: originalSetInput,
+    setMessages: originalSetMessages,
     reload,
-    stop,
-    append,
+    stop: originalStop,
+    append: originalAppend,
     status,
     error,
   } = useChat({
@@ -182,6 +194,8 @@ const ChatView = React.memo(function ChatView({
     initialMessages,
     body: requestBody,
     experimental_prepareRequestBody: prepareRequestBody,
+    experimental_throttle: 50, // Throttle updates to 50ms for smoother streaming
+    experimental_streamData: true, // Включаем стриминг данных для лучшей синхронизации
     fetch: async (url, init) => {
       // Check if this is an image generation request
       const body = typeof init?.body === 'string' ? JSON.parse(init.body) : null;
@@ -211,7 +225,7 @@ const ChatView = React.memo(function ChatView({
 
         // Add loading message after a small delay to ensure user message is processed first
         setTimeout(() => {
-          (setMessages as any)((prev: any) => {
+          (originalSetMessages as any)((prev: any) => {
             return [...prev, loadingMessage];
           });
         }, 50);
@@ -299,7 +313,7 @@ const ChatView = React.memo(function ChatView({
           }
 
           // Update the loading message with actual images (keep base64 for UI)
-          setMessages((prev) => {
+          originalSetMessages((prev) => {
             const idx = prev.findIndex((m) => m.id === loadingMessageId);
             if (idx === -1) return prev;
             
@@ -340,6 +354,7 @@ const ChatView = React.memo(function ChatView({
     onFinish: async (finalMsg) => {
       const latestThreadId = threadIdRef.current;
       
+      // Save only assistant messages to database (user messages already saved in useChatSubmit)
       if (
         finalMsg.role === 'assistant' &&
         finalMsg.content.trim() !== '' &&
@@ -355,21 +370,48 @@ const ChatView = React.memo(function ChatView({
           model: currentModel,
         });
 
-        setMessages((prev) => {
+        originalSetMessages((prev) => {
           const idx = prev.findIndex((m) => m.id === finalMsg.id);
           if (idx === -1) return prev;
           const next = [...prev];
-          next[idx] = { ...(next[idx] as any), id: realId, model: currentModel } as any;
+          next[idx] = { 
+            ...(next[idx] as any), 
+            id: realId, 
+            model: currentModel 
+          } as any;
           return next;
         });
       }
+      
+      // Clear the first message pending state
+      setIsFirstMessagePending(false);
+    },
+    onError: (error) => {
+      console.error('Chat error:', error);
+      setIsFirstMessagePending(false);
     },
   });
+
+  // Use original append directly
+  const append = originalAppend;
+
+  // Create stable wrappers for functions used in useEffect dependencies
+  const setInput = useCallback((value: string | ((prev: string) => string)) => {
+    originalSetInput(value);
+  }, [originalSetInput]);
+
+  const setMessages = useCallback((value: any) => {
+    originalSetMessages(value);
+  }, [originalSetMessages]);
+
+  const stop = useCallback(() => {
+    originalStop();
+  }, [originalStop]);
 
   // Ensure streaming assistant messages have stable timestamps for ordering
   useEffect(() => {
     if (!messages.some((m) => !m.createdAt)) return;
-    setMessages((prev) =>
+    originalSetMessages((prev) =>
       prev.map((m) => {
         if (m.createdAt) {
           tempCreatedAtMap.current.delete(m.id);
@@ -385,7 +427,7 @@ const ChatView = React.memo(function ChatView({
         return { ...m, createdAt: new Date(ts) };
       })
     );
-  }, [messages, setMessages]);
+  }, [messages, originalSetMessages]);
 
   // Сбрасываем флаг регенерации когда начинается стриминг
   useEffect(() => {
@@ -393,6 +435,14 @@ const ChatView = React.memo(function ChatView({
       setIsRegenerating(false);
     }
   }, [status]);
+
+  // Принудительно скрываем скелетон после первого сообщения
+  const [hasMessages, setHasMessages] = useState(false);
+  useEffect(() => {
+    if (messages.length > 0) {
+      setHasMessages(true);
+    }
+  }, [messages.length]);
 
   // Загружаем сообщения с файлами из Convex (если это Convex тред)
   const convexMessages = useQuery(
@@ -409,6 +459,15 @@ const ChatView = React.memo(function ChatView({
 
     // Создаем карту UI-сообщений для быстрого доступа
     const uiMessagesMap = new Map(messages.map(m => [m.id, m]));
+    // Создаем карту для поиска UI-сообщений по содержимому (для обнаружения дублей)
+    const uiContentMap = new Map();
+    messages.forEach(m => {
+      const key = `${m.role}-${m.content.slice(0, 100)}`;
+      if (!uiContentMap.has(key)) {
+        uiContentMap.set(key, []);
+      }
+      uiContentMap.get(key).push(m);
+    });
 
     // Обогащаем сообщения из Convex данными из локального UI-состояния
     const enrichedConvexMessages = convexMessages.map(convexMsg => {
@@ -442,7 +501,19 @@ const ChatView = React.memo(function ChatView({
 
     // Добавляем временные сообщения, которых еще нет в Convex
     const convexIds = new Set(convexMessages.map(cm => cm._id as string));
-    const temporaryMessages = messages.filter(m => !convexIds.has(m.id));
+    // Также создаем набор содержимого для предотвращения дублирования по контенту
+    const convexContentSet = new Set(
+      convexMessages.map(cm => `${cm.role}-${cm.content.slice(0, 100)}`)
+    );
+    
+    const temporaryMessages = messages.filter(m => {
+      // Исключаем сообщения, которые уже есть в Convex по ID
+      if (convexIds.has(m.id)) return false;
+      
+      // Исключаем сообщения, которые уже есть в Convex по содержимому
+      const contentKey = `${m.role}-${m.content.slice(0, 100)}`;
+      return !convexContentSet.has(contentKey);
+    });
     
     // Объединяем и сортируем
     const allMessages = [...enrichedConvexMessages, ...temporaryMessages];
@@ -492,22 +563,35 @@ const ChatView = React.memo(function ChatView({
 
   // Sync when navigating between chats or dialog versions
   useEffect(() => {
+    const prevThreadId = threadIdRef.current;
     setCurrentThreadId(threadId);
     threadIdRef.current = threadId;
+    
     
     // Создаем новый уникальный ключ для useChat при смене чата
     setChatKey(`chat-${threadId || 'new'}-${Date.now()}`);
     
-    // Полная очистка состояния для нового чата
-    if (!threadId) {
-      setInput('');
-      clearQuote();
-      clearAttachments();
-      setMessages([]); // Очищаем сообщения
-      stop(); // Останавливаем любой активный стрим
+    // Полная очистка состояния только при переходе на совершенно новый чат
+    if (!threadId || threadId === 'new') {
+      // Очищаем только если это действительно новый чат, а не навигация с initialMessages
+      if (initialMessages.length === 0) {
+        setInput('');
+        clearQuote();
+        clearAttachments();
+        setMessages([]); // Очищаем сообщения
+        stop(); // Останавливаем любой активный стрим
+      } else {
+        // Если есть initialMessages, используем их (случай навигации с проектной страницы)
+        setMessages(initialMessages);
+      }
     } else {
       // Для существующего чата загружаем состояние
-      setMessages(initialMessages);
+      // Если это навигация с initialMessages (например, с проектной страницы), используем их
+      if (initialMessages.length > 0 && prevThreadId !== threadId) {
+        setMessages(initialMessages);
+      } else {
+        setMessages(initialMessages);
+      }
       const draft = loadDraft(threadId);
       if (draft) {
         if (draft.input) setInput(draft.input);
@@ -518,7 +602,7 @@ const ChatView = React.memo(function ChatView({
       // Remember last active chat for automatic restoration on reload
       saveLastChatId(threadId);
     }
-  }, [threadId, setInput, setMessages, clearQuote, clearAttachments, stop]);
+  }, [threadId, initialMessages, setInput, setMessages, clearQuote, clearAttachments, stop]);
 
   // Persist unsent messages and input as a draft
   useEffect(() => {
@@ -533,47 +617,6 @@ const ChatView = React.memo(function ChatView({
     });
   }, [messages, input]);
 
-  // Автоматическая прокрутка к концу переписки при заходе в чат
-  useEffect(() => {
-    // Прокручиваем к концу только если:
-    // 1. Есть сообщения для отображения
-    // 2. Еще не прокручивали для текущего чата
-    // 3. Это не новый чат (threadId не пустой)
-    if (mergedMessages.length > 0 && !hasScrolledToEnd && threadId) {
-      const scrollToEnd = () => {
-        // Моментальная прокрутка при заходе в чат
-        if (messagesEndRef.current) {
-          // Прокрутка через messagesEndRef
-          messagesEndRef.current.scrollIntoView({ 
-            behavior: 'instant', 
-            block: 'end' 
-          });
-        } else {
-          // Альтернативная прокрутка через контейнер сообщений
-          const scrollArea = document.getElementById('messages-scroll-area');
-          if (scrollArea) {
-            scrollArea.scrollTo({
-              top: scrollArea.scrollHeight,
-              behavior: 'instant',
-            });
-          }
-        }
-      };
-
-      // Небольшая задержка для обеспечения полной загрузки DOM
-      const timeoutId = setTimeout(scrollToEnd, 100);
-      setHasScrolledToEnd(true);
-
-      return () => {
-        clearTimeout(timeoutId);
-      };
-    }
-  }, [mergedMessages.length, hasScrolledToEnd, threadId]);
-
-  // Сброс флага прокрутки при смене чата
-  useEffect(() => {
-    setHasScrolledToEnd(false);
-  }, [threadId]);
 
   // Wrap the stop function to also stop image generation properly
   const stopWithCleanup = useCallback(() => {
@@ -581,7 +624,7 @@ const ChatView = React.memo(function ChatView({
     stop();
 
     // Stop image generation animations and mark as stopped
-    setMessages((prev) => prev.map((m) => {
+    originalSetMessages((prev) => prev.map((m) => {
       const imgGen = (m as any).imageGeneration;
       if (imgGen && imgGen.isGenerating) {
         return {
@@ -598,50 +641,64 @@ const ChatView = React.memo(function ChatView({
     // Exit image generation mode if it was enabled
     const { setImageGenerationMode } = useChatStore.getState();
     setImageGenerationMode(false);
-  }, [stop, setMessages]);
+  }, [stop, originalSetMessages]);
+
+  // Determine if there are any messages or if a message is being processed
+  const hasAnyMessages =
+    mergedMessages.length > 0 || status === 'submitted' || status === 'streaming';
 
   return (
     <>
       {mergedMessages.length > 0 && showNavBars && (
-        <ChatNavigationBars 
-          messages={mergedMessages} 
-          scrollToMessage={scrollToMessage} 
+        <ChatNavigationBars
+          messages={mergedMessages}
+          scrollToMessage={scrollToMessage}
         />
       )}
 
-      <div className="flex-1 flex flex-col relative">
-        <div
-className="flex-1 overflow-y-auto enhanced-scroll"
-          id="messages-scroll-area"
-          ref={scrollContainerRef}
-        >
-          <main className="w-full max-w-3xl mx-auto pt-24 pb-44 px-4 min-h-full flex-1">
-            {mergedMessages.length > 0 && (
-              <Messages
-                threadId={currentThreadId}
-                messages={mergedMessages}
-                status={status}
-                setMessages={setMessages}
-                reload={reload}
-                append={append}
-                error={error}
-                stop={stopWithCleanup}
-                forceRegeneration={forceRegeneration}
-                isRegenerating={isRegenerating}
-              />
-            )}
-            <div ref={messagesEndRef} />
-          </main>
-        </div>
-
+      <div className={cn(
+        "flex-1 flex flex-col relative",
+        customLayout && "min-h-0" // Обеспечиваем правильное поведение flex для customLayout
+      )}>
+        {hasAnyMessages && (
+          <div
+            className="flex-1 overflow-y-auto enhanced-scroll"
+            id="messages-scroll-area"
+          >
+            <main className={cn(
+              "w-full mx-auto min-h-full flex-1",
+              customLayout ? "px-0 pt-0 pb-0" : "max-w-3xl pt-24 pb-44 px-4"
+            )}>
+              {hasAnyMessages && (
+                <LazyMessages
+                  threadId={currentThreadId}
+                  messages={mergedMessages}
+                  status={status}
+                  setMessages={setMessages}
+                  reload={reload}
+                  append={append}
+                  error={error}
+                  stop={stopWithCleanup}
+                  forceRegeneration={forceRegeneration}
+                  isRegenerating={isRegenerating}
+                />
+              )}
+              <div ref={messagesEndRef} />
+            </main>
+          </div>
+        )}
+        
+        {/* ChatInput всегда отображается */}
         <div
           className={cn(
-            'fixed left-1/2 -translate-x-1/2 w-full max-w-3xl px-4 transition-all duration-300 z-30',
-            isMobile ? 'bottom-0' : (mergedMessages.length > 0 ? 'bottom-0' : 'top-1/2 -translate-y-1/2'),
+            customLayout 
+              ? 'relative w-full max-w-none transition-all duration-300 z-30 flex-shrink-0'
+              : 'fixed left-1/2 -translate-x-1/2 w-full max-w-3xl px-4 transition-all duration-300 z-30',
+            !customLayout && (isMobile ? 'bottom-0' : (hasAnyMessages ? 'bottom-0' : 'top-1/2 -translate-y-1/2')),
           )}
         >
           
-          <ChatInput
+          <LazyChatInput
             threadId={currentThreadId}
             thread={thread}
             input={input}
@@ -653,15 +710,14 @@ className="flex-1 overflow-y-auto enhanced-scroll"
             stop={stopWithCleanup}
             error={error}
             messageCount={mergedMessages.length}
-            scrollContainerRef={scrollContainerRef}
             onThreadCreated={handleThreadCreated}
+            projectId={projectId}
           />
         </div>
-
-
       </div>
     </>
   );
 });
 
 export default ChatView;
+

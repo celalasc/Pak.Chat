@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Clock, FileIcon, X, Image, FileText, File, ChevronRight, Brush } from 'lucide-react';
 import { Button } from './ui/button';
 import {
@@ -214,7 +214,7 @@ export default function RecentFilesDropdown({ children, onFileSelect, messageCou
     return date.toLocaleDateString();
   }, []);
 
-  const getFileIcon = useCallback((type: string, name?: string) => {
+  const getFileIcon = useMemo(() => (type: string, name?: string) => {
     if (type.startsWith('image/')) {
       // Специальная иконка для рисунков
       if (name?.startsWith('drawing-') && name.endsWith('.png')) {
@@ -227,7 +227,7 @@ export default function RecentFilesDropdown({ children, onFileSelect, messageCou
     return File;
   }, []);
 
-  const getFileColor = useCallback((type: string, name?: string) => {
+  const getFileColor = useMemo(() => (type: string, name?: string) => {
     if (type.startsWith('image/')) {
       // Специальный цвет для рисунков
       if (name?.startsWith('drawing-') && name.endsWith('.png')) {
@@ -240,7 +240,7 @@ export default function RecentFilesDropdown({ children, onFileSelect, messageCou
     return 'text-muted-foreground';
   }, []);
 
-  const getFileTypeLabel = useCallback((type: string, name?: string): string => {
+  const getFileTypeLabel = useMemo(() => (type: string, name?: string): string => {
     if (type.startsWith('image/')) {
       // Специальная метка для рисунков
       if (name?.startsWith('drawing-') && name.endsWith('.png')) {
@@ -263,6 +263,66 @@ export default function RecentFilesDropdown({ children, onFileSelect, messageCou
     return 'FILE';
   }, []);
 
+  // Memoized FileItem component for performance
+  const FileItem = React.memo<{ file: RecentFile; iconComponent: any; iconColor: string; fileTypeLabel: string }>(({ file, iconComponent: IconComponent, iconColor, fileTypeLabel }) => (
+    <div
+      className={cn(
+        "flex items-center gap-3 cursor-pointer group rounded-xl transition-all duration-200",
+        isMobile 
+          ? "p-4 hover:bg-accent active:bg-accent/80 active:scale-[0.98]" 
+          : "p-3 hover:scale-[1.02] hover:shadow-sm focus:bg-accent"
+      )}
+      onClick={() => handleFileSelect(file)}
+    >
+      {/* File Icon/Preview */}
+      <div className="flex-shrink-0 relative">
+        <div className={cn(
+          "bg-muted rounded-xl border border-border flex flex-col items-center justify-center relative",
+          isMobile ? "w-12 h-12" : "w-10 h-10"
+        )}>
+          <IconComponent className={cn(isMobile ? "w-6 h-6" : "w-5 h-5", iconColor)} />
+          {/* Тип файла */}
+          <div className="absolute -bottom-1 -right-1 bg-background border border-border rounded px-1 text-[10px] font-medium text-muted-foreground">
+            {fileTypeLabel}
+          </div>
+        </div>
+      </div>
+
+      {/* File Info */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between">
+          <p className={cn(
+            "font-medium truncate pr-2",
+            isMobile ? "text-base" : "text-sm"
+          )}>
+            {file.name}
+          </p>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "transition-all duration-200 flex-shrink-0",
+              isMobile 
+                ? "w-8 h-8 opacity-100" 
+                : "w-6 h-6 opacity-0 group-hover:opacity-100 hover:scale-110"
+            )}
+            onClick={(e) => removeFromRecent(file.id, e)}
+          >
+            <X className={cn(isMobile ? "w-4 h-4" : "w-3 h-3")} />
+          </Button>
+        </div>
+        <div className={cn(
+          "flex items-center gap-2 text-muted-foreground",
+          isMobile ? "text-sm" : "text-xs"
+        )}>
+          <span>{formatFileSize(file.size)}</span>
+          <span>•</span>
+          <span>{formatDate(file.lastUsed)}</span>
+        </div>
+      </div>
+    </div>
+  ));
+
   // Компонент для отображения файлов (общий для мобильной и десктопной версий)
   const renderFilesList = () => (
     displayedFiles.length === 0 ? (
@@ -280,73 +340,15 @@ export default function RecentFilesDropdown({ children, onFileSelect, messageCou
           Recent Files
         </div>
         {displayedFiles.map((file) => {
-          const IconComponent = getFileIcon(file.type, file.name);
+          const iconComponent = getFileIcon(file.type, file.name);
           const iconColor = getFileColor(file.type, file.name);
           const fileTypeLabel = getFileTypeLabel(file.type, file.name);
           
-          const fileItem = (
-            <div
-              key={file.id}
-              className={cn(
-                "flex items-center gap-3 cursor-pointer group rounded-xl transition-all duration-200",
-                isMobile 
-                  ? "p-4 hover:bg-accent active:bg-accent/80 active:scale-[0.98]" 
-                  : "p-3 hover:scale-[1.02] hover:shadow-sm focus:bg-accent"
-              )}
-              onClick={() => handleFileSelect(file)}
-            >
-              {/* File Icon/Preview */}
-              <div className="flex-shrink-0 relative">
-                <div className={cn(
-                  "bg-muted rounded-xl border border-border flex flex-col items-center justify-center relative",
-                  isMobile ? "w-12 h-12" : "w-10 h-10"
-                )}>
-                  <IconComponent className={cn(isMobile ? "w-6 h-6" : "w-5 h-5", iconColor)} />
-                  {/* Тип файла */}
-                  <div className="absolute -bottom-1 -right-1 bg-background border border-border rounded px-1 text-[10px] font-medium text-muted-foreground">
-                    {fileTypeLabel}
-                  </div>
-                </div>
-              </div>
-
-              {/* File Info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <p className={cn(
-                    "font-medium truncate pr-2",
-                    isMobile ? "text-base" : "text-sm"
-                  )}>
-                    {file.name}
-                  </p>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={cn(
-                      "transition-all duration-200 flex-shrink-0",
-                      isMobile 
-                        ? "w-8 h-8 opacity-100" 
-                        : "w-6 h-6 opacity-0 group-hover:opacity-100 hover:scale-110"
-                    )}
-                    onClick={(e) => removeFromRecent(file.id, e)}
-                  >
-                    <X className={cn(isMobile ? "w-4 h-4" : "w-3 h-3")} />
-                  </Button>
-                </div>
-                <div className={cn(
-                  "flex items-center gap-2 text-muted-foreground",
-                  isMobile ? "text-sm" : "text-xs"
-                )}>
-                  <span>{formatFileSize(file.size)}</span>
-                  <span>•</span>
-                  <span>{formatDate(file.lastUsed)}</span>
-                </div>
-              </div>
-            </div>
-          );
-
-          return isMobile ? fileItem : (
+          return isMobile ? (
+            <FileItem key={file.id} file={file} iconComponent={iconComponent} iconColor={iconColor} fileTypeLabel={fileTypeLabel} />
+          ) : (
             <DropdownMenuItem key={file.id} className="p-0" asChild>
-              {fileItem}
+              <FileItem file={file} iconComponent={iconComponent} iconColor={iconColor} fileTypeLabel={fileTypeLabel} />
             </DropdownMenuItem>
           );
         })}

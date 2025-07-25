@@ -30,6 +30,7 @@ interface UseChatSubmitProps {
   clearQuote: () => void;
   adjustHeight: (reset?: boolean) => void;
   onThreadCreated?: (id: Id<'threads'>) => void;
+  projectId?: Id<'projects'>;
 }
 
 export const useChatSubmit = ({
@@ -42,6 +43,7 @@ export const useChatSubmit = ({
   clearQuote,
   adjustHeight,
   onThreadCreated,
+  projectId,
 }: UseChatSubmitProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -57,7 +59,7 @@ export const useChatSubmit = ({
   const { complete } = useMessageSummary();
   
   // Mutations
-  const createThread = useMutation(api.threads.create);
+  const createThread = useMutation(api.threads.createWithProject);
   const sendMessage = useMutation<typeof api.messages.send>(api.messages.send);
   const generateUploadUrl = useMutation(api.attachments.generateUploadUrl);
   const saveAttachments = useMutation(api.attachments.save as any);
@@ -117,35 +119,48 @@ export const useChatSubmit = ({
       } else if (isConvexId(threadId)) {
         ensuredThreadId = threadId as Id<'threads'>;
       } else {
+        // Создаем чат с временным заголовком, который будет обновлен позже
+        // Это позволяет не ждать генерации заголовка от AI
+        const tempTitle = finalMessage.slice(0, 60).trim() || 'New Chat';
         ensuredThreadId = await createThread({
-          title: finalMessage.slice(0, 30) || 'New Chat',
+          title: tempTitle,
+          projectId: projectId,
         });
         
         setSessionThreadId(ensuredThreadId);
-        onThreadCreated?.(ensuredThreadId);
         
-        if (typeof window !== 'undefined') {
-          window.history.replaceState(null, '', `/chat/${ensuredThreadId}`);
-          saveLastPath(`/chat/${ensuredThreadId}`);
-          saveLastChatId(ensuredThreadId);
+        // Для проектов используем только callback, для обычных чатов - history API
+        if (projectId) {
+          // В контексте проекта позволяем ProjectPage обработать навигацию
+          onThreadCreated?.(ensuredThreadId);
+        } else {
+          // Для обычных чатов используем history API
+          if (typeof window !== 'undefined') {
+            const newUrl = `/chat/${ensuredThreadId}`;
+            window.history.replaceState(null, '', newUrl);
+            saveLastPath(newUrl);
+            saveLastChatId(ensuredThreadId);
+          }
+          onThreadCreated?.(ensuredThreadId);
         }
       }
 
-      // Save message to DB
+      // Save user message to database first
       const dbMsgId = await sendMessage({
         threadId: ensuredThreadId,
         content: finalMessage,
         role: 'user',
       });
 
-      // Handle file uploads
+      // Handle file uploads in parallel with message creation
       const localAttachments = attachments.filter((att): att is LocalAttachment => !att.remote);
       const remoteAttachments = attachments.filter(att => att.remote);
       
       // Set uploading state for local files
       localAttachments.forEach(att => setUploading(att.id, true));
       
-      const uploadedFiles = await Promise.all(
+      // Start file uploads in parallel (don't await here)
+      const uploadPromise = localAttachments.length > 0 ? Promise.all(
         localAttachments.map(async (attachment) => {
           try {
             // Upload original file
@@ -196,7 +211,7 @@ export const useChatSubmit = ({
               previewId,
               name: attachment.name,
               type: attachment.type,
-              messageId: dbMsgId,
+              messageId: undefined,
               width: dimensions?.width,
               height: dimensions?.height,
               size: attachment.size,
@@ -207,7 +222,10 @@ export const useChatSubmit = ({
             throw error;
           }
         })
-      );
+      ) : Promise.resolve([]);
+
+      // Wait for uploads to complete
+      const uploadedFiles = await uploadPromise;
 
       // Add remote attachments
       const reusedFiles = remoteAttachments.map(att => {
@@ -217,7 +235,7 @@ export const useChatSubmit = ({
           previewId: remoteAtt.previewId,
           name: att.name,
           type: att.type,
-          messageId: dbMsgId,
+          messageId: undefined,
           width: undefined,
           height: undefined,
           size: att.size,
@@ -242,12 +260,19 @@ export const useChatSubmit = ({
         }
       }
 
-      // Generate title for new chat
+      // Generate title for new chat asynchronously - truly fire and forget
       const isNewChat = !isConvexId(threadId) && !sessionThreadId;
       if (isNewChat) {
-        complete(finalMessage, {
-          body: { threadId: ensuredThreadId, messageId: dbMsgId, isTitle: true },
-        });
+        // Используем setTimeout для полностью асинхронного выполнения
+        // Это гарантирует, что генерация заголовка не блокирует отправку сообщения
+        setTimeout(() => {
+          complete(finalMessage, {
+            body: { threadId: ensuredThreadId, isTitle: true },
+          }).catch(err => {
+            // Тихо обрабатываем ошибку - заголовок не критичен для функциональности
+            console.warn('Title generation failed (non-critical):', err);
+          });
+        }, 0);
       }
 
       // Prepare attachments for UI and LLM
@@ -260,17 +285,11 @@ export const useChatSubmit = ({
         size: a.size,
       }));
 
-      if (savedAttachments.length > 0) {
-        await updateAttachmentMessageId({
-          attachmentIds: savedAttachments.map((a) => a.id),
-          messageId: dbMsgId,
-        });
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
+      // Note: messageId will be updated later by the server when processing the message
 
       const attachmentsForLLM = savedAttachments.map((a) => ({
         id: a.id,
-        messageId: dbMsgId,
+        messageId: undefined,
         name: a.name,
         type: a.type,
         url: a.url ?? '',
@@ -294,7 +313,7 @@ export const useChatSubmit = ({
         systemPrompt: currentMode.systemPrompt
       } : undefined;
 
-      // Send to LLM
+      // Send to LLM (use DB message ID to avoid duplication)
       append(
         createUserMessage(dbMsgId, finalMessage, attachmentsForUI),
         {
@@ -307,6 +326,7 @@ export const useChatSubmit = ({
             attachments: attachmentsForLLM,
             imageGeneration: imageGenerationData,
             customMode: customModeData,
+            projectId: projectId,
           },
         }
       );
@@ -389,6 +409,7 @@ export const useChatSubmit = ({
     saveDraftMutation,
     setUploading,
     getSelectedMode,
+    projectId,
   ]);
 
   return {
@@ -397,4 +418,4 @@ export const useChatSubmit = ({
     canChat,
     textareaRef,
   };
-}; 
+};

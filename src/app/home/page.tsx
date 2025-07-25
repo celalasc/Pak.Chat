@@ -31,7 +31,7 @@ export default function HomePage() {
   useEffect(() => {
     if (!mounted || !isAuthenticated) return;
     
-    // Если устройство перестало быть мобильным, перенаправляем на десктопную версию
+    // Если устройство не мобильное, перенаправляем на десктопную версию
     if (!isMobile) {
       router.replace('/chat');
     }

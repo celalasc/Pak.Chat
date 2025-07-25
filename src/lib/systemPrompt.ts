@@ -22,8 +22,13 @@ When analyzing images, PDF documents, or other files, be descriptive and helpful
 - Summarize or explain the document content when requested
 Explain what you see in detail and answer any questions about the content.`;
 
-export function buildSystemPrompt(customInstructions?: CustomInstructions, customModePrompt?: string): string {
+export function buildSystemPrompt(customInstructions?: CustomInstructions, customModePrompt?: string, projectContext?: string): string {
   let systemPrompt = BASE_SYSTEM_PROMPT;
+
+  // Add project context if provided
+  if (projectContext?.trim()) {
+    systemPrompt += projectContext;
+  }
 
   // Add custom mode prompt if provided
   if (customModePrompt?.trim()) {

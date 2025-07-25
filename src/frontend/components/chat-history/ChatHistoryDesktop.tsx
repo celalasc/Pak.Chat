@@ -59,6 +59,7 @@ import EmptyState from "@/frontend/components/ui/EmptyState";
 interface Thread extends Doc<"threads"> {
   pinned?: boolean;
   clonedFrom?: Id<"threads">;
+  projectId?: Id<"projects">;
 }
 
 interface ThreadGroup {
@@ -70,12 +71,16 @@ interface ChatHistoryDesktopProps {
   children: React.ReactNode;
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
+  projectId?: string;
+  projectName?: string;
 }
 
 const ChatHistoryDesktopComponent: React.FC<ChatHistoryDesktopProps> = ({
   children,
   isOpen,
   setIsOpen,
+  projectId,
+  projectName,
 }) => {
   const [rawQuery, setRawQuery] = useState("");
   const searchQuery = useDeferredValue(rawQuery);
@@ -87,6 +92,7 @@ const ChatHistoryDesktopComponent: React.FC<ChatHistoryDesktopProps> = ({
   const [shareLink, setShareLink] = useState<string | null>(null);
   const [isAnonymousShare, setIsAnonymousShare] = useState(false);
   const [sharingThread, setSharingThread] = useState<Thread | null>(null);
+  const [showProjectChats, setShowProjectChats] = useState(!!projectId);
 
   const { user } = useAuthStore();
   const { settings } = useSettingsStore();
@@ -213,18 +219,30 @@ const ChatHistoryDesktopComponent: React.FC<ChatHistoryDesktopProps> = ({
   const threadGroups = useMemo(() => {
     if (!threads) return [] as ThreadGroup[];
     
-    // Используем улучшенную фильтрацию с поддержкой Unicode
-    const filteredThreads = filterByTitle(threads, searchQuery);
+    // Фильтруем по поисковому запросу
+    let filteredThreads = filterByTitle(threads, searchQuery);
+    
+    // Фильтруем по проекту если включен режим проектных чатов
+    if (showProjectChats && projectId) {
+      filteredThreads = filteredThreads.filter(thread => thread.projectId === projectId);
+    } else if (!showProjectChats) {
+      // Показываем только обычные чаты (без projectId)
+      filteredThreads = filteredThreads.filter(thread => !thread.projectId);
+    }
     
     return groupThreadsByTime(filteredThreads);
-  }, [threads, searchQuery]);
+  }, [threads, searchQuery, showProjectChats, projectId]);
 
   // Simplified memoization
   const memoizedThreadGroups = threadGroups;
 
   const handleThreadClick = useCallback(
-    (threadId: Id<"threads">) => {
-      router.push(`/chat/${threadId}`);
+    (threadId: Id<"threads">, projectId?: Id<"projects">) => {
+      if (projectId) {
+        router.push(`/project/${projectId}/chat/${threadId}`);
+      } else {
+        router.push(`/chat/${threadId}`);
+      }
       handleOpenChange(false);
     },
     [router, handleOpenChange],
@@ -332,7 +350,7 @@ const ChatHistoryDesktopComponent: React.FC<ChatHistoryDesktopProps> = ({
     <CommandItem
       key={thread._id}
       value={thread._id}
-      onSelect={() => handleThreadClick(thread._id)}
+      onSelect={() => handleThreadClick(thread._id, thread.projectId)}
       onMouseEnter={() => debouncedSetHoverId(thread._id)}
       className="group flex items-center justify-between p-2 cursor-pointer hover:bg-accent/50 data-[selected=true]:bg-accent text-foreground min-h-[40px]"
       data-thread-id={thread._id}
@@ -523,7 +541,22 @@ const ChatHistoryDesktopComponent: React.FC<ChatHistoryDesktopProps> = ({
                 }}
               >
                 {/* Search Header - только для левой панели */}
-                <div className="p-4 border-b border-border bg-background">
+                <div className="p-4 border-b border-border bg-background space-y-3">
+                  {projectId && (
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">{showProjectChats ? projectName : 'All Chats'}</span>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowProjectChats(!showProjectChats)}
+                        className="h-7 px-2 text-xs"
+                      >
+                        {showProjectChats ? 'Show All' : 'Project Only'}
+                      </Button>
+                    </div>
+                  )}
                   <CommandInput
                     placeholder="Search in any language..."
                     value={rawQuery}

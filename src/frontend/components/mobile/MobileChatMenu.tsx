@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { isConvexId } from '@/lib/ids';
+import { useIsMobile } from '@/frontend/hooks/useIsMobile';
 import type { Id, Doc } from '@/convex/_generated/dataModel';
 
 interface MobileChatMenuProps {
@@ -28,6 +29,7 @@ function MobileChatMenu({ threadId, className }: MobileChatMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const { isMobile } = useIsMobile();
   
   const deleteThread = useMutation(api.threads.remove);
   const renameThread = useMutation(api.threads.rename);
@@ -128,11 +130,13 @@ function MobileChatMenu({ threadId, className }: MobileChatMenuProps) {
   const handleConfirmDelete = useCallback(async () => {
     if (isConvexId(threadId)) {
       await deleteThread({ threadId: threadId as Id<'threads'> });
-      router.push('/home');
+      // Перенаправляем на соответствующую главную страницу в зависимости от устройства
+      const targetPath = isMobile ? '/home' : '/chat';
+      router.push(targetPath);
     }
     setIsOpen(false);
     setMode('main');
-  }, [threadId, deleteThread, router]);
+  }, [threadId, deleteThread, router, isMobile]);
 
   const handleCancelDelete = useCallback(() => {
     setMode('main');

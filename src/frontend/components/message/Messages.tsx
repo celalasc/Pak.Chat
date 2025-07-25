@@ -18,6 +18,7 @@ function PureMessages({
   stop,
   forceRegeneration,
   isRegenerating,
+  isFirstMessagePending,
 }: {
   threadId: string;
   messages: UIMessage[];
@@ -29,12 +30,14 @@ function PureMessages({
   stop: UseChatHelpers['stop'];
   forceRegeneration: () => void;
   isRegenerating: boolean;
+  isFirstMessagePending?: boolean;
 }) {
-  // Логика индикатора загрузки теперь учитывает isRegenerating.
+  // Логика индикатора загрузки теперь учитывает isRegenerating и первое сообщение.
   const lastMessage = messages[messages.length - 1];
   const shouldShowLoading =
     (status === 'submitted' && lastMessage?.role === 'user') ||
-    (isRegenerating && lastMessage?.role === 'user');
+    (isRegenerating && lastMessage?.role === 'user') ||
+    (isFirstMessagePending && messages.length === 0);
 
   return (
     <section className="flex flex-col space-y-12">
@@ -66,7 +69,8 @@ const MemoizedMessages = memo(PureMessages, (prevProps, nextProps) => {
     equal(prevProps.messages, nextProps.messages) &&
     prevProps.status === nextProps.status &&
     prevProps.error === nextProps.error &&
-    prevProps.isRegenerating === nextProps.isRegenerating
+    prevProps.isRegenerating === nextProps.isRegenerating &&
+    prevProps.isFirstMessagePending === nextProps.isFirstMessagePending
   );
 });
 

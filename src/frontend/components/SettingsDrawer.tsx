@@ -42,6 +42,12 @@ import { useCustomModesStore } from '@/frontend/stores/CustomModesStore';
 import CustomModesDialog from '@/frontend/components/CustomModesDialog';
 import { useAPIKeyStore, Provider } from '@/frontend/stores/APIKeyStore';
 import { useAuthStore } from '@/frontend/stores/AuthStore';
+import {
+  useCurrentUser,
+  useHasRequiredKeys,
+  useAPIKeys,
+  useSettings
+} from '@/frontend/hooks/useOptimizedSelectors';
 import { useModelVisibilityStore } from '@/frontend/stores/ModelVisibilityStore';
 import { useModelVisibilitySync } from '@/frontend/hooks/useModelVisibilitySync';
 import { ProviderIcon } from '@/frontend/components/ui/provider-icons';
@@ -137,7 +143,7 @@ const ContentComponent = memo(function ContentComponent({
         </div>
       ) : (
         <div className="flex gap-4 flex-1 min-h-0 overflow-hidden">
-          <div className="flex flex-col w-48 flex-shrink-0">
+          <div className="flex flex-col w-48 flex-shrink-0 border-r border-border/30">
             <AnimatedTabs
               tabs={tabs.map((tab) => ({ ...tab, icon: getTabIcon(tab.icon) }))}
               value={activeTab}
@@ -179,12 +185,12 @@ const MobileMainMenu = memo(function MobileMainMenu({
           <button
             key={tab.value}
             onClick={() => onTabSelect(tab.value)}
-            className="flex items-center gap-4 p-4 rounded-xl hover:bg-accent/50 transition-all duration-200 active:scale-95 w-full"
+            className="flex items-center gap-4 p-4 rounded-xl hover:bg-accent/50 transition-all duration-200 active:scale-95 w-full text-left border border-border/30 hover:border-accent/50 bg-card/50 hover:bg-accent/30 touch-target"
           >
-            <div className="text-primary">
+            <div className="text-primary flex-shrink-0">
               {getTabIcon(tab.icon, 'lg')}
             </div>
-            <span className="text-sm font-medium">{tab.label}</span>
+            <span className="text-sm font-medium text-foreground">{tab.label}</span>
           </button>
         ))}
       </div>
@@ -213,6 +219,10 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
   const handleMobileTabSelect = useCallback((tab: string) => {
     setActiveTab(tab);
     setMobileView('tab');
+  }, []);
+
+  const handleMobileBackToMain = useCallback(() => {
+    setMobileView('main');
   }, []);
 
   const handleOpenChange = useCallback(
@@ -332,25 +342,25 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
         <DrawerTrigger asChild>
           {children}
         </DrawerTrigger>
-        <DrawerContent className="h-[85vh] max-h-[600px] flex flex-col">
-          <DrawerHeader className="flex-shrink-0 relative">
+        <DrawerContent className="h-[85vh] max-h-[600px] flex flex-col bg-background border-border">
+          <DrawerHeader className="flex-shrink-0 relative bg-background/95 backdrop-blur-sm">
             {mobileView === 'tab' && (
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setMobileView('main')}
-                className="h-8 w-8 absolute left-4 top-1/2 -translate-y-1/2"
+                className="h-8 w-8 absolute left-4 top-1/2 -translate-y-1/2 hover:bg-accent"
               >
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             )}
-            <DrawerTitle className="flex items-center justify-center gap-2 text-lg">
+            <DrawerTitle className="flex items-center justify-center gap-2 text-lg font-semibold">
               <Settings className="h-5 w-5" />
               Settings
             </DrawerTitle>
           </DrawerHeader>
           
-          <div className="flex-1 min-h-0 px-4 pb-6 overflow-y-auto -webkit-overflow-scrolling-touch">
+          <div className="flex-1 min-h-0 px-4 pb-6 overflow-y-auto scrollbar-none -webkit-overflow-scrolling-touch">
             <ContentComponent
               activeTab={activeTab}
               setActiveTab={setActiveTab}
@@ -360,7 +370,7 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
               scrollRef={scrollRef}
               onDrawerClose={resetDrawerState}
               mobileView={mobileView}
-              onMobileBackToMain={() => setMobileView('main')}
+              onMobileBackToMain={handleMobileBackToMain}
               onMobileTabSelect={handleMobileTabSelect}
               setMobileView={setMobileView}
             />
@@ -375,9 +385,9 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
       <DialogTrigger asChild>
         {children}
       </DialogTrigger>
-      <DialogContent className="w-[50vw] sm:max-w-none max-w-[520px] h-[65vh] flex flex-col rounded-3xl overflow-hidden">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+      <DialogContent className="w-[50vw] sm:max-w-none max-w-[520px] h-[65vh] flex flex-col rounded-3xl overflow-hidden border-border bg-background">
+        <DialogHeader className="bg-background/95 backdrop-blur-sm">
+          <DialogTitle className="flex items-center gap-2 text-lg font-semibold">
             <Settings className="h-5 w-5" />
             Settings
           </DialogTitle>
@@ -395,7 +405,7 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
           onDrawerClose={resetDrawerState}
           className="overflow-hidden"
           mobileView={mobileView}
-          onMobileBackToMain={() => setMobileView('main')}
+          onMobileBackToMain={handleMobileBackToMain}
           onMobileTabSelect={handleMobileTabSelect}
           setMobileView={setMobileView}
         />
@@ -405,7 +415,8 @@ const SettingsDrawerComponent = ({ children, isOpen, setIsOpen }: SettingsDrawer
 };
 
 const CustomizationTab = memo(() => {
-  const { settings, setSettings } = useSettingsStore();
+  const settings = useSettings();
+  const { setSettings } = useSettingsStore();
   const { setTheme } = useTheme();
   const [featuresExpanded, setFeaturesExpanded] = useState(false);
   const { isMobile } = useIsMobile();
@@ -662,7 +673,8 @@ const CustomizationTab = memo(() => {
 CustomizationTab.displayName = 'CustomizationTab';
 
 const ProfileTab = memo(() => {
-  const { user, loading, blurPersonalData, toggleBlur } = useAuthStore();
+  const user = useCurrentUser();
+  const { loading, blurPersonalData, toggleBlur } = useAuthStore();
 
   const handleLogin = useCallback(async () => {
     const auth = useAuthStore.getState();
@@ -739,7 +751,8 @@ const ProfileTab = memo(() => {
 ProfileTab.displayName = 'ProfileTab';
 
 const APIKeysTab = memo(() => {
-  const { keys, setKeys, keysLoading } = useAPIKeyStore();
+  const keys = useAPIKeys();
+  const { setKeys, keysLoading } = useAPIKeyStore();
   const [isSaving, setIsSaving] = useState(false);
   const [isHoveringSave, setIsHoveringSave] = useState(false);
 
@@ -893,7 +906,7 @@ const ApiKeyField = ({
   const [copied, setCopied] = useState(false);
   const [inputValue, setInputValue] = useState('');
   
-  const { keys } = useAPIKeyStore();
+  const keys = useAPIKeys();
   
   useEffect(() => {
     const currentValue = keys[id as keyof typeof keys] || '';
@@ -1006,7 +1019,8 @@ interface ModelsTabProps {
 }
 
 const ModelsTab = memo(({ onDrawerClose }: ModelsTabProps) => {
-  const { settings, setSettings } = useSettingsStore();
+  const settings = useSettings();
+  const { setSettings } = useSettingsStore();
   const { saveCustomInstructionsManually } = useSettingsSync();
   const { isAuthenticated } = useConvexAuth();
   const settingsDoc = useQuery(api.userSettings.get, isAuthenticated ? {} : 'skip');

@@ -48,7 +48,7 @@ export const withStorageDOMEvents = (store: StoreWithPersist) => {
 export const useModelStore = create<ModelStore>()(
   persist(
     (set, get) => ({
-      selectedModel: 'Gemini 2.5 Flash',
+selectedModel: 'Moonshot AI Kimi K2',
       modelSpecificSettings: {},
       webSearchEnabled: false,
 
@@ -127,7 +127,7 @@ export function useModelSync() {
   // Load from server once
   useEffect(() => {
     if (settingsDoc && !isInitialized.current) {
-      const serverSelectedModel = (settingsDoc.selectedModel as AIModel) ?? 'Gemini 2.5 Flash';
+const serverSelectedModel = (settingsDoc.selectedModel as AIModel) ?? 'Moonshot AI Kimi K2';
       const serverWebSearchEnabled = settingsDoc.webSearchEnabled ?? false;
       
       syncSelectedModel(serverSelectedModel);

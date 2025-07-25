@@ -92,14 +92,20 @@ interface MemoizedMarkdownProps {
 
 const MemoizedMarkdown = memo(({ content, streaming = false }: MemoizedMarkdownProps) => {
   // Удаляем теги reasoning из основного контента, так как они выводятся отдельно
-  const sanitizedContent = content
+  const sanitizedContent = useMemo(() => content
     // Удаляем блок <think> … </think> или до конца строки, если закрывающего тега ещё нет
     .replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, '')
     // Удаляем токены вида g:"..."
     .replace(/\bg:"[^"]+"/g, '')
-    .trim();
+    .trim(), [content]);
 
-  const blocks = useMemo(() => parseMarkdownIntoBlocks(sanitizedContent), [sanitizedContent]);
+  // Для стриминга не разбиваем на блоки - рендерим весь контент целиком
+  const blocks = useMemo(() => {
+    if (streaming) {
+      return [sanitizedContent]; // Один блок для всего контента при стриминге
+    }
+    return parseMarkdownIntoBlocks(sanitizedContent);
+  }, [sanitizedContent, streaming]);
 
   const proseClasses = 'prose prose-base dark:prose-invert max-w-none prose-code:before:content-none prose-code:after:content-none';
 
@@ -109,7 +115,7 @@ const MemoizedMarkdown = memo(({ content, streaming = false }: MemoizedMarkdownP
         {blocks.map((block, index) => (
           <MarkdownRendererBlock
             content={block}
-            key={`markdown-block-${index}`}
+            key={streaming ? 'streaming-block' : `markdown-block-${index}`}
           />
         ))}
       </div>

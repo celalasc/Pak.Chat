@@ -11,17 +11,21 @@ interface ChatHistoryButtonProps {
   className?: string;
   variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
   size?: "default" | "sm" | "lg" | "icon";
+  projectId?: string;
+  projectName?: string;
 }
 
 export default function ChatHistoryButton({ 
   className, 
   variant = "outline", 
-  size = "icon" 
+  size = "icon",
+  projectId,
+  projectName
 }: ChatHistoryButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <ChatHistoryDrawer isOpen={isOpen} setIsOpen={setIsOpen}>
+    <ChatHistoryDrawer isOpen={isOpen} setIsOpen={setIsOpen} projectId={projectId} projectName={projectName}>
       <WithTooltip label="History" side="bottom">
         <Button
           variant={variant}

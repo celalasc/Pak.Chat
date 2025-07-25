@@ -67,6 +67,20 @@ const nextConfig = {
     minimumCacheTTL: 60,
     dangerouslyAllowSVG: true,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'quirky-wolf-935.convex.cloud',
+        port: '',
+        pathname: '/**',
+      },
+    ],
   },
 
   // Оптимизация производительности
@@ -151,10 +165,12 @@ const nextConfig = {
             key: 'X-XSS-Protection',
             value: '1; mode=block',
           },
-          // Кэширование для статических ресурсов
+          // Отключаем кеширование в development
           {
             key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
+            value: process.env.NODE_ENV === 'development' 
+              ? 'no-cache, no-store, must-revalidate, proxy-revalidate, max-age=0'
+              : 'public, max-age=31536000, immutable',
           },
         ],
       },

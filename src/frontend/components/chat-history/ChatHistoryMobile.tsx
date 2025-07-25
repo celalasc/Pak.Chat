@@ -67,12 +67,16 @@ interface ChatHistoryMobileProps {
   children: React.ReactNode;
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
+  projectId?: string;
+  projectName?: string;
 }
 
 const ChatHistoryMobileComponent: React.FC<ChatHistoryMobileProps> = ({
   children,
   isOpen,
   setIsOpen,
+  projectId,
+  projectName,
 }) => {
   const [rawQuery, setRawQuery] = useState("");
   const searchQuery = useDeferredValue(rawQuery);
@@ -84,6 +88,7 @@ const ChatHistoryMobileComponent: React.FC<ChatHistoryMobileProps> = ({
   const [shareLink, setShareLink] = useState<string | null>(null);
   const [isAnonymousShare, setIsAnonymousShare] = useState(false);
   const [sharingThread, setSharingThread] = useState<Thread | null>(null);
+  const [showProjectChats, setShowProjectChats] = useState(!!projectId);
 
   const { user } = useAuthStore();
   const router = useRouter();
@@ -170,11 +175,19 @@ const ChatHistoryMobileComponent: React.FC<ChatHistoryMobileProps> = ({
   const threadGroups = useMemo(() => {
     if (!threads) return [] as ThreadGroup[];
     
-    // Используем улучшенную фильтрацию с поддержкой Unicode
-    const filteredThreads = filterByTitle(threads, searchQuery);
+    // Фильтруем по поисковому запросу
+    let filteredThreads = filterByTitle(threads, searchQuery);
+    
+    // Фильтруем по проекту если включен режим проектных чатов
+    if (showProjectChats && projectId) {
+      filteredThreads = filteredThreads.filter(thread => thread.projectId === projectId);
+    } else if (!showProjectChats) {
+      // Показываем только обычные чаты (без projectId)
+      filteredThreads = filteredThreads.filter(thread => !thread.projectId);
+    }
     
     return groupThreadsByTime(filteredThreads);
-  }, [threads, searchQuery]);
+  }, [threads, searchQuery, showProjectChats, projectId]);
 
   const handleThreadClick = useCallback(
     (threadId: Id<"threads">) => {
@@ -583,6 +596,21 @@ const ChatHistoryMobileComponent: React.FC<ChatHistoryMobileProps> = ({
                   New chat
                 </Button>
               </DrawerTitle>
+              {projectId && (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">{showProjectChats ? projectName : 'All Chats'}</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowProjectChats(!showProjectChats)}
+                    className="h-7 px-2 text-xs"
+                  >
+                    {showProjectChats ? 'Show All' : 'Project Only'}
+                  </Button>
+                </div>
+              )}
               <div className="relative">
                 <Input
                   placeholder="Search in any language…"
