@@ -1,6 +1,5 @@
 "use client";
 
-import { useParams } from "next/navigation";
 import { use, useEffect, useMemo, useState, useRef, memo, useCallback } from "react";
 import { useQuery, useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -13,12 +12,6 @@ import { saveLastChatId, saveLastPath } from "@/frontend/lib/lastChat";
 import type { UIMessage } from "ai";
 import { useProject } from "@/features/projects/hooks/useProject";
 import { useRouter } from "next/navigation";
-import ProjectKnowledge from "@/features/projects/components/ProjectKnowledge";
-import { Button } from "@/components/ui/button";
-import { WithTooltip } from "@/frontend/components/WithTooltip";
-import { Settings, Plus } from "lucide-react";
-import SettingsDrawer from "@/frontend/components/SettingsDrawer";
-import { ChatHistoryButton } from "@/frontend/components/chat-history";
 
 const ProjectChatPageInner = memo(function ProjectChatPageInner({ 
   params 
@@ -34,18 +27,9 @@ const ProjectChatPageInner = memo(function ProjectChatPageInner({
   const { isMobile, mounted } = useIsMobile();
   const wasMobileRef = useRef(isMobile);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  
-  const handleSettingsOpenChange = useCallback((open: boolean) => {
-    setIsSettingsOpen(open);
-  }, []);
-
-  const handleNewChat = useCallback(() => {
-    router.push(`/project/${projectId}/chat`);
-  }, [router, projectId]);
 
   // Load project data
-  const { project, files, isLoading: projectLoading, uploadFile, deleteFile, updateProject } = useProject(projectId);
+  const { project, isLoading: projectLoading } = useProject(projectId);
 
   // Validate chat ID
   const isValidId = useMemo(() => chatId ? isConvexId(chatId) : false, [chatId]);
@@ -84,7 +68,13 @@ const ProjectChatPageInner = memo(function ProjectChatPageInner({
       if (!attachmentsMap[a.messageId]) {
         attachmentsMap[a.messageId] = [];
       }
-      attachmentsMap[a.messageId].push(a);
+      attachmentsMap[a.messageId].push({
+        id: a._id,
+        messageId: a.messageId,
+        name: a.name,
+        type: a.type,
+        url: a.url,
+      });
     });
 
     const rawMessages: Doc<'messages'>[] = messagesResult ?? []

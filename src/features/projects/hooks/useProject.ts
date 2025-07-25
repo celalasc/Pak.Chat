@@ -5,112 +5,45 @@ import { Id } from "../../../../convex/_generated/dataModel";
 export function useProject(projectId: Id<"projects"> | undefined) {
   // Загрузка данных проекта
   const project = useQuery(
-    projectId ? api.projects.get : undefined,
-    projectId ? { projectId } : undefined
+    api.projects.get,
+    projectId ? { projectId } : "skip"
   );
 
   // Загрузка файлов проекта
   const files = useQuery(
-    projectId ? api.projectFiles.list : undefined,
-    projectId ? { projectId, paginationOpts: { numItems: 100, cursor: null } } : undefined
+    api.projectFiles.list,
+    projectId ? { projectId, paginationOpts: { numItems: 100, cursor: null } } : "skip"
   )?.page;
 
   // Загрузка связанных тредов
   const linkedThreadIds = useQuery(
-    projectId ? api.projectThreads.getForProject : undefined,
-    projectId ? { projectId } : undefined
+    api.projectThreads.getForProject,
+    projectId ? { projectId } : "skip"
   );
 
   const isLoading = project === undefined || files === undefined || linkedThreadIds === undefined;
 
   // Мутация для обновления проекта
   const updateProjectMutation = useMutation(api.projects.update);
-  const updateProject = (
+  const updateProject = async (
     updates: { name?: string; customInstructions?: string; isPublic?: boolean }
-  ) => {
+  ): Promise<void> => {
     if (!projectId) return;
-    return updateProjectMutation(
-      { projectId, ...updates },
-      {
-        optimisticUpdate: (localStore, args) => {
-          // Обновляем текущий проект в кэше
-          localStore.setQuery(
-            api.projects.get,
-            { projectId },
-            (oldProject) => {
-              if (!oldProject) return oldProject;
-              return { ...oldProject, ...args };
-            }
-          );
-          // Если есть запрос списка проектов, его тоже можно обновить
-          localStore.setQuery(
-            api.projects.list,
-            {},
-            (oldProjects) =>
-              oldProjects.map((p) =>
-                p._id === projectId ? { ...p, ...args } : p
-              ),
-            false
-          );
-        },
-      }
-    );
+    await updateProjectMutation({ projectId, ...updates });
   };
 
   // Мутация для загрузки файла
   const uploadFileMutation = useMutation(api.projectFiles.create);
-  const uploadFile = (name: string, content: string, fileType: string) => {
+  const uploadFile = async (name: string, content: string, fileType: string): Promise<Id<"projectFiles"> | undefined> => {
     if (!projectId) return;
-    return uploadFileMutation(
-      { projectId, name, content, fileType },
-      {
-        optimisticUpdate: (localStore, args) => {
-          const tempFileId = localStore.generateOptimisticId() as Id<"projectFiles">;
-          localStore.setQuery(
-            api.projectFiles.list,
-            { projectId, paginationOpts: { numItems: 100, cursor: null } },
-            (oldFilesPage) => ({
-              ...oldFilesPage,
-              page: [
-                {
-                  _id: tempFileId,
-                  _creationTime: Date.now(),
-                  projectId,
-                  userId: "optimistic_user_id" as Id<"users">,
-                  name: args.name,
-                  content: args.content,
-                  fileType: args.fileType,
-                },
-                ...(oldFilesPage?.page || []),
-              ],
-            }),
-            true
-          );
-        },
-      }
-    );
+    return await uploadFileMutation({ projectId, name, content, fileType });
   };
 
   // Мутация для удаления файла
   const deleteFileMutation = useMutation(api.projectFiles.remove);
-  const deleteFile = (fileId: Id<"projectFiles">) => {
+  const deleteFile = async (fileId: Id<"projectFiles">): Promise<void> => {
     if (!projectId) return;
-    return deleteFileMutation(
-      { fileId },
-      {
-        optimisticUpdate: (localStore) => {
-          localStore.setQuery(
-            api.projectFiles.list,
-            { projectId, paginationOpts: { numItems: 100, cursor: null } },
-            (oldFilesPage) => ({
-              ...oldFilesPage,
-              page: (oldFilesPage?.page || []).filter((f) => f._id !== fileId),
-            }),
-            false
-          );
-        },
-      }
-    );
+    await deleteFileMutation({ fileId });
   };
 
   // Мутация для привязки/отвязки треда

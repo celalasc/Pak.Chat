@@ -59,7 +59,13 @@ const CatchAllChatPageInner = memo(function CatchAllChatPageInner({ params }: { 
       if (!attachmentsMap[a.messageId]) {
         attachmentsMap[a.messageId] = [];
       }
-      attachmentsMap[a.messageId].push(a);
+      attachmentsMap[a.messageId].push({
+        id: a._id,
+        messageId: a.messageId,
+        name: a.name,
+        type: a.type,
+        url: a.url,
+      });
     });
 
     // Handle case where the query might still be loading.

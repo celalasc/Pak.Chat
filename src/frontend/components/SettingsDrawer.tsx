@@ -751,7 +751,7 @@ const ProfileTab = memo(() => {
 ProfileTab.displayName = 'ProfileTab';
 
 const APIKeysTab = memo(() => {
-  const keys = useAPIKeys();
+  const keys = useAPIKeys(); // This should return just the APIKeys object
   const { setKeys, keysLoading } = useAPIKeyStore();
   const [isSaving, setIsSaving] = useState(false);
   const [isHoveringSave, setIsHoveringSave] = useState(false);

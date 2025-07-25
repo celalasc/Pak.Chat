@@ -48,13 +48,13 @@ export const useCustomInstructionsOccupation = () => useSettingsStore(state => s
 export const useImageGenerationParams = () => useChatStore(state => state.imageGenerationParams);
 
 // API Key Store селекторы
-export const useAPIKeys = () => useAPIKeyStore(state => state.keys);
-export const useGoogleApiKey = () => useAPIKeyStore(state => state.keys.google);
-export const useOpenRouterApiKey = () => useAPIKeyStore(state => state.keys.openrouter);
-export const useOpenAIApiKey = () => useAPIKeyStore(state => state.keys.openai);
-export const useGroqApiKey = () => useAPIKeyStore(state => state.keys.groq);
-export const useHasRequiredKeys = () => useAPIKeyStore(state => state.hasRequiredKeys());
-export const useKeysLoading = () => useAPIKeyStore(state => state.keysLoading);
+export const useAPIKeys = () => useAPIKeyStore().keys;
+export const useGoogleApiKey = () => useAPIKeyStore().keys.google;
+export const useOpenRouterApiKey = () => useAPIKeyStore().keys.openrouter;
+export const useOpenAIApiKey = () => useAPIKeyStore().keys.openai;
+export const useGroqApiKey = () => useAPIKeyStore().keys.groq;
+export const useHasRequiredKeys = () => useAPIKeyStore().hasRequiredKeys();
+export const useKeysLoading = () => useAPIKeyStore().keysLoading;
 
 // Quote Store селекторы
 export const useCurrentQuote = () => useQuoteStore(state => state.currentQuote);
