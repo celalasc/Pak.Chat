@@ -142,7 +142,8 @@ const ChatView = React.memo(function ChatView({
   // Мемоизируем функцию подготовки тела запроса
   const prepareRequestBody = useCallback(
     ({ messages, ...options }: { messages: UIMessage[]; [key: string]: any }) => {
-      const currentThreadId = threadIdRef.current;
+      // Используем threadId из options если он есть, иначе из ref
+      const currentThreadId = options.threadId || threadIdRef.current;
       const { isImageGenerationMode, imageGenerationParams } = useChatStore.getState();
       // Get current mode information
       const currentMode = getSelectedMode();
@@ -352,7 +353,8 @@ const ChatView = React.memo(function ChatView({
       return response;
     },
     onFinish: async (finalMsg) => {
-      const latestThreadId = threadIdRef.current;
+      // Get the latest threadId from multiple sources
+      const latestThreadId = threadIdRef.current || currentThreadId;
       
       // Save only assistant messages to database (user messages already saved in useChatSubmit)
       if (
