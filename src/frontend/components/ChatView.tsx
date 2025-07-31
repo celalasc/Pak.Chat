@@ -127,12 +127,12 @@ const ChatView = React.memo(function ChatView({
     setIsRegenerating(true);
   }, []);
 
-  // Мемоизируем тело запроса
+  // Мемоизируем тело запроса - используем threadIdRef для актуального значения
   const requestBody = useMemo(
     () => ({
       model: selectedModel,
       apiKeys: keys,
-      threadId: currentThreadId,
+      threadId: threadIdRef.current || currentThreadId,
       search: webSearchEnabled,
       projectId: projectId,
     }),
@@ -142,8 +142,8 @@ const ChatView = React.memo(function ChatView({
   // Мемоизируем функцию подготовки тела запроса
   const prepareRequestBody = useCallback(
     ({ messages, ...options }: { messages: UIMessage[]; [key: string]: any }) => {
-      // Используем threadId из options если он есть, иначе из ref
-      const currentThreadId = options.threadId || threadIdRef.current;
+      // ИСПРАВЛЕНИЕ: Приоритет threadId из options.body, затем options, затем из ref
+      const requestThreadId = options.body?.threadId || options.threadId || threadIdRef.current;
       const { isImageGenerationMode, imageGenerationParams } = useChatStore.getState();
       // Get current mode information
       const currentMode = getSelectedMode();
@@ -154,22 +154,21 @@ const ChatView = React.memo(function ChatView({
       
       const body = {
         messages: messages.map((m) => ({ ...m, id: m.id })),
-        model: options.model || selectedModel, // Use model from options if provided, otherwise use selectedModel
-        apiKeys: options.apiKeys || keys,
-        threadId: options.threadId || currentThreadId,
-        search: options.search !== undefined ? options.search : webSearchEnabled,
-        imageGeneration: isImageGenerationMode ? {
+        model: options.body?.model || options.model || selectedModel,
+        apiKeys: options.body?.apiKeys || options.apiKeys || keys,
+        threadId: requestThreadId, // Используем правильный threadId
+        search: options.body?.search !== undefined ? options.body.search : 
+               (options.search !== undefined ? options.search : webSearchEnabled),
+        imageGeneration: options.body?.imageGeneration || (isImageGenerationMode ? {
           enabled: true,
           params: imageGenerationParams
-        } : undefined,
-        customMode: customModeData,
-        projectId: options.projectId || projectId,
+        } : undefined),
+        customMode: options.body?.customMode || customModeData,
+        projectId: options.body?.projectId || options.projectId || projectId,
+        // Передаем дополнительные поля из options.body если они есть
+        ...(options.body?.userId && { userId: options.body.userId }),
+        ...(options.body?.attachments && { attachments: options.body.attachments }),
       };
-
-      
-      if (isImageGenerationMode) {
-        // ChatView prepareRequestBody debug removed
-      }
 
       return body;
     },
