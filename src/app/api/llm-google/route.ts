@@ -7,6 +7,7 @@ import { isConvexId } from '@/lib/ids';
 import { getModelConfig, AIModel } from '@/lib/models';
 import { buildSystemPrompt } from '@/lib/systemPrompt';
 import { CustomInstructions } from '@/frontend/stores/SettingsStore';
+import { UIMessage } from 'ai';
 interface Attachment {
   id: Id<'attachments'>;
   messageId: Id<'messages'> | undefined;
@@ -37,11 +38,19 @@ export async function POST(req: NextRequest) {
       userId,
       search,
       attachments: requestAttachments,
+    }: {
+      messages: UIMessage[];
+      model: string;
+      apiKeys: Record<string, string>;
+      threadId?: string;
+      userId?: string;
+      search?: boolean;
+      attachments?: any[];
     } = await req.json();
 
     // Для нового чата threadId может быть пустым - это нормально
     // Но если есть больше одного сообщения пользователя, threadId обязателен
-    const userMessagesCount = messages.filter(m => m.role === 'user').length;
+    const userMessagesCount = messages.filter((m: UIMessage) => m.role === 'user').length;
     if (!threadId && userMessagesCount > 1) {
       return NextResponse.json(
         { error: 'threadId required for existing conversations' },
@@ -330,4 +339,4 @@ export async function POST(req: NextRequest) {
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
-} 
+}
