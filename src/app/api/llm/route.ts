@@ -54,8 +54,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Для нового чата threadId может быть пустым - это нормально
-    // Проверяем только если есть сообщения, которые нужно сохранить в БД
-    if (!threadId && messages.length > 1) {
+    // Но если есть больше одного сообщения пользователя, threadId обязателен
+    const userMessagesCount = messages.filter(m => m.role === 'user').length;
+    if (!threadId && userMessagesCount > 1) {
       return NextResponse.json(
         { error: 'threadId required for existing conversations' },
         { status: 400 }

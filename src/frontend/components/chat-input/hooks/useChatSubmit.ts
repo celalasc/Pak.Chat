@@ -314,19 +314,23 @@ export const useChatSubmit = ({
       } : undefined;
 
       // Send to LLM (use DB message ID to avoid duplication)
+      // ВАЖНО: Передаем ensuredThreadId в body, чтобы API получил правильный threadId
       append(
         createUserMessage(dbMsgId, finalMessage, attachmentsForUI),
         {
           body: {
             model: selectedModel,
             apiKeys: keys,
-            threadId: ensuredThreadId,
+            threadId: ensuredThreadId, // Обязательно передаем правильный threadId
             userId: user?.uid,
             search: webSearchEnabled,
             attachments: attachmentsForLLM,
             imageGeneration: imageGenerationData,
             customMode: customModeData,
             projectId: projectId,
+          },
+          options: {
+            threadId: ensuredThreadId, // Дублируем для надежности
           },
         }
       );
