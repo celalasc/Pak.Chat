@@ -312,7 +312,7 @@ export async function POST(req: NextRequest) {
           controller.enqueue(encoder.encode('d:{"finishReason":"stop"}\n'));
           
           controller.close();
-        } catch {
+        } catch (error) {
   
           // Отправляем ошибку в формате AI SDK
           const errorData = JSON.stringify({
@@ -331,10 +331,12 @@ export async function POST(req: NextRequest) {
         'Cache-Control': 'no-cache',
       },
     });
-  } catch {
+  } catch (error) {
  
     return new NextResponse(
-      JSON.stringify({ error: 'Internal Server Error' }),
+      JSON.stringify({ 
+        error: error instanceof Error ? error.message : 'Internal Server Error' 
+      }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
