@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
       threadId?: string;
       userId?: string;
       search?: boolean;
-      attachments?: any[];
+      attachments?: Attachment[];
     } = await req.json();
 
     // Для нового чата threadId может быть пустым - это нормально
