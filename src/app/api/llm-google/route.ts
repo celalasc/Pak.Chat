@@ -118,12 +118,12 @@ export async function POST(req: NextRequest) {
           additionalInfo: userSettings.customInstructionsAdditionalInfo || '',
         };
         
-        console.log('Loaded custom instructions for user (Google API):', { userId, threadId, userCustomInstructions });
+
       } else {
-        console.log('No custom instructions found for user (Google API):', { userId, threadId });
+
       }
-    } catch (e) {
-      console.error('User settings fetch failed:', e);
+    } catch {
+      // User settings fetch failed - continue without custom instructions
     }
 
     // Обрабатываем вложения и историю
@@ -131,8 +131,8 @@ export async function POST(req: NextRequest) {
     if (threadId && isConvexId(threadId)) {
       try {
         attachments = await fetchQuery(api.attachments.byThread, { threadId: threadId as Id<'threads'> });
-      } catch (e) {
-        console.error('Attachment fetch failed:', e);
+      } catch {
+        // Attachment fetch failed - continue without attachments
       }
     }
 
@@ -214,8 +214,8 @@ export async function POST(req: NextRequest) {
               text: `Binary file ${attachment.name} (type ${mime}, ${(sizeBytes / 1024).toFixed(0)} KB) encoded in base64 below:\n${base64}`
             });
           }
-        } catch (err) {
-          console.error('Attachment processing failed:', err);
+        } catch {
+          // Attachment processing failed - skip this attachment
         }
       }
 
@@ -312,8 +312,8 @@ export async function POST(req: NextRequest) {
           controller.enqueue(encoder.encode('d:{"finishReason":"stop"}\n'));
           
           controller.close();
-        } catch (error) {
-          console.error('Streaming error:', error);
+        } catch {
+  
           // Отправляем ошибку в формате AI SDK
           const errorData = JSON.stringify({
             error: error instanceof Error ? error.message : 'Unknown error'
@@ -331,9 +331,8 @@ export async function POST(req: NextRequest) {
         'Cache-Control': 'no-cache',
       },
     });
-  } catch (error) {
-    console.error('Google LLM API Error:', error);
-    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+  } catch {
+ 
     return new NextResponse(
       JSON.stringify({ error: 'Internal Server Error' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
