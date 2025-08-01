@@ -46,6 +46,8 @@ interface ChatInputProps {
   messageCount: number;
   onThreadCreated?: (id: Id<'threads'>) => void;
   projectId?: Id<'projects'>;
+  sessionThreadId?: string | undefined;
+  setSessionThreadId?: (id: string | undefined) => void;
 }
 
 function PureChatInput({
@@ -62,6 +64,8 @@ function PureChatInput({
   messageCount,
   onThreadCreated,
   projectId,
+  sessionThreadId: externalSessionThreadId,
+  setSessionThreadId: externalSetSessionThreadId,
 }: ChatInputProps) {
   const isImageGenerationMode = useImageGenerationMode();
   const imageGenerationParams = useImageGenerationParams();
@@ -76,7 +80,10 @@ function PureChatInput({
   const userSettings = useQuery(api.userSettings.get, user ? {} : 'skip');
   const saveDraftMutation = useMutation(api.threads.saveDraft);
   
-  const [sessionThreadId, setSessionThreadId] = useState<string | null>(null);
+  // Use external sessionThreadId if provided, otherwise manage local state
+  const [localSessionThreadId, setLocalSessionThreadId] = useState<string | undefined>(undefined);
+  const sessionThreadId = externalSessionThreadId !== undefined ? externalSessionThreadId : localSessionThreadId;
+  const setSessionThreadId = externalSetSessionThreadId || setLocalSessionThreadId;
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({
     minHeight: 72,
     maxHeight: 200,
@@ -87,7 +94,7 @@ function PureChatInput({
     if (isConvexId(threadId)) {
       setSessionThreadId(threadId);
     } else {
-      setSessionThreadId(null);
+      setSessionThreadId(undefined);
     }
   }, [threadId]);
 

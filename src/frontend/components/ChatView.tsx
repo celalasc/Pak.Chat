@@ -33,6 +33,7 @@ interface ChatViewProps {
   projectId?: Id<"projects">;
   project?: Doc<"projects">;
   customLayout?: boolean;
+  projectLayout?: boolean;
 }
 
 // Мемоизированный компонент ChatView
@@ -44,7 +45,8 @@ const ChatView = React.memo(function ChatView({
   onThreadCreated,
   projectId,
   project,
-  customLayout
+  customLayout,
+  projectLayout
 }: ChatViewProps) {
   const { keys } = useAPIKeyStore();
   const { selectedModel, webSearchEnabled } = useModelStore();
@@ -63,6 +65,7 @@ const ChatView = React.memo(function ChatView({
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [currentThreadId, setCurrentThreadId] = useState(threadId);
+  const [sessionThreadId, setSessionThreadId] = useState<string | undefined>(undefined);
   
   // Состояние для отслеживания регенераций
   const [isRegenerating, setIsRegenerating] = useState(false);
@@ -92,8 +95,11 @@ const ChatView = React.memo(function ChatView({
   // Keep latest thread ID in a ref to avoid stale closures in callbacks
   const threadIdRef = useRef<string>(threadId);
   useEffect(() => {
-    threadIdRef.current = currentThreadId;
-  }, [currentThreadId]);
+    // КРИТИЧЕСКИ ВАЖНО: Обновляем threadIdRef с приоритетом sessionThreadId, currentThreadId, затем threadId
+    const latestThreadId = sessionThreadId || currentThreadId || threadId;
+    threadIdRef.current = latestThreadId;
+    
+  }, [sessionThreadId, currentThreadId, threadId]);
 
   const sendMessage = useMutation<typeof api.messages.send>(api.messages.send);
   const generateUploadUrl = useMutation(api.attachments.generateUploadUrl);
@@ -117,6 +123,7 @@ const ChatView = React.memo(function ChatView({
   // Обработчик создания нового треда
   const handleThreadCreated = useCallback((newThreadId: string) => {
     setCurrentThreadId(newThreadId);
+    setSessionThreadId(newThreadId);
     threadIdRef.current = newThreadId;
     // Уведомляем родительский компонент
     onThreadCreated?.(newThreadId);
@@ -127,23 +134,26 @@ const ChatView = React.memo(function ChatView({
     setIsRegenerating(true);
   }, []);
 
-  // Мемоизируем тело запроса - используем threadIdRef для актуального значения
+  // Мемоизируем тело запроса - НЕ включаем threadId в базовое тело запроса
+  // threadId будет передаваться через prepareRequestBody для каждого запроса
   const requestBody = useMemo(
     () => ({
       model: selectedModel,
       apiKeys: keys,
-      threadId: threadIdRef.current || currentThreadId,
       search: webSearchEnabled,
       projectId: projectId,
     }),
-    [selectedModel, keys, currentThreadId, webSearchEnabled, projectId]
+    [selectedModel, keys, webSearchEnabled, projectId]
   );
 
   // Мемоизируем функцию подготовки тела запроса
   const prepareRequestBody = useCallback(
     ({ messages, ...options }: { messages: UIMessage[]; [key: string]: any }) => {
-      // ИСПРАВЛЕНИЕ: Приоритет threadId из options.body, затем options, затем из ref
-      const requestThreadId = options.body?.threadId || options.threadId || threadIdRef.current;
+      // КРИТИЧЕСКИ ВАЖНО: Приоритет threadId из options.body (от useChatSubmit),
+      // затем options.threadId, затем из текущего состояния
+      const requestThreadId = options.body?.threadId || options.threadId || threadIdRef.current || currentThreadId;
+      
+      
       const { isImageGenerationMode, imageGenerationParams } = useChatStore.getState();
       // Get current mode information
       const currentMode = getSelectedMode();
@@ -156,7 +166,7 @@ const ChatView = React.memo(function ChatView({
         messages: messages.map((m) => ({ ...m, id: m.id })),
         model: options.body?.model || options.model || selectedModel,
         apiKeys: options.body?.apiKeys || options.apiKeys || keys,
-        threadId: requestThreadId, // Используем правильный threadId
+        threadId: requestThreadId, // Используем правильный threadId с приоритетом
         search: options.body?.search !== undefined ? options.body.search : 
                (options.search !== undefined ? options.search : webSearchEnabled),
         imageGeneration: options.body?.imageGeneration || (isImageGenerationMode ? {
@@ -172,7 +182,7 @@ const ChatView = React.memo(function ChatView({
 
       return body;
     },
-    [selectedModel, keys, webSearchEnabled, getSelectedMode, projectId]
+    [selectedModel, keys, webSearchEnabled, getSelectedMode, projectId, currentThreadId]
   );
 
   // Add optimistic loading state for new chats
@@ -353,35 +363,41 @@ const ChatView = React.memo(function ChatView({
     },
     onFinish: async (finalMsg) => {
       // Get the latest threadId from multiple sources
-      const latestThreadId = threadIdRef.current || currentThreadId;
+      const latestThreadId = threadIdRef.current || currentThreadId || sessionThreadId;
+      
       
       // Save only assistant messages to database (user messages already saved in useChatSubmit)
       if (
         finalMsg.role === 'assistant' &&
         finalMsg.content.trim() !== '' &&
-        !isConvexId(finalMsg.id) &&
-        isConvexId(latestThreadId)
+        isConvexId(latestThreadId) &&
+        !isConvexId(finalMsg.id) // Only save if not already saved
       ) {
         const { selectedModel: currentModel } = useModelStore.getState();
 
-        const realId = await sendMessage({
-          threadId: latestThreadId as Id<'threads'>,
-          role: 'assistant',
-          content: finalMsg.content,
-          model: currentModel,
-        });
+        try {
+          const realId = await sendMessage({
+            threadId: latestThreadId as Id<'threads'>,
+            role: 'assistant',
+            content: finalMsg.content,
+            model: currentModel,
+          });
 
-        originalSetMessages((prev) => {
-          const idx = prev.findIndex((m) => m.id === finalMsg.id);
-          if (idx === -1) return prev;
-          const next = [...prev];
-          next[idx] = { 
-            ...(next[idx] as any), 
-            id: realId, 
-            model: currentModel 
-          } as any;
-          return next;
-        });
+
+          originalSetMessages((prev) => {
+            const idx = prev.findIndex((m) => m.id === finalMsg.id);
+            if (idx === -1) return prev;
+            const next = [...prev];
+            next[idx] = { 
+              ...(next[idx] as any), 
+              id: realId, 
+              model: currentModel 
+            } as any;
+            return next;
+          });
+        } catch (error) {
+          console.error('❌ Failed to save AI message:', error);
+        }
       }
       
       // Clear the first message pending state
@@ -436,6 +452,15 @@ const ChatView = React.memo(function ChatView({
       setIsRegenerating(false);
     }
   }, [status]);
+
+  // ИСПРАВЛЕНИЕ: Принудительно пересоздаем useChat хук при регенерации
+  useEffect(() => {
+    if (isRegenerating) {
+      // Создаем новый уникальный ключ для полного сброса useChat хука
+      const newKey = `chat-${currentThreadId || 'new'}-regen-${Date.now()}`;
+      setChatKey(newKey);
+    }
+  }, [isRegenerating, currentThreadId]);
 
   // Принудительно скрываем скелетон после первого сообщения
   const [hasMessages, setHasMessages] = useState(false);
@@ -654,6 +679,7 @@ const ChatView = React.memo(function ChatView({
 
       <div className={cn(
         "flex-1 flex flex-col relative",
+        customLayout && !hasAnyMessages && "justify-center items-center", // Центрируем содержимое когда нет сообщений
         customLayout && "min-h-0" // Обеспечиваем правильное поведение flex для customLayout
       )}>
         {hasAnyMessages && (
@@ -688,9 +714,11 @@ const ChatView = React.memo(function ChatView({
         {/* ChatInput всегда отображается */}
         <div
           className={cn(
-            customLayout 
+            customLayout
               ? 'relative w-full max-w-none transition-all duration-300 z-30 flex-shrink-0'
-              : 'fixed left-1/2 -translate-x-1/2 w-full max-w-3xl px-4 transition-all duration-300 z-30',
+              : projectLayout
+                ? 'fixed left-[35%] -translate-x-1/2 w-full max-w-3xl px-4 transition-all duration-300 z-30'
+                : 'fixed left-1/2 -translate-x-1/2 w-full max-w-3xl px-4 transition-all duration-300 z-30',
             !customLayout && (isMobile ? 'bottom-0' : (hasAnyMessages ? 'bottom-0' : 'top-1/2 -translate-y-1/2')),
           )}
         >
@@ -709,6 +737,8 @@ const ChatView = React.memo(function ChatView({
             messageCount={mergedMessages.length}
             onThreadCreated={handleThreadCreated}
             projectId={projectId}
+            sessionThreadId={sessionThreadId}
+            setSessionThreadId={setSessionThreadId}
           />
         </div>
       </div>

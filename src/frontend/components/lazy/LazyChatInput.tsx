@@ -22,6 +22,8 @@ interface LazyChatInputProps {
   messageCount: number;
   onThreadCreated?: (id: Id<'threads'>) => void;
   projectId?: Id<'projects'>;
+  sessionThreadId?: string | undefined;
+  setSessionThreadId?: (id: string | undefined) => void;
 }
 
 // Skeleton component for ChatInput loading state

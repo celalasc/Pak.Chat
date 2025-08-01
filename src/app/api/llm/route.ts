@@ -53,15 +53,40 @@ export async function POST(req: NextRequest) {
       // Image generation request received
     }
 
-    // Для нового чата threadId может быть пустым - это нормально
-    // Но если есть больше одного сообщения пользователя, threadId обязателен
-    const userMessagesCount = messages.filter(m => m.role === 'user').length;
-    if (!threadId && userMessagesCount > 1) {
-      return NextResponse.json(
-        { error: 'threadId required for existing conversations' },
-        { status: 400 }
-      );
-    }
+    // DEBUG: Detailed logging for threadId debugging
+  console.log('🔍 API /llm - Request received:', {
+    threadId: threadId,
+    threadIdType: typeof threadId,
+    threadIdLength: threadId?.length,
+    messagesCount: messages.length,
+    timestamp: new Date().toISOString()
+  });
+  
+  // Для нового чата threadId может быть пустым - это нормально
+  // Но если есть больше одного сообщения пользователя, threadId обязателен
+  const userMessagesCount = messages.filter(m => m.role === 'user').length;
+  
+  // DEBUG: Log user messages analysis
+  console.log('🔍 API /llm - User messages analysis:', {
+    userMessagesCount: userMessagesCount,
+    allMessages: messages.map(m => ({ role: m.role, id: m.id, contentLength: m.content?.length || 0 })),
+    shouldRequireThreadId: userMessagesCount > 1,
+    hasThreadId: !!threadId
+  });
+  
+  if (!threadId && userMessagesCount > 1) {
+    console.error('❌ API /llm - threadId validation failed:', {
+      threadId: threadId,
+      userMessagesCount: userMessagesCount,
+      error: 'threadId required for existing conversations'
+    });
+    return NextResponse.json(
+      { error: 'threadId required for existing conversations' },
+      { status: 400 }
+    );
+  }
+  
+  console.log('✅ API /llm - threadId validation passed');
 
     const modelConfig = getModelConfig(model as AIModel);
     const apiKey = apiKeys[modelConfig.provider];
