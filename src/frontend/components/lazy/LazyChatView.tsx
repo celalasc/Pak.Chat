@@ -17,6 +17,7 @@ interface LazyChatViewProps {
   projectId?: Id<"projects">;
   project?: Doc<"projects">;
   customLayout?: boolean;
+  projectLayout?: boolean;
 }
 
 // Skeleton component for ChatView loading state

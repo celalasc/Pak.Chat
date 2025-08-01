@@ -317,7 +317,6 @@ export const useChatSubmit = ({
             customMode: customModeData,
             projectId: projectId,
           },
-          threadId: ensuredThreadId, // Передаем threadId напрямую в options
         }
       );
       
