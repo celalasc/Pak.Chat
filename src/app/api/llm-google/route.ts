@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
       
       // Попробуем получить настройки через threadId
       if (threadId && isConvexId(threadId)) {
-        userSettings = await fetchQuery(api.userSettings.getByThreadId, { threadId });
+        userSettings = await fetchQuery(api.userSettings.getByThreadId, { threadId: threadId as Id<'threads'> });
       }
       
       // Если не удалось через threadId, попробуем через userId
@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
     let attachments: Attachment[] = [];
     if (threadId && isConvexId(threadId)) {
       try {
-        attachments = await fetchQuery(api.attachments.byThread, { threadId });
+        attachments = await fetchQuery(api.attachments.byThread, { threadId: threadId as Id<'threads'> });
       } catch (e) {
         console.error('Attachment fetch failed:', e);
       }
