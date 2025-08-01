@@ -83,7 +83,10 @@ export default function MessageControls({
   const handleRegenerate = useCallback(async () => {
     stop();
 
-    if (!isConvexId(threadId)) return;
+    if (!isConvexId(threadId)) {
+      console.error('ThreadId is not a valid Convex ID:', threadId);
+      return;
+    }
 
     const currentIndex = messages.findIndex((m) => m.id === message.id);
     if (currentIndex === -1) {
@@ -117,9 +120,11 @@ export default function MessageControls({
       }
     }
 
-    // ИСПРАВЛЕНИЕ: Принудительно очищаем состояние сообщений и устанавливаем флаг регенерации
-    const messagesUpToParent = messages.slice(0, parentMessageIndex + 1);
+    // ИСПРАВЛЕНИЕ: Удаляем родительское сообщение пользователя перед перегенерацией
+    // чтобы избежать дубликатов
+    const messagesUpToParent = messages.slice(0, parentMessageIndex);
     setMessages(messagesUpToParent);
+    
     forceRegeneration();
 
     // Небольшая задержка чтобы UI обновился
@@ -128,15 +133,29 @@ export default function MessageControls({
     // Используем текущую модель пользователя
     const { selectedModel: finalModelToUse, webSearchEnabled: currentSearch } = useModelStore.getState();
     
-    reload({
-      body: {
-        model: finalModelToUse,
-        apiKeys: keys,
-        threadId,
-        search: currentSearch,
-      },
-    });
-  }, [stop, threadId, message.id, messages, setMessages, reload, prepareForRegenerate, keys, forceRegeneration]);
+    try {
+      // Отправляем то же сообщение через append
+      // Используем оригинальный ID если он есть в БД, иначе создаем новый
+      const messageId = isConvexId(parentMessageToResend.id) 
+        ? parentMessageToResend.id 
+        : `regenerated-${Date.now()}`;
+        
+      await append({
+        role: 'user',
+        content: parentMessageToResend.content,
+        id: messageId
+      }, {
+        body: {
+          model: finalModelToUse,
+          apiKeys: keys,
+          threadId,
+          search: currentSearch,
+        },
+      });
+    } catch (error) {
+      console.error('Error during append (regeneration):', error);
+    }
+  }, [stop, threadId, message.id, messages, setMessages, reload, prepareForRegenerate, keys, forceRegeneration, append]);
 
   // Show controls on mobile only when explicitly visible.
   const shouldShowControls = useMemo(() => (isMobile ? isVisible : true), [isMobile, isVisible]);

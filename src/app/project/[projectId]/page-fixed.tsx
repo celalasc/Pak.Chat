@@ -8,8 +8,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/frontend/components/ui/dia
 import { Textarea } from '@/frontend/components/ui/textarea';
 import { WithTooltip } from '@/frontend/components/WithTooltip';
 import { useIsMobile } from '@/frontend/hooks/useIsMobile';
-import { useChat } from '@ai-sdk/react';
-import ChatInput from '@/frontend/components/chat-input';
+import Chat from '@/frontend/components/Chat';
 
 import { Id } from '@/convex/_generated/dataModel';
 
@@ -41,25 +40,6 @@ export default function ProjectPage() {
   const [sessionThreadId, setSessionThreadId] = useState<string | null>(null);
 
   
-  // Initialize chat with project context
-  const {
-    messages,
-    input,
-    setInput,
-    append,
-    reload,
-    stop,
-    setMessages,
-    error,
-    isLoading,
-  } = useChat({
-    api: '/api/chat',
-    initialMessages: [],
-    body: {
-      threadId: sessionThreadId || 'new',
-      projectId,
-    },
-  });
   
   // Handle thread creation for project
   const handleThreadCreated = useCallback(async (newThreadId: Id<'threads'>) => {
@@ -194,7 +174,7 @@ export default function ProjectPage() {
           <div className="h-10 w-10 bg-muted rounded" />
         </div>
         <div className="min-h-screen flex flex-col justify-center items-start p-8">
-          <div className="w-full max-w-2xl space-y-6" style={{marginLeft: '200px'}}>
+          <div className="w-full max-w-2xl space-y-6" style={{marginLeft: '50px'}}>
             <div className="h-9 w-64 bg-muted rounded" />
             <div className="h-14 w-full bg-muted rounded-lg" />
           </div>
@@ -441,30 +421,22 @@ export default function ProjectPage() {
 
       {/* Main content */}
       <div className="min-h-screen flex flex-col justify-center items-start p-8">
-        <div className="w-full max-w-2xl space-y-6" style={{marginLeft: '200px'}}>
+        <div className="w-full max-w-2xl space-y-6" style={{marginLeft: '50px'}}>
           <div className="text-left">
             <h1 className="text-3xl font-bold mb-2">
               {projectName}
             </h1>
           </div>
           
-          <div className="w-full flex justify-center">
-            <div className="w-full max-w-2xl">
-              <ChatInput
-                threadId={sessionThreadId || 'new'}
-                thread={null}
-                input={input}
-                status={isLoading ? 'streaming' : 'ready'}
-                error={error}
-                setInput={setInput}
-                reload={reload}
-                setMessages={setMessages}
-                append={append}
-                stop={stop}
-                messageCount={messages.length}
-                onThreadCreated={handleThreadCreated}
-              />
-            </div>
+          <div className="w-full">
+            <Chat
+              threadId={sessionThreadId || 'new'}
+              thread={null}
+              initialMessages={[]}
+              projectId={projectId as Id<'projects'>}
+              customLayout={true}
+              onThreadCreated={handleThreadCreated}
+            />
           </div>
           
           

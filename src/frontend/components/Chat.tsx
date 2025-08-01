@@ -18,6 +18,7 @@ import { useSettingsStore } from '@/frontend/stores/SettingsStore';
 import { useModelStore } from '@/frontend/stores/ModelStore';
 import type { UIMessage } from 'ai';
 import { Doc, Id } from '@/convex/_generated/dataModel';
+import { saveLastPath, saveLastChatId } from '@/frontend/lib/lastChat';
 
 interface ChatProps {
   threadId: string;
@@ -26,11 +27,12 @@ interface ChatProps {
   projectId?: Id<"projects">;
   project?: Doc<"projects">;
   customLayout?: boolean; // Для специальных layout'ов
+  projectLayout?: boolean; // Для особого позиционирования на странице проекта
   onThreadCreated?: (threadId: Id<'threads'>) => void;
 }
 
 // Мемоизированный компонент Chat
-const Chat = React.memo(function Chat({ threadId, thread, initialMessages, projectId, project, customLayout, onThreadCreated }: ChatProps) {
+const Chat = React.memo(function Chat({ threadId, thread, initialMessages, projectId, project, customLayout, projectLayout, onThreadCreated }: ChatProps) {
   const { isMobile } = useIsMobile();
   const { selectedModel } = useModelStore();
   const router = useRouter();
@@ -53,10 +55,21 @@ const Chat = React.memo(function Chat({ threadId, thread, initialMessages, proje
   // Обработчик создания нового треда
   const handleThreadCreated = useCallback((newThreadId: string) => {
     setCurrentThreadId(newThreadId);
+    
+    // Если есть внешний обработчик (например, из ProjectPage), вызываем его
     if (onThreadCreated) {
       onThreadCreated(newThreadId as Id<'threads'>);
+    } else if (!projectId) {
+      // Для обычных чатов обновляем URL
+      // Используем replaceState вместо push чтобы избежать лишних перерендеров
+      if (typeof window !== 'undefined') {
+        const newUrl = `/chat/${newThreadId}`;
+        window.history.replaceState(null, '', newUrl);
+        saveLastPath(newUrl);
+        saveLastChatId(newThreadId);
+      }
     }
-  }, [onThreadCreated]);
+  }, [onThreadCreated, projectId]);
 
   // Мемоизированные обработчики для предотвращения лишних ререндеров
   const handleGoHome = useCallback(() => {
@@ -248,6 +261,7 @@ const Chat = React.memo(function Chat({ threadId, thread, initialMessages, proje
           projectId={projectId}
           project={project}
           customLayout={customLayout}
+          projectLayout={projectLayout}
         />
       </div>
     </div>

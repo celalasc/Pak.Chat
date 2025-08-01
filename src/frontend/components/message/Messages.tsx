@@ -34,9 +34,19 @@ function PureMessages({
 }) {
   // Логика индикатора загрузки теперь учитывает isRegenerating и первое сообщение.
   const lastMessage = messages[messages.length - 1];
+  const lastUserMessage = messages.findLast(m => m.role === 'user');
+  const lastAssistantMessage = messages.findLast(m => m.role === 'assistant');
+  
+  // Показываем индикатор если:
+  // 1. Статус submitted/streaming И последнее сообщение от пользователя
+  // 2. Статус submitted И есть сообщение от пользователя после последнего сообщения ассистента
+  // 3. Регенерация
+  // 4. Ожидание первого сообщения
   const shouldShowLoading =
-    (status === 'submitted' && lastMessage?.role === 'user') ||
-    (status === 'streaming' && lastMessage?.role === 'user') ||
+    ((status === 'submitted' || status === 'streaming') && 
+      (lastMessage?.role === 'user' || 
+       (lastUserMessage && lastAssistantMessage && 
+        messages.indexOf(lastUserMessage) > messages.indexOf(lastAssistantMessage)))) ||
     (isRegenerating && lastMessage?.role === 'user') ||
     (isFirstMessagePending && messages.length === 0);
 

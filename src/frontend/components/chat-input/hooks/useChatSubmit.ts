@@ -22,8 +22,8 @@ import { createUserMessage } from '../utils/messageHelpers';
 
 interface UseChatSubmitProps {
   threadId: string;
-  sessionThreadId: string | null;
-  setSessionThreadId: (id: string | null) => void;
+  sessionThreadId: string | undefined;
+  setSessionThreadId: (id: string | undefined) => void;
   input: string;
   setInput: UseChatHelpers['setInput'];
   append: UseChatHelpers['append'];
@@ -129,20 +129,9 @@ export const useChatSubmit = ({
         
         setSessionThreadId(ensuredThreadId);
         
-        // Для проектов используем только callback, для обычных чатов - history API
-        if (projectId) {
-          // В контексте проекта позволяем ProjectPage обработать навигацию
-          onThreadCreated?.(ensuredThreadId);
-        } else {
-          // Для обычных чатов используем history API
-          if (typeof window !== 'undefined') {
-            const newUrl = `/chat/${ensuredThreadId}`;
-            window.history.replaceState(null, '', newUrl);
-            saveLastPath(newUrl);
-            saveLastChatId(ensuredThreadId);
-          }
-          onThreadCreated?.(ensuredThreadId);
-        }
+        // Вызываем callback для обновления состояния
+        // Навигация будет обработана в компоненте Chat
+        onThreadCreated?.(ensuredThreadId);
       }
 
       // Save user message to database first
@@ -217,7 +206,6 @@ export const useChatSubmit = ({
               size: attachment.size,
             };
           } catch (error) {
-            console.error('Failed to upload file:', attachment.name, error);
             setUploading(attachment.id, false);
             throw error;
           }
@@ -254,7 +242,6 @@ export const useChatSubmit = ({
           });
         } catch (err) {
           toast.error('Failed to save attachment metadata');
-          console.error(err);
           setIsSubmitting(false);
           return;
         }
@@ -270,7 +257,6 @@ export const useChatSubmit = ({
             body: { threadId: ensuredThreadId, isTitle: true },
           }).catch(err => {
             // Тихо обрабатываем ошибку - заголовок не критичен для функциональности
-            console.warn('Title generation failed (non-critical):', err);
           });
         }, 0);
       }
@@ -315,6 +301,8 @@ export const useChatSubmit = ({
 
       // Send to LLM (use DB message ID to avoid duplication)
       // ВАЖНО: Передаем ensuredThreadId в body, чтобы API получил правильный threadId
+      
+      
       append(
         createUserMessage(dbMsgId, finalMessage, attachmentsForUI),
         {
@@ -329,11 +317,10 @@ export const useChatSubmit = ({
             customMode: customModeData,
             projectId: projectId,
           },
-          options: {
-            threadId: ensuredThreadId, // Дублируем для надежности
-          },
+          threadId: ensuredThreadId, // Передаем threadId напрямую в options
         }
       );
+      
 
       // Add files to recent
       if (localAttachments.length > 0) {
@@ -376,7 +363,6 @@ export const useChatSubmit = ({
       }
 
     } catch (error) {
-      console.error('Submit error:', error);
       toast.error('Failed to send message.');
       setInput(currentInput);
     } finally {
