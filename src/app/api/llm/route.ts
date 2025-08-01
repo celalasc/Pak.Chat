@@ -53,40 +53,20 @@ export async function POST(req: NextRequest) {
       // Image generation request received
     }
 
-    // DEBUG: Detailed logging for threadId debugging
-  console.log('🔍 API /llm - Request received:', {
-    threadId: threadId,
-    threadIdType: typeof threadId,
-    threadIdLength: threadId?.length,
-    messagesCount: messages.length,
-    timestamp: new Date().toISOString()
-  });
+  
   
   // Для нового чата threadId может быть пустым - это нормально
   // Но если есть больше одного сообщения пользователя, threadId обязателен
-  const userMessagesCount = messages.filter(m => m.role === 'user').length;
+  const userMessagesCount = messages.filter((m: Message) => m.role === 'user').length;
   
-  // DEBUG: Log user messages analysis
-  console.log('🔍 API /llm - User messages analysis:', {
-    userMessagesCount: userMessagesCount,
-    allMessages: messages.map(m => ({ role: m.role, id: m.id, contentLength: m.content?.length || 0 })),
-    shouldRequireThreadId: userMessagesCount > 1,
-    hasThreadId: !!threadId
-  });
+
   
   if (!threadId && userMessagesCount > 1) {
-    console.error('❌ API /llm - threadId validation failed:', {
-      threadId: threadId,
-      userMessagesCount: userMessagesCount,
-      error: 'threadId required for existing conversations'
-    });
     return NextResponse.json(
       { error: 'threadId required for existing conversations' },
       { status: 400 }
     );
   }
-  
-  console.log('✅ API /llm - threadId validation passed');
 
     const modelConfig = getModelConfig(model as AIModel);
     const apiKey = apiKeys[modelConfig.provider];
@@ -180,8 +160,8 @@ export async function POST(req: NextRequest) {
               additionalInfo: userSettings.customInstructionsAdditionalInfo || '',
             } as CustomInstructions;
           }
-        } catch (e) {
-          console.error('User settings fetch failed:', e);
+        } catch {
+          // User settings fetch failed - continue without custom instructions
         }
         return undefined;
       })();
@@ -191,8 +171,8 @@ export async function POST(req: NextRequest) {
         if (threadId && isConvexId(threadId) && !isFirstMessage) {
           try {
             return await fetchQuery(api.attachments.byThread, { threadId });
-          } catch (e) {
-            console.error('Attachment fetch failed:', e);
+          } catch {
+            // Attachment fetch failed - continue without attachments
           }
         }
         return [] as Attachment[];
@@ -232,8 +212,8 @@ export async function POST(req: NextRequest) {
           
           projectContext += `\n--- End Project Context ---\n\n`;
         }
-      } catch (error) {
-        console.error('Failed to fetch project context:', error);
+      } catch {
+        // Failed to fetch project context - continue without project context
       }
     }
 
@@ -282,7 +262,7 @@ export async function POST(req: NextRequest) {
                 type: 'text',
                 text: `Attachment ${attachment.name} skipped – file size ${(sizeBytes / (1024 * 1024)).toFixed(1)} MB exceeds 30 MB limit.`,
               });
-              console.warn('Attachment too large – skipped:', attachment.name);
+              // Attachment too large - skipped
               continue;
             }
 
@@ -309,8 +289,8 @@ export async function POST(req: NextRequest) {
                   const data = await pdf(buf);
                   content.push({ type: 'text', text: `PDF ${attachment.name}:\n${data.text}` });
                 }
-              } catch (err) {
-                console.error('PDF parse failed:', err);
+              } catch {
+              // PDF parse failed - continue without PDF content
                 content.push({ type: 'text', text: `Unable to parse PDF ${attachment.name}.` });
               }
               continue;
@@ -340,8 +320,8 @@ export async function POST(req: NextRequest) {
               type: 'text',
               text: `Binary file ${attachment.name} (type ${mime}, ${(sizeBytes / 1024).toFixed(0)} KB) encoded in base64 below:\n${base64}`,
             });
-          } catch (err) {
-            console.error('Attachment processing failed:', err);
+          } catch {
+            // Attachment processing failed - skip this attachment
           }
         }
 
@@ -419,9 +399,8 @@ export async function POST(req: NextRequest) {
             const errorText = await response.text();
             const errorData = JSON.parse(errorText);
             errorMessage = errorData.error || errorMessage;
-          } catch (parseError) {
+          } catch {
             // If parsing fails, use generic error message
-            console.error('Failed to parse error response:', parseError);
           }
           throw new Error(errorMessage);
         }
@@ -441,7 +420,7 @@ export async function POST(req: NextRequest) {
         });
 
       } catch (error) {
-        console.error('Image generation error:', error);
+        // Image generation error - continue without image generation
         return new NextResponse(
           JSON.stringify({ 
             error: 'Image generation failed', 
@@ -463,9 +442,9 @@ export async function POST(req: NextRequest) {
       messages: coreMessages,
       // Для Google моделей useSearchGrounding уже установлен при создании модели,
       // поэтому дополнительные tools не передаём.
-      onError: (e: unknown) => {
-        console.error('AI SDK streamText Error:', e);
-      },
+      onError: () => {
+          // AI SDK streamText Error - continue with error handling
+         },
       system: buildSystemPrompt(userCustomInstructions, customModePrompt, projectContext),
       abortSignal: req.signal,
         });
@@ -474,8 +453,8 @@ export async function POST(req: NextRequest) {
       sendReasoning: true,
       getErrorMessage: (error: unknown) => (error as { message: string }).message,
     });
-  } catch (error) {
-    console.error('Chat API Error:', error);
+  } catch {
+      // Chat API Error - return error response
     return new NextResponse(
       JSON.stringify({ error: 'Internal Server Error' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
