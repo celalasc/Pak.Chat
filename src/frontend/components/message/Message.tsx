@@ -102,13 +102,14 @@ const PureMessage = memo(function PureMessage({
     router.push(`/chat`);
   }, [router]);
 
-  const { bind, isPressed } = useLongPress({
+  const { bind } = useLongPress({
     onLongPress: () => {
-      if (!isWelcome) { 
+      if (!isWelcome) {
         setShowMobileModal(true);
       }
     },
     isMobile,
+    threshold: 650,
   });
 
   // Извлекаем reasoning из первой текстовой части с мемоизацией
@@ -328,8 +329,7 @@ const PureMessage = memo(function PureMessage({
               key={key}
               className={cn(
                 'relative group px-4 py-3 rounded-xl bg-secondary border border-secondary-foreground/2 max-w-[90%] sm:max-w-[80%] mx-2 sm:mx-0 transition-all duration-200',
-                isMobile && 'cursor-pointer',
-                isPressed && 'scale-95 opacity-70'
+                isMobile && 'cursor-pointer'
               )}
               {...bind}
             >
@@ -409,8 +409,7 @@ const PureMessage = memo(function PureMessage({
               key={key}
               className={cn(
                 'group flex flex-col gap-2 w-full px-2 sm:px-0 transition-all duration-200',
-                isMobile && 'cursor-pointer',
-                isPressed && 'scale-95 opacity-70'
+                isMobile && 'cursor-pointer'
               )}
               {...bind}
             >
