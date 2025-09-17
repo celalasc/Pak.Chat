@@ -18,6 +18,7 @@ interface LazyChatViewProps {
   project?: Doc<"projects">;
   customLayout?: boolean;
   projectLayout?: boolean;
+  projectHeader?: React.ReactNode;
 }
 
 // Skeleton component for ChatView loading state
@@ -74,7 +75,7 @@ function ChatViewSkeleton() {
 
 export default function LazyChatView(props: LazyChatViewProps) {
   const hasMessages = props.initialMessages && props.initialMessages.length > 0;
-  
+
   return (
     <Suspense fallback={hasMessages ? null : <ChatViewSkeleton />}>
       <ChatView {...props} />
