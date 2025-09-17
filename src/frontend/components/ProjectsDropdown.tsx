@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { FolderOpen, Plus, Edit, Trash, Search } from 'lucide-react';
+import { FolderOpen, Plus, Trash, Search } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,19 +9,10 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from './ui/dropdown-menu';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from './ui/dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useProjects } from '../../features/projects/hooks/useProjects';
 import { Id } from '../../../convex/_generated/dataModel';
 
@@ -43,17 +34,10 @@ export default function ProjectsDropdown({
     hasMore,
     createProject,
     deleteProject,
-    updateProject,
   } = useProjects();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
-const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingProject, setEditingProject] = useState<{
-    id: Id<"projects">;
-    name: string;
-    customInstructions?: string;
-  } | null>(null);
   const [isCreatingNewProject, setIsCreatingNewProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
 
@@ -99,23 +83,6 @@ const handleCreateProject = async () => {
       handleCreateProject();
     } else if (e.key === 'Escape') {
       handleCancelCreating();
-    }
-  };
-
-  const handleEditProject = async () => {
-    if (!editingProject || !editingProject.name.trim()) return;
-
-    try {
-      await updateProject(editingProject.id, {
-        name: editingProject.name.trim(),
-        customInstructions: editingProject.customInstructions?.trim() || undefined,
-      });
-      setEditingProject(null);
-      setIsEditModalOpen(false);
-      toast.success("Project updated!");
-    } catch (error) {
-      console.error("Failed to update project:", error);
-      toast.error("Failed to update project");
     }
   };
 
@@ -254,22 +221,6 @@ const handleCreateProject = async () => {
                     className="h-8 w-8 p-0"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setEditingProject({
-                        id: project._id,
-                        name: project.name,
-                        customInstructions: project.customInstructions,
-                      });
-                      setIsEditModalOpen(true);
-                    }}
-                  >
-                    <Edit className="h-3 w-3" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    onClick={(e) => {
-                      e.stopPropagation();
                       if (confirm("Delete project? This action cannot be undone.")) {
                         handleDeleteProject(project._id);
                       }
@@ -335,61 +286,6 @@ const handleCreateProject = async () => {
           `}</style>
         </DropdownMenuContent>
       </DropdownMenu>
-
-
-      {/* Edit Project Modal */}
-      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Project</DialogTitle>
-            <DialogDescription>
-              Change the project name or instructions.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Input
-                placeholder="Project name"
-                value={editingProject?.name || ""}
-                onChange={(e) =>
-                  setEditingProject((prev) =>
-                    prev ? { ...prev, name: e.target.value } : null
-                  )
-                }
-                maxLength={100}
-              />
-            </div>
-            <div>
-              <textarea
-                className="w-full p-2 border rounded-md resize-none"
-                placeholder="AI instructions (optional)"
-                value={editingProject?.customInstructions || ""}
-                onChange={(e) =>
-                  setEditingProject((prev) =>
-                    prev ? { ...prev, customInstructions: e.target.value } : null
-                  )
-                }
-                rows={3}
-                maxLength={500}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsEditModalOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleEditProject}
-              disabled={!editingProject?.name.trim()}
-            >
-              Save
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   );
 }
