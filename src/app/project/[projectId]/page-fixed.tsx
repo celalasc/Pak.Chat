@@ -504,7 +504,7 @@ export default function ProjectPage() {
               onClick={() => setIsInstructionsDialogOpen(false)}
               variant="ghost"
               size="icon"
-              className="rounded-full w-8 h-8 p-0 shrink-0 text-white/70 hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-0"
+              className="rounded-full w-8 h-8 p-0 shrink-0 text-white/70 hover:bg-white/10 hover:text-white"
             >
               <X className="w-4 h-4" />
             </Button>
@@ -519,7 +519,12 @@ export default function ProjectPage() {
                 maxLength={4000}
                 className="w-full h-full resize-none bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 text-base sm:text-base text-white/90 placeholder:text-white/50 whitespace-pre-wrap break-words overflow-y-auto p-0 min-h-[200px] focus:bg-transparent hover:bg-transparent"
                 placeholder="Enter custom instructions for this project..."
-                style={{ wordWrap: 'break-word', overflowWrap: 'break-word', backgroundColor: 'transparent' }}
+                style={{
+                  wordWrap: 'break-word',
+                  overflowWrap: 'break-word',
+                  backgroundColor: 'transparent',
+                  fontSize: typeof window !== 'undefined' && window.innerWidth < 640 ? '16px' : '14px'
+                }}
               />
             </div>
           </div>
