@@ -3,6 +3,7 @@
 import { useParams, useRouter, usePathname } from "next/navigation";
 import { useProject } from "../hooks/useProject";
 import { Id, Doc } from "../../../../convex/_generated/dataModel";
+import Link from "next/link";
 import ProjectHeader from "../components/ProjectHeader";
 import ProjectKnowledge from "../components/ProjectKnowledge";
 import ProjectPageSkeleton from "../components/ProjectPageSkeleton";
@@ -103,9 +104,9 @@ export default function ProjectPage() {
         {/* Top-left navigation */}
         <div className="fixed left-4 top-4 z-50 pointer-events-auto">
           <nav className="flex items-center gap-1 text-xl font-bold">
-            <a href="/chat" className="text-foreground hover:text-primary transition-colors cursor-pointer hover:underline pointer-events-auto">
+            <Link href="/" className="text-foreground hover:text-primary transition-colors cursor-pointer hover:underline pointer-events-auto">
               Pak.Chat
-            </a>
+            </Link>
             <span className="text-muted-foreground">/</span>
             <span 
               className="text-foreground hover:text-primary transition-colors cursor-pointer hover:underline pointer-events-auto"
