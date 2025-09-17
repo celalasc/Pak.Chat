@@ -1,8 +1,9 @@
 "use client";
 
 import { useChat } from '@ai-sdk/react';
-// Chat message list component - lazy loaded
-import { LazyMessages, LazyChatInput } from './lazy';
+// Core chat UI pieces rendered immediately
+import Messages from './message/Messages';
+import ChatInput from './chat-input';
 import ChatNavigationBars from './ChatNavigationBars';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 import { useModelStore } from '@/frontend/stores/ModelStore';
@@ -694,7 +695,7 @@ const ChatView = React.memo(function ChatView({
               customLayout ? "px-0 pt-0 pb-0" : "max-w-3xl pt-24 pb-44 px-4"
             )}>
               {hasAnyMessages && (
-                <LazyMessages
+                <Messages
                   threadId={currentThreadId}
                   messages={mergedMessages}
                   status={status}
@@ -731,7 +732,7 @@ const ChatView = React.memo(function ChatView({
               </div>
             )}
 
-            <LazyChatInput
+            <ChatInput
               threadId={currentThreadId}
               thread={thread}
               input={input}

@@ -4,7 +4,7 @@ import { ChatHistoryButton } from './chat-history';
 import NewChatButton from './NewChatButton';
 import SettingsDrawer from './SettingsDrawer';
 import MobileChatMenu from './mobile/MobileChatMenu';
-import { LazyChatView } from './lazy';
+import ChatView from './ChatView';
 import { useRouter } from 'next/navigation';
 import { Button } from './ui/button';
 import { WithTooltip } from './WithTooltip';
@@ -262,7 +262,7 @@ const Chat = React.memo(function Chat({
       ) : null}
 
         {/* Core chat UI */}
-        <LazyChatView
+        <ChatView
           key={threadId}
           threadId={threadId}
           thread={thread}

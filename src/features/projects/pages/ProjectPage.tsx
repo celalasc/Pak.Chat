@@ -6,7 +6,6 @@ import { Id, Doc } from "../../../../convex/_generated/dataModel";
 import Link from "next/link";
 import ProjectHeader from "../components/ProjectHeader";
 import ProjectKnowledge from "../components/ProjectKnowledge";
-import ProjectPageSkeleton from "../components/ProjectPageSkeleton";
 import Chat from "@/frontend/components/Chat";
 import { Button } from "@/components/ui/button";
 import { WithTooltip } from "@/frontend/components/WithTooltip";
@@ -84,7 +83,7 @@ export default function ProjectPage() {
   }, [projectId]);
 
   if (isLoading) {
-    return <ProjectPageSkeleton />;
+    return <div className="min-h-screen bg-background" />;
   }
 
   if (!project) {

@@ -31,7 +31,6 @@ export default function ProjectPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { isMobile } = useIsMobile();
-  const [isPageLoading, setIsPageLoading] = useState(true);
   
   const projectId = params.projectId as string;
   const projectName = searchParams.get('name') || 'Untitled Project';
@@ -85,14 +84,6 @@ export default function ProjectPage() {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isAddKnowledgeOpen]);
-  
-  // Remove loading state after component mounts
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsPageLoading(false);
-    }, 100);
-    return () => clearTimeout(timer);
-  }, []);
   
   const handleSettingsOpenChange = useCallback((open: boolean) => {
     setIsSettingsOpen(open);
@@ -160,28 +151,6 @@ export default function ProjectPage() {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
-
-  // Show skeleton loader while page is loading
-  if (isPageLoading) {
-    return (
-      <div className="relative min-h-screen bg-background animate-pulse">
-        <div className="fixed left-4 top-4 z-50">
-          <div className="h-9 w-9 bg-muted rounded-full" />
-        </div>
-        <div className="fixed right-4 top-4 z-50 flex gap-2">
-          <div className="h-10 w-10 bg-muted rounded" />
-          <div className="h-10 w-10 bg-muted rounded" />
-          <div className="h-10 w-10 bg-muted rounded" />
-        </div>
-        <div className="min-h-screen flex flex-col justify-center items-start p-8">
-          <div className="w-full max-w-2xl space-y-6" style={{marginLeft: '50px'}}>
-            <div className="h-9 w-64 bg-muted rounded" />
-            <div className="h-14 w-full bg-muted rounded-lg" />
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="relative min-h-screen bg-background">
