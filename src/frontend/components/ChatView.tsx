@@ -34,19 +34,21 @@ interface ChatViewProps {
   project?: Doc<"projects">;
   customLayout?: boolean;
   projectLayout?: boolean;
+  projectHeader?: React.ReactNode;
 }
 
 // Мемоизированный компонент ChatView
-const ChatView = React.memo(function ChatView({ 
-  threadId, 
-  thread, 
-  initialMessages, 
-  showNavBars, 
+const ChatView = React.memo(function ChatView({
+  threadId,
+  thread,
+  initialMessages,
+  showNavBars,
   onThreadCreated,
   projectId,
   project,
   customLayout,
-  projectLayout
+  projectLayout,
+  projectHeader
 }: ChatViewProps) {
   const { keys } = useAPIKeyStore();
   const { selectedModel, webSearchEnabled } = useModelStore();
@@ -722,24 +724,31 @@ const ChatView = React.memo(function ChatView({
             !customLayout && (isMobile ? 'bottom-0' : (hasAnyMessages ? 'bottom-0' : 'top-1/2 -translate-y-1/2')),
           )}
         >
-          
-          <LazyChatInput
-            threadId={currentThreadId}
-            thread={thread}
-            input={input}
-            status={status}
-            reload={reload}
-            setInput={setInput}
-            setMessages={setMessages}
-            append={append}
-            stop={stopWithCleanup}
-            error={error}
-            messageCount={mergedMessages.length}
-            onThreadCreated={handleThreadCreated}
-            projectId={projectId}
-            sessionThreadId={sessionThreadId}
-            setSessionThreadId={setSessionThreadId}
-          />
+          <div className="flex w-full flex-col items-start gap-3">
+            {projectLayout && projectHeader && (
+              <div className="pl-2 text-left">
+                {projectHeader}
+              </div>
+            )}
+
+            <LazyChatInput
+              threadId={currentThreadId}
+              thread={thread}
+              input={input}
+              status={status}
+              reload={reload}
+              setInput={setInput}
+              setMessages={setMessages}
+              append={append}
+              stop={stopWithCleanup}
+              error={error}
+              messageCount={mergedMessages.length}
+              onThreadCreated={handleThreadCreated}
+              projectId={projectId}
+              sessionThreadId={sessionThreadId}
+              setSessionThreadId={setSessionThreadId}
+            />
+          </div>
         </div>
       </div>
     </>

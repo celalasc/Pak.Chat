@@ -29,10 +29,21 @@ interface ChatProps {
   customLayout?: boolean; // Для специальных layout'ов
   projectLayout?: boolean; // Для особого позиционирования на странице проекта
   onThreadCreated?: (threadId: Id<'threads'>) => void;
+  projectHeader?: React.ReactNode;
 }
 
 // Мемоизированный компонент Chat
-const Chat = React.memo(function Chat({ threadId, thread, initialMessages, projectId, project, customLayout, projectLayout, onThreadCreated }: ChatProps) {
+const Chat = React.memo(function Chat({
+  threadId,
+  thread,
+  initialMessages,
+  projectId,
+  project,
+  customLayout,
+  projectLayout,
+  onThreadCreated,
+  projectHeader,
+}: ChatProps) {
   const { isMobile } = useIsMobile();
   const { selectedModel } = useModelStore();
   const router = useRouter();
@@ -262,6 +273,7 @@ const Chat = React.memo(function Chat({ threadId, thread, initialMessages, proje
           project={project}
           customLayout={customLayout}
           projectLayout={projectLayout}
+          projectHeader={projectHeader}
         />
       </div>
     </div>

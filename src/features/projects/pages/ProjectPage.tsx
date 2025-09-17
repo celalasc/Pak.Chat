@@ -10,7 +10,7 @@ import Chat from "@/frontend/components/Chat";
 import { Button } from "@/components/ui/button";
 import { WithTooltip } from "@/frontend/components/WithTooltip";
 import { Settings, Plus } from "lucide-react";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import SettingsDrawer from "@/frontend/components/SettingsDrawer";
 import { ChatHistoryButton } from "@/frontend/components/chat-history";
 import { saveLastPath, saveLastChatId } from "@/frontend/lib/lastChat";
@@ -97,8 +97,15 @@ export default function ProjectPage() {
     );
   }
 
+  const projectHeaderContent = useMemo(() => (
+    <ProjectHeader
+      project={project}
+      onUpdate={(updates) => updateProject(updates)}
+    />
+  ), [project, updateProject]);
+
   return (
-    	<>
+    <>
       <div className="min-h-screen bg-background relative">
         {/* Top-left navigation */}
         <div className="fixed left-4 top-4 z-50 pointer-events-auto">
@@ -152,34 +159,25 @@ export default function ProjectPage() {
             {/* Left side - Project info and chat input */}
             <div className={currentChatId ? "w-full min-h-screen flex flex-col pointer-events-auto" : "flex-1 lg:flex-initial lg:w-[calc(100%-500px)] p-8 pr-4 flex flex-col pointer-events-auto"}>
               <div className={currentChatId ? "w-full flex flex-col h-full pointer-events-auto" : "w-full flex flex-col h-full pointer-events-auto"}>
-                {/* Project header - верхняя часть (если нет активного чата) */}
-                {!currentChatId && (
-                  <div className="mb-4 flex-shrink-0">
-                    <ProjectHeader
-                      project={project}
-                      onUpdate={(updates) => updateProject(updates)}
-                    />
-                  </div>
-                )}
-                
                 {/* Chat component - full height */}
                 <div className="flex-1 flex flex-col">
                   <div className={currentChatId ? "flex-1 w-full" : "flex-1 flex items-start justify-start"}>
                     <div className={currentChatId ? "w-full h-full" : "w-full [&_.fixed.left-1\/2]:left-[20%]"}>
                       <Chat
-                           key={`project-home-${projectId}-${currentChatId || 'new'}`} // Уникальный ключ для каждого состояния
-                           threadId={currentChatId || "new"}
-                           thread={null}
-                           initialMessages={[]}
-                           projectId={projectId}
-                           project={project}
-                           customLayout={false} // Используем стандартный layout как на обычной странице
-                           projectLayout={!currentChatId} // Добавляем флаг для особого позиционирования на странице проекта
-                           onThreadCreated={handleThreadCreated}
-                         />
-                      </div>
+                        key={`project-home-${projectId}-${currentChatId || 'new'}`} // Уникальный ключ для каждого состояния
+                        threadId={currentChatId || "new"}
+                        thread={null}
+                        initialMessages={[]}
+                        projectId={projectId}
+                        project={project}
+                        customLayout={false} // Используем стандартный layout как на обычной странице
+                        projectLayout={!currentChatId} // Добавляем флаг для особого позиционирования на странице проекта
+                        projectHeader={!currentChatId ? projectHeaderContent : undefined}
+                        onThreadCreated={handleThreadCreated}
+                      />
                     </div>
                   </div>
+                </div>
               </div>
             </div>
             
