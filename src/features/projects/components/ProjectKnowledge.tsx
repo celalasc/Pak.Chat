@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, File, Trash, Upload, MoreHorizontal, Edit } from "lucide-react";
+import { Plus, File, Trash, Upload, Edit, X } from "lucide-react";
 import { toast } from "sonner";
 
 interface ProjectKnowledgeProps {
@@ -254,26 +254,44 @@ export default function ProjectKnowledge({ files, project, onUpload, onDelete, o
 
       {/* Upload File Modal */}
       <Dialog open={isUploadModalOpen} onOpenChange={setIsUploadModalOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Create File</DialogTitle>
-            <DialogDescription>
-              Add a file with important information for this project
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="flex gap-2">
+        <DialogContent
+          showCloseButton={false}
+          className="w-[95vw] sm:w-[50vw] sm:max-w-none max-w-[520px] max-h-[90vh] flex flex-col p-0 bg-white/10 dark:bg-black/10 backdrop-blur-md border border-white/20 dark:border-gray-600/30 shadow-xl rounded-2xl overflow-hidden"
+        >
+          <div className="flex items-start justify-between gap-4 p-4 sm:p-6 border-b border-white/10 dark:border-gray-600/20">
+            <DialogHeader className="text-left space-y-1">
+              <DialogTitle className="text-lg sm:text-xl font-semibold text-white/90">
+                Create File
+              </DialogTitle>
+              <DialogDescription className="text-xs sm:text-sm text-white/60">
+                Add a file with important information for this project
+              </DialogDescription>
+            </DialogHeader>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="shrink-0 rounded-full w-8 h-8 p-0 text-white/70 hover:text-white hover:bg-white/10"
+              onClick={() => {
+                setIsUploadModalOpen(false);
+              }}
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+
+          <div className="px-4 sm:px-6 py-4 sm:py-6 space-y-4 overflow-y-auto">
+            <div className="flex flex-col sm:flex-row gap-3">
               <Input
                 placeholder="File name"
                 value={fileName}
                 onChange={(e) => setFileName(e.target.value)}
-                className="flex-1"
+                className="flex-1 h-11 bg-white/10 border-white/20 text-white placeholder:text-white/60 focus-visible:ring-0 focus-visible:ring-offset-0"
                 maxLength={100}
               />
               <select
                 value={fileType}
                 onChange={(e) => setFileType(e.target.value)}
-                className="px-3 py-2 border rounded-md"
+                className="h-11 min-w-[120px] rounded-lg border border-white/20 bg-white/10 text-white text-sm px-3 focus:outline-none focus:ring-0"
               >
                 <option value="txt">TXT</option>
                 <option value="md">Markdown</option>
@@ -283,19 +301,23 @@ export default function ProjectKnowledge({ files, project, onUpload, onDelete, o
                 <option value="yaml">YAML</option>
               </select>
             </div>
-            <div>
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-medium uppercase tracking-wide text-white/60">
+                File content
+              </span>
               <textarea
-                className="w-full p-3 border rounded-md resize-none font-mono text-sm"
+                className="w-full h-[260px] sm:h-[320px] rounded-xl border border-white/20 bg-white/5 p-4 text-sm text-white placeholder:text-white/50 resize-none font-mono"
                 placeholder="File content..."
                 value={fileContent}
                 onChange={(e) => setFileContent(e.target.value)}
-                rows={12}
               />
             </div>
           </div>
-          <DialogFooter>
+
+          <div className="px-4 sm:px-6 pb-4 sm:pb-6 pt-0 flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
             <Button
-              variant="outline"
+              variant="ghost"
+              className="bg-white/5 hover:bg-white/10 text-white"
               onClick={() => {
                 setIsUploadModalOpen(false);
                 setFileName("");
@@ -306,12 +328,13 @@ export default function ProjectKnowledge({ files, project, onUpload, onDelete, o
               Cancel
             </Button>
             <Button
+              className="bg-white text-black hover:bg-white/90"
               onClick={handleUpload}
               disabled={!fileName.trim() || !fileContent.trim()}
             >
               Create File
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
