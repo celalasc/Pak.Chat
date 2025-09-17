@@ -34,11 +34,6 @@ export default function Page() {
       }
     }
 
-    // Скрываем глобальный лоадер для всех случаев когда загрузка завершена
-    if (!loading && typeof window !== 'undefined') {
-      const globalWindow = window as typeof window & { __hideGlobalLoader?: () => void };
-      globalWindow.__hideGlobalLoader?.();
-    }
   }, [user, loading, mounted, router, isMobile]);
 
   // Отслеживаем изменения размера экрана для перенаправления на соответствующую страницу

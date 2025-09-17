@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useMemo, useState, useRef, memo, useCallback } from "react";
+import { use, useEffect, useMemo, useState, useRef, memo, useCallback, Suspense } from "react";
 import { useQuery, useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id, Doc } from "@/convex/_generated/dataModel";
@@ -165,9 +165,6 @@ const ProjectChatPageInner = memo(function ProjectChatPageInner({
   useEffect(() => {
     if (!isLoading) {
       setIsInitialLoad(false);
-      if (typeof window !== 'undefined' && window.__hideGlobalLoader) {
-        window.__hideGlobalLoader();
-      }
     }
   }, [isLoading]);
 
@@ -199,17 +196,14 @@ const ProjectChatPageInner = memo(function ProjectChatPageInner({
   )
 });
 
-import { Suspense } from 'react';
-import PageSkeleton from '@/frontend/components/PageSkeleton';
-
-export default function ProjectChatPage({ 
-  params 
-}: { 
-  params: Promise<{ projectId: string; slug: string[] }> 
+export default function ProjectChatPage({
+  params
+}: {
+  params: Promise<{ projectId: string; slug: string[] }>
 }) {
   return (
     <ErrorBoundary fallbackRedirect="/chat">
-      <Suspense fallback={<PageSkeleton />}>
+      <Suspense fallback={null}>
         <ProjectChatPageInner params={params} />
       </Suspense>
     </ErrorBoundary>

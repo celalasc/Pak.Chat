@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { use, useEffect, useMemo, useState, useRef, memo, useCallback } from 'react';
+import { use, useEffect, useMemo, useState, useRef, memo, useCallback, Suspense } from 'react';
 import { useQuery, useConvexAuth } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id, Doc } from '@/convex/_generated/dataModel';
@@ -153,10 +153,6 @@ const CatchAllChatPageInner = memo(function CatchAllChatPageInner({ params }: { 
   useEffect(() => {
     if (!isLoading) {
       setIsInitialLoad(false);
-      // Скрываем глобальный лоадер когда страница готова
-      if (typeof window !== 'undefined' && window.__hideGlobalLoader) {
-        window.__hideGlobalLoader();
-      }
     }
   }, [isLoading]);
 
@@ -179,13 +175,10 @@ const CatchAllChatPageInner = memo(function CatchAllChatPageInner({ params }: { 
   )
 });
 
-import { Suspense } from 'react';
-import PageSkeleton from '@/frontend/components/PageSkeleton';
-
 export default function CatchAllChatPage({ params }: { params: Promise<{ slug: string[] }> }) {
   return (
     <ErrorBoundary fallbackRedirect="/chat">
-      <Suspense fallback={<PageSkeleton />}>
+      <Suspense fallback={null}>
         <CatchAllChatPageInner params={params} />
       </Suspense>
     </ErrorBoundary>

@@ -27,12 +27,7 @@ export default function NewChatPage() {
   }, [loading, user, router]);
   
   useEffect(() => {
-    // Скрываем глобальный лоадер когда страница готова
     if (user && !loading) {
-      if (typeof window !== 'undefined' && window.__hideGlobalLoader) {
-        window.__hideGlobalLoader();
-      }
-      // Сохраняем текущий путь
       saveLastPath('/chat');
     }
   }, [user, loading]);

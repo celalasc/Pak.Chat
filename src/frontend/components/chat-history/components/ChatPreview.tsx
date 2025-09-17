@@ -8,7 +8,6 @@ import Image from 'next/image';
 import MarkdownRenderer from "../../MemoizedMarkdown";
 import MessageReasoning from "../../message/MessageReasoning";
 import { cn } from "@/lib/utils";
-import MessageLoading from "../../ui/MessageLoading";
 import SelectableText from "../../SelectableText";
 import QuotedMessage from "../../message/QuotedMessage";
 import { Button } from "../../ui/button";
@@ -302,11 +301,9 @@ export default function ChatPreview({ threadId, onClose }: ChatPreviewProps) {
   /* ---------- Заглушки ---------- */
   const placeholder = (text: string, showLoading = false) => (
     <div className="flex items-center justify-center h-full">
-      {showLoading ? (
-        <MessageLoading />
-      ) : (
-        <span className="text-sm text-muted-foreground">{text}</span>
-      )}
+      {showLoading
+        ? <span className="text-sm text-muted-foreground">Loading…</span>
+        : <span className="text-sm text-muted-foreground">{text}</span>}
     </div>
   );
 

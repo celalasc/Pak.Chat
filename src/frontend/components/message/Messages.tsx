@@ -3,7 +3,6 @@ import PreviewMessage from './Message';
 import { UIMessage } from 'ai';
 import { UseChatHelpers } from '@ai-sdk/react';
 import equal from 'fast-deep-equal';
-import MessageLoading from '../ui/MessageLoading';
 import Error from '../Error';
 
 // Убираем виртуализацию - всегда используем обычные сообщения
@@ -68,7 +67,11 @@ function PureMessages({
           forceRegeneration={forceRegeneration}
         />
       ))}
-      {shouldShowLoading && <MessageLoading />}
+      {shouldShowLoading && (
+        <p className="text-sm text-muted-foreground">
+          Assistant is preparing a response…
+        </p>
+      )}
       {error && <Error message={error.message} />}
     </section>
   );

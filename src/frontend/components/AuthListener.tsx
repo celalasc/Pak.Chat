@@ -1,6 +1,6 @@
 'use client';
 import { useAuthStore } from '@/frontend/stores/AuthStore';
-import { ReactNode, useEffect, useState, useCallback } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { getRedirectResult } from 'firebase/auth';
 import { auth } from '@/firebase';
 
@@ -8,13 +8,6 @@ export default function AuthListener({ children }: { children: ReactNode }) {
   const init = useAuthStore((s) => s.init);
   const loading = useAuthStore((s) => s.loading);
   const [isInitialized, setIsInitialized] = useState(false);
-
-  // Мемоизированная функция для скрытия глобального лоадера
-  const hideGlobalLoader = useCallback(() => {
-    if (typeof window !== 'undefined' && (window as any).__hideGlobalLoader) {
-      (window as any).__hideGlobalLoader();
-    }
-  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -48,7 +41,6 @@ export default function AuthListener({ children }: { children: ReactNode }) {
           (window as any).scheduler.postTask(() => {
             if (isMounted) {
               setIsInitialized(true);
-              hideGlobalLoader();
             }
           }, { priority: 'user-blocking' });
         } else {
@@ -56,7 +48,6 @@ export default function AuthListener({ children }: { children: ReactNode }) {
           requestAnimationFrame(() => {
             if (isMounted) {
               setIsInitialized(true);
-              hideGlobalLoader();
             }
           });
         }
@@ -74,7 +65,7 @@ export default function AuthListener({ children }: { children: ReactNode }) {
       clearTimeout(timeoutId);
       unsub();
     };
-  }, [init, hideGlobalLoader]);
+  }, [init]);
 
   // Показываем детей только после полной инициализации
   if (!isInitialized) return null;
