@@ -93,15 +93,13 @@ const nextConfig = {
   webpack: (config, { dev, isServer }) => {
     // Оптимизация для мобильных устройств
     if (!dev && !isServer) {
-      // Разделяем вендорные библиотеки
+      // Создаем целевые группы для чанков, не нарушая дефолтную конфигурацию Next.js
+      const splitChunks = config.optimization?.splitChunks ?? {};
+
       config.optimization.splitChunks = {
-        chunks: 'all',
+        ...splitChunks,
         cacheGroups: {
-          vendor: {
-            test: /[\\/]node_modules[\\/]/,
-            name: 'vendors',
-            chunks: 'all',
-          },
+          ...(splitChunks?.cacheGroups ?? {}),
           // Отдельный чанк для Convex
           convex: {
             test: /[\\/]node_modules[\\/]convex[\\/]/,
