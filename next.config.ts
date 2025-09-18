@@ -163,12 +163,23 @@ const nextConfig = {
             key: 'X-XSS-Protection',
             value: '1; mode=block',
           },
-          // Отключаем кеширование в development
+        ],
+      },
+      {
+        source: '/_next/static/:path*',
+        headers: [
           {
             key: 'Cache-Control',
-            value: process.env.NODE_ENV === 'development' 
-              ? 'no-cache, no-store, must-revalidate, proxy-revalidate, max-age=0'
-              : 'public, max-age=31536000, immutable',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/:all*(css|js|mjs|json|svg|png|jpg|jpeg|gif|webp|ico|webmanifest|woff|woff2)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
           },
         ],
       },
