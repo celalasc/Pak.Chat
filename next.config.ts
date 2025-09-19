@@ -92,32 +92,21 @@ const nextConfig = {
   // Оптимизация бандла
   webpack: (config, { dev, isServer }) => {
     // Оптимизация для мобильных устройств
-    if (!dev && !isServer) {
-      // Создаем целевые группы для чанков, не нарушая дефолтную конфигурацию Next.js
-      const splitChunks = config.optimization?.splitChunks ?? {};
-
-      config.optimization.splitChunks = {
-        ...splitChunks,
-        cacheGroups: {
-          ...(splitChunks?.cacheGroups ?? {}),
-          // Отдельный чанк для Convex
-          convex: {
-            test: /[\\/]node_modules[\\/]convex[\\/]/,
-            name: 'convex',
-            chunks: 'all',
-            priority: 10,
-          },
-          // Отдельный чанк для UI компонентов
-          ui: {
-            test: /[\\/]src[\\/]components[\\/]ui[\\/]/,
-            name: 'ui',
-            chunks: 'all',
-            priority: 5,
-          },
-        },
+    if (!dev && !isServer && config.optimization?.splitChunks?.cacheGroups) {
+      // Добавляем дополнительные группы чанков, не переопределяя конфигурацию Next.js
+      config.optimization.splitChunks.cacheGroups.convex = {
+        test: /[\\/]node_modules[\\/]convex[\\/]/,
+        name: 'convex',
+        chunks: 'all',
+        priority: 10,
       };
-      // Оптимизация размера бандла
-      config.optimization.minimize = true;
+
+      config.optimization.splitChunks.cacheGroups.ui = {
+        test: /[\\/]src[\\/]components[\\/]ui[\\/]/,
+        name: 'ui',
+        chunks: 'all',
+        priority: 5,
+      };
     }
 
     // Оптимизация для мобильных устройств
